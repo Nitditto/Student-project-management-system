@@ -109,7 +109,7 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
   if (!req.body.password || !req.body.confirmPassword) {
     return next(new ErrorHandler("Please provide all required fields", 400));
   }
-  if (!req.body.password !== req.body.confirmPassword) {
+  if (req.body.password !== req.body.confirmPassword) {
     return next(
       new ErrorHandler("Password and confirm password do not match", 400),
     );
