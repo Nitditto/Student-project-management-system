@@ -1,0 +1,27 @@
+services:
+  # mongo:
+  #   image": mongodb/mongodb-community-server:lastest
+  #   container_name: mongo_db
+  #   volumes: 
+  #     - mongo_data:/data/db
+  #   restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+     - "5173:5173"
+    volumes: 
+      - ./client:/client
+      - /client/node_modules
+    stdin_open: true
+    tty: true
+  server:
+    build: ./server
+    container_name: server
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server:/server
+      - /server/node_modules
+    restart: unless-stopped
+  
