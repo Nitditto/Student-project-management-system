@@ -63,7 +63,6 @@ const Sidebar = ({ open, setOpen, userRole }) => {
         return [];
     }
   };
-
   const getIcon = (iconName, isActive = false) => {
     const className = `w-5 h-5 ${isActive ? "text-blue-600" : "text-slate-600"
       }`;
@@ -354,9 +353,9 @@ const Sidebar = ({ open, setOpen, userRole }) => {
               className={`transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0 lg:opacity-0"
                 } ${open ? "block" : "hidden lg:hidden"}`}
             >
-              <p className="text-xs text-slate-500 text-center">
+              {/* <p className="text-xs text-slate-500 text-center">
                 Educational Project Management v1.0
-              </p>
+              </p> */}
             </div>
           </div>
         </div>

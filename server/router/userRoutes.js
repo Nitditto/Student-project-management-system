@@ -12,7 +12,7 @@ import multer from "multer";
 
 const router = express.Router();
 router.post("/register", registerUser);
-router.post("/login", login);
+router.post("/login", loginUser);
 router.get("/me", getUser);
 router.get("/me", isAuthenticated, getUser);
 router.post("/logout", logout);

@@ -43,6 +43,17 @@ const App = () => {
     dispatch(getUser());
   }, [dispatch]);
 
+  const protectedRoute = ({children, allowRoles}) => {
+    
+    if(!authUser){
+      return <Navigate to="/login" replace />;
+    }
+    if(allowRoles?.length && authUser?.role && !allowRoles.includes(authUser.role)){
+      const redirectPath = authUser.role === "Admin" ? "/admin" : authUser.role === "Teacher" ? "/teacher" : "/student";
+      return <Navigate to={redirectPath} replace />;
+    }
+    return children;
+  };
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -61,7 +72,25 @@ const App = () => {
         <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/dashboard" element={authUser ? <DashboardLayout /> : <Navigate to="/login" />} />
+
+        {/* Admin Routes */}
+        <Route 
+          path="/admin"
+          element={
+            <protectedRoute allowRoles={['Admin']}>
+              <DashboardLayout userRole={"Admin"} />
+            </protectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="students" element={<ManageStudents/>} />
+          <Route path="teachers" elemet={<ManageTeachers />} />
+          <Route path="assign-supervisor" element={<AssignSupervisor />} />
+          <Route path="dealines" element={<DeadlinesPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+
+
+        </Route>
       </Routes>
       <ToastContainer theme="dark" />
     </BrowserRouter>
