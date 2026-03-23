@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { errorMiddleware } from './middleware/error.js';
 import authRouter from './router/userRoutes.js';
+import {connectDB} from "./config/db.js";
 import adminRouter from './router/adminRoutes.js';
 
 config()

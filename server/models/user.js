@@ -1,15 +1,16 @@
+import bcryrt from "bcrypt";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import crypto from "crypto";
-
+import { threadId } from "worker_threads";
+import bcrypt from "bcrypt";
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "Name is required"],
+      required: [true, "Name is required"],
       trim: true,
-      maxLength: [50, "Name should not exceed 50 characters"],
+      maxLength: [50, "Name cannot exceed 50 characters"],
     },
     email: {
       type: String,
@@ -18,14 +19,14 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        "Please fill a valid email address",
+        "Please fill a valid address",
       ],
     },
     password: {
       type: String,
-      require: [true, "Password is required"],
+      required: [true, "Password is required"],
       select: false,
-      minLength: [8, "Password should be at least 8 characters long"],
+      minLength: [8, "Password must be at 8 characters long"],
     },
     role: {
       type: String,
@@ -42,12 +43,12 @@ const userSchema = new mongoose.Schema(
     },
     expertise: {
       type: [String],
-      default: null,
+      default: [],
     },
-    maxStudents: {
+    maxStudent: {
       type: Number,
       default: 10,
-      min: [1, "Minimum number of students is 1"],
+      min: [1, "Min Students must be at least 1"],
     },
     assignedStudents: [
       {
@@ -70,26 +71,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
-
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
-    return;
-  }
-  this.password = await bcrypt.hash(this.password, 10);
-});
-
-userSchema.methods.generateToken = function () {
-  return jwt.sign(
-    {
-      id: this._id,
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_EXPIRE,
-    },
-  );
-};
-
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
