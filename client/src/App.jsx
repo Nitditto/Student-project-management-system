@@ -54,10 +54,14 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Auth Routes */}
-        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={<Navigate to={authUser ? "/dashboard" : "/login"} />}
+        />
+        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/dashboard" element={<DashboardLayout />} />
+        <Route path="/dashboard" element={authUser ? <DashboardLayout /> : <Navigate to="/login" />} />
       </Routes>
       <ToastContainer theme="dark" />
     </BrowserRouter>
