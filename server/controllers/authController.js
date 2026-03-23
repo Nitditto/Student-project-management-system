@@ -1,23 +1,23 @@
-import { asyncHander } from "../middleware/asyncHandler.js";
+import { asyncHandler } from "../middleware/asyncHandler.js";
 import ErrorHandler from "../middleware/error.js";
-import {User} from "../models/user.js";
+import { User } from "../models/user.js";
 import { generateToken } from "../utils/generateToken.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
 // REGISTER USER
 export const registerUser = asyncHander(async (req, res, next) => {
-  const {name, email, password, role } = req.body;
-  if(!name || !email || !password || !role){
+  const { name, email, password, role } = req.body;
+  if (!name || !email || !password || !role) {
     return next(new ErrorHandler("Please provide all required fields", 400));
   }
   let user = await User.findOne({ email });
-  if(user){
+  if (user) {
     return next(new ErrorHandler(`User with email ${user.email} already exists`, 400));
   }
-  user = await User.create({name, email, password, role});
+  user = await User.create({ name, email, password, role });
 
-   await user.save();
+  await user.save();
   generateToken(user, 201, "User registered successfully", res);
 });
 
