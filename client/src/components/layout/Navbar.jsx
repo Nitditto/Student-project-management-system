@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-
-import {logout} from "../../store/slices/authSlice";
+import { logout } from "../../store/slices/authSlice";
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -12,9 +11,10 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const dispatch = useDispatch();
 
   const handleLogout = () => {
-    dispatch(logout()).then(() =>
-      navigate("/login")
-      )
+    dispatch(logout()).then(()=>{
+      navigate("/login");
+    })
+    
   }
   const getInitials = (name) => {
     return (
