@@ -129,7 +129,7 @@ const adminSlice = createSlice({
         }
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        state.users = action.payload.users;
+        state.users = action.payload;
       });
 
     builder
