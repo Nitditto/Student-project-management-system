@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
 // REGISTER USER
-export const registerUser = asyncHander(async (req, res, next) => {
+export const registerUser = asyncHandler(async (req, res, next) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password || !role) {
     return next(new ErrorHandler("Please provide all required fields", 400));
@@ -17,7 +17,6 @@ export const registerUser = asyncHander(async (req, res, next) => {
   }
   user = await User.create({ name, email, password, role });
 
-  await user.save();
   generateToken(user, 201, "User registered successfully", res);
 });
 
@@ -57,7 +56,7 @@ export const logout = asyncHandler(async (req, res, next) => {
       message: "Logged out successfully",
     });
 });
-
+// Forgot Password
 export const forgotPassword = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) {

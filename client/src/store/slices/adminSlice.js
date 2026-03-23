@@ -19,7 +19,7 @@ export const createStudent = createAsyncThunk(
 export const updateStudent = createAsyncThunk(
   "updateStudent",
   async ({ id, data }, { thunkAPI }) => {
-    try {
+    try { 
       const res = await axiosInstance.put(`/admin/update-student/${id}`, data);
       toast.success(res.data.message || "Student updated successfully");
       return res.data.data.user;
@@ -87,7 +87,7 @@ export const updateTeacher = createAsyncThunk(
 
 export const deleteTeacher = createAsyncThunk(
   "deleteTeacher",
-  async (id, { thunkAPI }) => {
+  async (id, thunkAPI) => {
     try {
       const res = await axiosInstance.delete(`/admin/delete-teacher/${id}`);
       toast.success(res.data.message || "Teacher deleted successfully");
@@ -129,7 +129,7 @@ const adminSlice = createSlice({
         }
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
-        state.users = action.payload.users;
+        state.users = action.payload;
       });
 
     builder

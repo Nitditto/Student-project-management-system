@@ -1,0 +1,9 @@
+POST http://localhost:4000/api/v1/auth/register
+Content-Type: application/json
+
+{
+    "name" : "Nguyen Van Nam",
+    "email" : "nam123@gmail.com",
+    "password" : "12342565",
+    "role" : "student"
+}

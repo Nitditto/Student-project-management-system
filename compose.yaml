@@ -1,10 +1,10 @@
 services:
-  # mongo:
-  #   image": mongodb/mongodb-community-server:lastest
-  #   container_name: mongo_db
-  #   volumes: 
-  #     - mongo_data:/data/db
-  #   restart: unless-stopped
+  mongo:
+    image: mongodb/mongodb-community-server:latest
+    container_name: mongo_db
+    volumes: 
+      - mongo_data:/data/db
+    restart: unless-stopped
 
   client:
     build: ./client
@@ -24,4 +24,5 @@ services:
       - ./server:/server
       - /server/node_modules
     restart: unless-stopped
-  
+volumes:
+  mongo_data:

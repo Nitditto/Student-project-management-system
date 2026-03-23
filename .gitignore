@@ -1,0 +1,18 @@
+.DS_STORE
+
+node_modules /
+
+# Environment
+.env
+
+logs
+*.log
+
+dist/
+build/
+
+.dockerignore
+
+.vscode/
+
+Thumbs.db
