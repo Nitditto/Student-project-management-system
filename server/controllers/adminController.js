@@ -63,7 +63,7 @@ export const deleteStudent = asyncHandler(async (req, res, next) => {
 });
 
 export const createTeacher = asyncHandler(async (req, res, next) => {
-  const { name, email, password, department, maxStudents, expertise } =
+  const { name, email, password, department, maxStudents, experties } =
     req.body;
   if (
     !name ||
@@ -71,7 +71,7 @@ export const createTeacher = asyncHandler(async (req, res, next) => {
     !password ||
     !department ||
     !maxStudents ||
-    !expertise
+    !experties
   ) {
     return next(new ErrorHandler("Please provide all required fields", 400));
   }
@@ -81,10 +81,10 @@ export const createTeacher = asyncHandler(async (req, res, next) => {
     password,
     department,
     maxStudents,
-    expertise: Array.isArray(expertise)
-      ? expertise
-      : typeof expertise === "string" && expertise.trim() !== ""
-        ? expertise.split(",").map((exp) => exp.trim())
+    experties: Array.isArray(experties)
+      ? experties
+      : typeof experties === "string" && experties.trim() !== ""
+        ? experties.split(",").map((exp) => exp.trim())
         : [],
     role: "Teacher",
   });
