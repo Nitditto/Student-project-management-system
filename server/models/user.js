@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "Name is required"],
+      required: [true, "Name is required"],
       trim: true,
       maxLength: [50, "Name should not exceed 50 characters"],
     },
@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      require: [true, "Password is required"],
+      required: [true, "Password is required"],
       select: false,
       minLength: [8, "Password should be at least 8 characters long"],
     },
@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
-    expertise: {
+    experties: {
       type: [String],
       default: null,
     },

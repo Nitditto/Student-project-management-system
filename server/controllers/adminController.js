@@ -5,14 +5,14 @@ import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js"
 import { generateToken } from "../utils/generateToken.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
-import * as userService from "../services/userService.js";
+import * as userServices from "../services/userServices.js";
 
 export const createStudent = asyncHandler(async (req, res, next) => {
   const { name, email, password, department } = req.body;
   if (!name || !email || !password || !department) {
     return next(new ErrorHandler("Please provide all required fields", 400));
   }
-  const user = await userService.createUser({
+  const user = await userServices.createUser({
     name,
     email,
     password,
@@ -32,7 +32,7 @@ export const updateStudent = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const updateData = { ...req.body };
   delete updateData.role; // Prevent role updates through this route
-  const user = await userService.updateUser(id, updateData);
+  const user = await userServices.updateUser(id, updateData);
   if (!user) {
     return next(new ErrorHandler("Student not found", 404));
   }
@@ -47,7 +47,7 @@ export const updateStudent = asyncHandler(async (req, res, next) => {
 
 export const deleteStudent = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const user = await userService.getUserById(id);
+  const user = await userServices.getUserById(id);
   if (!user) {
     return next(new ErrorHandler("Student not found", 404));
   }
@@ -55,7 +55,7 @@ export const deleteStudent = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("User is not a student", 400));
   }
 
-  await userService.deleteUser(id);
+  await userServices.deleteUser(id);
   res.status(200).json({
     success: true,
     message: "Student deleted successfully",
@@ -75,7 +75,7 @@ export const createTeacher = asyncHandler(async (req, res, next) => {
   ) {
     return next(new ErrorHandler("Please provide all required fields", 400));
   }
-  const user = await userService.createUser({
+  const user = await userServices.createUser({
     name,
     email,
     password,
@@ -101,7 +101,7 @@ export const updateTeacher = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const updateData = { ...req.body };
   delete updateData.role; // Prevent role updates through this route
-  const user = await userService.updateUser(id, updateData);
+  const user = await userServices.updateUser(id, updateData);
   if (!user) {
     return next(new ErrorHandler("Teacher not found", 404));
   }
@@ -114,10 +114,9 @@ export const updateTeacher = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const deleteTeacher = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const user = await userService.getUserById(id);
+  const user = await userServices.getUserById(id);
   if (!user) {
     return next(new ErrorHandler("Teacher not found", 404));
   }
@@ -125,7 +124,7 @@ export const deleteTeacher = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("User is not a teacher", 400));
   }
 
-  await userService.deleteUser(id);
+  await userServices.deleteUser(id);
   res.status(200).json({
     success: true,
     message: "Teacher deleted successfully",
@@ -133,7 +132,7 @@ export const deleteTeacher = asyncHandler(async (req, res, next) => {
 });
 
 export const getAllUsers = asyncHandler(async (req, res, next) => {
-  const users = await userService.getAllUsers();
+  const users = await userServices.getAllUsers();
   res.status(200).json({
     success: true,
     message: "Users fetched successfully",
@@ -141,12 +140,10 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
       users,
     },
   });
-})
+});
 
-export const assinSupervisor = asyncHandler(async (req, res, next) => {})
+export const assinSupervisor = asyncHandler(async (req, res, next) => {});
 
-export const getAllProject = asyncHandler(async (req, res, next) => {
+export const getAllProject = asyncHandler(async (req, res, next) => {});
 
-})
-
-export const getDashboardStats = asyncHandler(async (req, res, next) => {})
+export const getDashboardStats = asyncHandler(async (req, res, next) => {});
