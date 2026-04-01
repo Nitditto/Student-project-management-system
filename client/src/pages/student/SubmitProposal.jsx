@@ -76,4 +76,5 @@ const SubmitProposal = () => {
   );
 };
 
+
 export default SubmitProposal;
