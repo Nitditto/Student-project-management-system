@@ -34,6 +34,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import { Loader } from "lucide-react";
 import { getUser } from "./store/slices/authSlice";
+import { getAllUsers } from "./store/slices/adminSlice";
 
 const App = () => {
   const { authUser, isCheckingAuth } = useSelector((state) => state.auth);
@@ -43,17 +44,32 @@ const App = () => {
     dispatch(getUser());
   }, [dispatch]);
 
-  const protectedRoute = ({children, allowRoles}) => {
-    
-    if(!authUser){
+  useEffect(()=>{
+    if(authUser?.role === "Admin"){
+      dispatch(getAllUsers());
+    }
+  },[authUser])
+
+  const ProtectedRoute = ({ children, allowedRoles }) => {
+    if (!authUser) {
       return <Navigate to="/login" replace />;
     }
-    if(allowRoles?.length && authUser?.role && !allowRoles.includes(authUser.role)){
-      const redirectPath = authUser.role === "Admin" ? "/admin" : authUser.role === "Teacher" ? "/teacher" : "/student";
+    if (
+      allowedRoles?.length &&
+      authUser?.role &&
+      !allowedRoles.includes(authUser.role)
+    ) {
+      const redirectPath =
+        authUser.role === "Admin"
+          ? "/admin"
+          : authUser.role === "Teacher"
+            ? "/teacher"
+            : "/student";
       return <Navigate to={redirectPath} replace />;
     }
     return children;
   };
+
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -72,24 +88,55 @@ const App = () => {
         <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/dashboard" element={<DashboardLayout />} />
 
         {/* Admin Routes */}
-        <Route 
+        <Route
           path="/admin"
           element={
-            <protectedRoute allowRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={["Admin"]}>
               <DashboardLayout userRole={"Admin"} />
-            </protectedRoute>
+            </ProtectedRoute>
           }
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="students" element={<ManageStudents/>} />
-          <Route path="teachers" elemet={<ManageTeachers />} />
+          <Route path="students" element={<ManageStudents />} />
+          <Route path="teachers" element={<ManageTeachers />} />
           <Route path="assign-supervisor" element={<AssignSupervisor />} />
-          <Route path="dealines" element={<DeadlinesPage />} />
+          <Route path="deadlines" element={<DeadlinesPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+        </Route>
 
+        {/* Teacher Routes */}
+        <Route
+          path="/teacher"
+          element={
+            <ProtectedRoute allowedRoles={["Teacher"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<TeacherDashboard />} />
+          <Route path="pending-requests" element={<PendingRequests />} />
+          <Route path="assigned-students" element={<AssignedStudents />} />
+          <Route path="files" element={<TeacherFiles />} />
+        </Route>
 
+        {/* Student Routes */}
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRoles={["Student"]}>
+              <DashboardLayout userRole={"Student"}/>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StudentDashboard />} />
+          <Route path="submit-proposal" element={<SubmitProposal />} />
+          <Route path="upload-files" element={<UploadFiles />} />
+          <Route path="supervisor" element={<SupervisorPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
       </Routes>
       <ToastContainer theme="dark" />
