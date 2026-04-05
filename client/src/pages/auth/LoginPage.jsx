@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { login } from "../../store/slices/authSlice";
+import { login, registerUser } from "../../store/slices/authSlice";
 import { BookOpen, ChartNoAxesColumn, Loader } from "lucide-react";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
 
   const { isLoggingIn, isSigningUp, authUser } = useSelector((state) => state.auth);
-  const {isLogin, setIsLogin} = useState(true);
+  const [isLogin, setIsLogin] = useState(true);
 
   const [formData, setFormData] = useState({
     name: "", // add name for form data
@@ -52,6 +52,9 @@ const LoginPage = () => {
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters long";
     }
+    if (!formData.role) {
+      newErrors.role = "Role is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -77,7 +80,7 @@ const LoginPage = () => {
         email: formData.email,
         password: formData.password,
         role: formData.role,
-      }
+      };
       dispatch(registerUser(data)); // register new user
     }
     // const data = new FormData();
@@ -90,7 +93,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (authUser) {
-      switch (formData.role) {
+      switch (authUser.role) {
         case "Student":
           navigate("/student");
           break;
@@ -162,7 +165,7 @@ const LoginPage = () => {
                 <select
                   name="role"
                   id=""
-                  className="input w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`input w-full px-3 py-2 border rounded-md ${errors.role ? "border-red-500" : "border-gray-300"}`}
                   value={formData.role}
                   onChange={handleChange}
                 >
@@ -170,6 +173,9 @@ const LoginPage = () => {
                   <option value="Teacher">Teacher</option>
                   <option value="Admin">Admin</option>
                 </select>
+                {errors.role && (
+                  <p className="text-sm text-red-600 mt-1">{errors.role}</p>
+                )}
               </div>
 
               {/* Email Address  */}
@@ -190,7 +196,7 @@ const LoginPage = () => {
                 )}
               </div>
 
-              {/* Password Address  */}
+              {/* Password Address */}
               <div className="">
                 <label htmlFor="" className="label">
                   Password
@@ -200,7 +206,7 @@ const LoginPage = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`input w-full px-2 py-2 border rounded-md ${error.password ? "border-red-500" : "border-gray-300"}`}
+                  className={`input w-full px-2 py-2 border rounded-md ${errors.password ? "border-red-500" : "border-gray-300"}`}
                   placeholder="Enter your password"
                 />
                 {errors.password && (
@@ -225,10 +231,10 @@ const LoginPage = () => {
                 type="submit"
                 disabled={isLoggingIn || isSigningUp}
               >
-                {isLoggingIn ? (
+                {isLoggingIn || isSigningUp ? (
                   <div className="flex justify-center items-center">
                     <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                    {isLogin ? "Signing in..." : "Signing up.."}
+                    {isLogin ? "Signing in..." : "Signing up..."}
                   </div>
                 ) : (
                   isLogin ? "Sign In" : "Sign up"
@@ -239,7 +245,7 @@ const LoginPage = () => {
             {/* Sign up */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-              {isLogin ? "Don't have an accoynt" : "Already have an account"}
+              {isLogin ? "Don't have an account " : "Already have an account "}
               <button
                type="button"
                onClick={() => {
