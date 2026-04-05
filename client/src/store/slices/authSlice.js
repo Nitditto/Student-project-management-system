@@ -10,8 +10,21 @@ export const login = createAsyncThunk("login", async (data, thunkAPI) => {
     toast.success(res.data.message);
     return res.data.user;
   } catch (error) {
-    toast.error(error.response.data.message);
-    return thunkAPI.rejectWithValue(error.response.data.message);
+    toast.error(error.response?.data?.message || "Login failed");
+    return thunkAPI.rejectWithValue(error.response?.data?.message || "Login failed");
+  }
+});
+
+export const registerUser = createAsyncThunk("register", async(data, thunkAPI) => {
+  try {
+    const res = await axiosInstance.post("/auth/register", data, {
+      headers: {"Content-Type": "application/json"},
+    });
+    toast.success(res.data.message || "Registration successful");
+    return res.data.user;
+  } catch(error) {
+    toast.error(error.response?.data?.message || "Registration failed");
+    return thunkAPI.rejectWithValue(error.response?.data?.message || "Registration failed");
   }
 });
 
@@ -50,7 +63,8 @@ export const getUser = createAsyncThunk(
       const res = await axiosInstance.get("/auth/me");
       return res.data.user;
     } catch (error) {
-      return thunkAPI.rejectWithValue(error.response.data.message || "Failed to fetch user");
+      error.response?.data?.message || "Failed to fetch user"
+      return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch user");
     }
   },
 );
@@ -62,7 +76,7 @@ export const logout = createAsyncThunk(
       const res = await axiosInstance.get("/auth/logout");
       return null
     } catch (error) {
-      toast.error(eror.response.data.message || "Failed to logout")
+      toast.error(error.response.data.message || "Failed to logout")
       return thunkAPI.rejectWithValue(error.response.data.message || "Failed to logout");
     }
   },
@@ -89,6 +103,16 @@ const authSlice = createSlice({
     });
     builder.addCase(login.rejected, (state) => {
       state.isLoggingIn = false;
+    });
+    builder.addCase(registerUser.pending, (state) => {
+      state.isSigningUp = true;
+    });
+    builder.addCase(registerUser.fulfilled, (state, action) => {
+      state.isSigningUp = false;
+      state.authUser = action.payload;
+    });
+    builder.addCase(registerUser.rejected, (state) => {
+      state.isSigningUp = false;
     });
 
     builder.addCase(getUser.pending, (state) => {
