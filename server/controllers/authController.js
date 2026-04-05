@@ -24,7 +24,7 @@ export const registerUser = asyncHandler(async (req, res, next) => {
 export const loginUser = asyncHandler(async (req, res, next) => {
   const { email, password, role } = req.body;
   if (!email || !password || !role) {
-    return next(new ErrorHandler("Please provide all the fields"));
+    return next(new ErrorHandler("Please provide all the fields", 400));
   }
   const user = await User.findOne({ email, role }).select("+password");
   if (!user) {
@@ -78,7 +78,7 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     });
     res.status(200).json({
       success: true,
-      message: `Email send to ${user.email} successfully`,
+      message: `Email sent to ${user.email} successfully`,
     });
   } catch (error) {
     user.resetPasswordToken = undefined;

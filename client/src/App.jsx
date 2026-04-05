@@ -32,6 +32,7 @@ import DeadlinesPage from "./pages/admin/DeadlinesPage";
 import ProjectsPage from "./pages/admin/ProjectsPage";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { Loader } from "lucide-react";
 import { getUser } from "./store/slices/authSlice";
 import { getAllUsers } from "./store/slices/adminSlice";
