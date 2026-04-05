@@ -1,3 +1,4 @@
+import ErrorHandler from "../middleware/error.js";
 import { Project } from "../models/project.js";
 export const getStudentProject = async (studentId) => {
   return await Project.findOne({ student: studentId }).sort({ createdAt: -1 });
@@ -9,7 +10,10 @@ export const createProject = async (projectData) => {
 };
 
 export const getProjectById = async (id) => {
-  const project = await Project.findById(id).populate("student", "name email").populate("supervisor", "name email");
+  const project = await Project.findById(id)
+    .populate("student", "name email")
+    .populate("supervisor", "name email")
+    .populate("feedback.supervisorId", "name email");
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }
@@ -32,3 +36,7 @@ export const addFilesToProject = async (projectId, files) => {
   await project.save();
   return project;
 };
+export const getAllProjects = async () => {
+  const projects = await Project.find();
+  return projects;
+}
