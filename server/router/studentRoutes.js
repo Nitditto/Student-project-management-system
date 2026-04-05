@@ -12,7 +12,7 @@ import { upload, handleUploadError } from "../middleware/upload.js";
 
 const router = express.Router();
 
-router.post(
+router.get(
   "/project",
   isAuthenticated,
   isAuthorized("Student"),

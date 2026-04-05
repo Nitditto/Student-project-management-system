@@ -81,6 +81,28 @@ export const requestSupervisor = createAsyncThunk(
   },
 );
 
+export const uploadFiles = createAsyncThunk(
+  "student/uploadFiles",
+  async ({projectId, files}, thunkAPI) => {
+    try {
+      const form = new FormData();
+      for(const file of files) form.append("files",file);
+      const res = await axiosInstance.post(`/student/upload/${projectId}`,form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        }
+      })
+      toast.success(res.data.message || "File uploaded successfully");
+      return res.data.data.project || res.data
+    } catch (error) {
+      toast.error(
+        error.response.data.message || "Failed to upload files",
+      );
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
+
 const studentSlice = createSlice({
   name: "student",
   initialState: {
@@ -108,8 +130,10 @@ const studentSlice = createSlice({
       .addCase(fetchAllSupervisors.fulfilled, (state, action) => {
         state.supervisors = action.payload?.supervisors || action.payload || [];
       })
-      .addCase(requestSupervisor.fulfilled, (state, action) => {
-        state.request = action.payload?.request || action.payload || null;
+      .addCase(uploadFiles.fulfilled, (state, action) => {
+        const newFiles = action.payload?.files || action.payload || [];
+        state.files = [...state.files, ...newFiles];
+        
       });
   },
 });
