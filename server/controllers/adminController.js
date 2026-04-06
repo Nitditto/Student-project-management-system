@@ -1,11 +1,14 @@
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import ErrorHandler from "../middleware/error.js";
 import { User } from "../models/user.js";
+import { Project } from "../models/project.js";
+import { SupervisorRequest } from "../models/supervisorRequest.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
 import { generateToken } from "../utils/generateToken.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
 import * as userServices from "../services/userServices.js";
+import * as projectServices from "../services/projectServices.js";
 
 export const createStudent = asyncHandler(async (req, res, next) => {
   const { name, email, password, department } = req.body;
@@ -142,8 +145,44 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
   });
 });
 
-export const assinSupervisor = asyncHandler(async (req, res, next) => {});
+export const assignSupervisor = asyncHandler(async (req, res, next) => {});
 
-export const getAllProject = asyncHandler(async (req, res, next) => {});
+export const getAllProjects = asyncHandler(async (req, res, next) => {
+  const projects = await projectServices.getAllProjects();
+  res.json({
+    success: true,
+    message: "Projects fetched successfully",
+    data: { projects },
+  });
+});
 
-export const getDashboardStats = asyncHandler(async (req, res, next) => {});
+export const getDashboardStats = asyncHandler(async (req, res, next) => {
+  const [
+    totalStudents,
+    totalTeachers,
+    totalProjects,
+    pendingRequests,
+    completedProjects,
+    rejectedProjects,
+  ] = await Promise.all([
+    User.countDocuments({ role: "Student" }),
+    User.countDocuments({ role: "Teacher" }),
+    Project.countDocuments(),
+    SupervisorRequest.countDocuments({ status: "pending" }),
+    Project.countDocuments({ status: "approved" }),
+    Project.countDocuments({ status: "rejected" }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: "Admin Dashboard stats fetched successfully",
+    data: {
+      totalStudents,
+      totalTeachers,
+      totalProjects,
+      pendingRequests,
+      completedProjects,
+      rejectedProjects,
+    },
+  });
+});

@@ -7,6 +7,8 @@ import {
   updateTeacher,
   deleteTeacher,
   getAllUsers,
+  getAllProjects,
+  getDashboardStats,
 } from "../controllers/adminController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -49,6 +51,15 @@ router.delete(
   isAuthenticated,
   isAuthorized("Admin"),
   deleteTeacher,
+);
+
+router.get("/projects", isAuthenticated, isAuthorized("Admin"), getAllProjects);
+
+router.get(
+  "/fetch-dashboard-stats",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getDashboardStats,
 );
 
 router.get("/users", isAuthenticated, isAuthorized("Admin"), getAllUsers);
