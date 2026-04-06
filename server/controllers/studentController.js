@@ -2,13 +2,16 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 import ErrorHandler from "../middleware/error.js";
 import { User } from "../models/user.js";
 import * as userServices from "../services/userServices.js";
-import * as projectService from "../services/projectServices.js";
+import * as projectServices from "../services/projectServices.js";
 import * as requestServices from "../services/requestServices.js";
 import * as notificationService from "../services/notificationServices.js";
+import { Project } from "../models/project.js";
+import { Notification } from "../models/notification.js";
+import * as fileServices from "../services/fileServices.js";
 
 export const getStudentProject = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
-  const project = await projectService.getStudentProject(studentId);
+  const project = await projectServices.getStudentProject(studentId);
   if (!project) {
     return res.status(200).json({
       success: true,
@@ -26,7 +29,7 @@ export const submitProposal = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
   const { title, description } = req.body;
 
-  const existingProject = await projectService.getStudentProject(studentId);
+  const existingProject = await projectServices.getStudentProject(studentId);
   if (existingProject && existingProject.status !== "rejected") {
     return next(
       new ErrorHandler(
@@ -35,12 +38,16 @@ export const submitProposal = asyncHandler(async (req, res, next) => {
       ),
     );
   }
+
+  if(existingProject && existingProject.status === "rejected"){
+    await Project.findByIdAndDelete(existingProject._id);
+  }
   const projectData = {
     student: studentId,
     title,
     description,
   };
-  const project = await projectService.createProject(projectData);
+  const project = await projectServices.createProject(projectData);
   await User.findByIdAndUpdate(studentId, { project: project._id });
   res.status(201).json({
     success: true,
@@ -52,9 +59,10 @@ export const submitProposal = asyncHandler(async (req, res, next) => {
 export const updateFiles = asyncHandler(async (req, res, next) => {
   const { projectId } = req.params;
   const studentId = req.user._id;
-  const project = await projectService.getProjectById(projectId);
+  const project = await projectServices.getProjectById(projectId);
 
-  if (!project || project.student.toString() !== studentId.toString()) {
+
+  if (!project || project.student._id.toString() !== studentId.toString()) {
     return next(
       new ErrorHandler("Not authorized to upload files to this project", 403),
     );
@@ -62,7 +70,7 @@ export const updateFiles = asyncHandler(async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return next(new ErrorHandler("No files uploaded", 400));
   }
-  const updatedProject = await projectService.addFilesToProject(
+  const updatedProject = await projectServices.addFilesToProject(
     projectId,
     req.files,
   );
@@ -90,9 +98,9 @@ export const getSupervisor = asyncHandler(async (req, res, next) => {
     "supervisor",
     "name email department experties",
   );
-  if (!student.supervisor) {
-    return next(new ErrorHandler("Supervisor not found", 404));
-  }
+  // if (!student.supervisor) {
+  //   return next(new ErrorHandler("Supervisor not found", 404));
+  // }
   if (!student.supervisor) {
     return res.status(200).json({
       success: true,
@@ -150,4 +158,99 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
     data: { request },
     message: "Supervisor request submitted successfully",
   });
+});
+
+export const getDashboardStats = asyncHandler(async (req, res, next) => {
+  const studentId = req.user._id;
+  const project = await Project.findOne({ student: studentId })
+    .sort({ createdAt: -1 })
+    .populate("supervisor", "name")
+    .lean();
+
+  const now = new Date();
+  const upcomingDeadlines = await Project.find({
+    student: studentId,
+    deadline: { $gte: now },
+  })
+    .select("title description")
+    .sort({ deadline: 1 })
+    .limit(3)
+    .lean();
+
+  const notifications = await Notification.find({
+    user: studentId,
+  })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .lean();
+
+  const feedbackNotification =
+    project?.feedback && project?.feedback.length > 0
+      ? project.feedback
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 2)
+      : [];
+
+  const supervisorName = project?.supervisor?.name || null;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      project,
+      upcomingDeadlines,
+      notifications,
+      feedbackNotification,
+      supervisorName,
+    },
+    message: "Dashboard stats fetched successfully",
+  });
+});
+
+export const getFeedback = asyncHandler(async (req, res, next) => {
+  const { projectId } = req.params;
+  const studentId = req.user._id;
+
+  const project = await projectServices.getProjectById(projectId);
+
+  if (!project || project.student._id.toString() !== studentId.toString()) {
+    return next(
+      new ErrorHandler("Not authorized to view feedback for this project", 403),
+    );
+  }
+
+  const sortedFeedback = project.feedback.sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+  ).map((f) => ({
+    _id: f._id,
+    type: f.type,
+    title: f.title,
+    message: f.message,
+    createdAt: f.createdAt,
+    supervisorName: f.supervisorId?.name,
+    supervisorEmail: f.supervisorId?.email,
+    
+  }));
+
+  res.status(200).json({
+    success: true,
+    data: { feedback: sortedFeedback },
+  });
+});
+
+export const downloadFile = asyncHandler(async (req, res, next) => {
+  const { projectId, fileId } = req.params;
+  const studentId = req.user._id;
+
+  const project = await projectServices.getProjectById(projectId);
+  if (project.student._id.toString() !== studentId.toString()) {
+    return next(new ErrorHandler("Not authorized to download file", 403));
+  }
+
+  const file = project.files.id(fileId);
+
+  if (!file) {
+    return next(new ErrorHandler("File not found", 404));
+  }
+
+  fileServices.streamDownload(file.fileUrl, res, file.originalName);
 });

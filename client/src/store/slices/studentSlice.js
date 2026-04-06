@@ -70,7 +70,8 @@ export const requestSupervisor = createAsyncThunk(
         "/student/request-supervisor",
         data,
       );
-      thunkAPI.dispatch(getSupervisor())
+      thunkAPI.dispatch(getSupervisor());
+      toast.success(response.data.message);
       return response.data.data?.request;
     } catch (error) {
       toast.error(
@@ -83,22 +84,77 @@ export const requestSupervisor = createAsyncThunk(
 
 export const uploadFiles = createAsyncThunk(
   "student/uploadFiles",
-  async ({projectId, files}, thunkAPI) => {
+  async ({ projectId, files }, thunkAPI) => {
     try {
       const form = new FormData();
-      for(const file of files) form.append("files",file);
-      const res = await axiosInstance.post(`/student/upload/${projectId}`,form, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        }
-      })
+      for (const file of files) form.append("files", file);
+      const res = await axiosInstance.post(
+        `/student/upload/${projectId}`,
+        form,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
       toast.success(res.data.message || "File uploaded successfully");
-      return res.data.data.project || res.data
+      return res.data.data.project || res.data;
+    } catch (error) {
+      toast.error(error.response.data.message || "Failed to upload files");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
+
+export const fetchDashboardStats = createAsyncThunk(
+  "fetchDashboardStats",
+  async (_, thunkAPI) => {
+    try {
+      const response = await axiosInstance.get(
+        "/student/fetch-dashboard-stats",
+      );
+      return response.data.data || response.data;
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to upload files",
+        error.response.data.message ||
+          "Failed to fetch student dashboard stats",
       );
       return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
+
+export const getFeedback = createAsyncThunk(
+  "getFeedback",
+  async ({ projectId }, thunkAPI) => {
+    try {
+      const response = await axiosInstance.get(
+        `/student/feedback/${projectId}`,
+      );
+      return (
+        response.data.data?.feedback || response.data.data || response.data
+      );
+    } catch (error) {
+      toast.error(error.response.data.message || "Failed to fetch feedback");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
+
+export const downloadFile = createAsyncThunk(
+  "downloadFile",
+  async ({ projectId, fileId }, thunkAPI) => {
+    try {
+      const response = await axiosInstance.get(
+        `/student/download/${projectId}/${fileId}`,
+        {
+          responseType: "blob",
+        },
+      );
+      return { blob: response.data, projectId, fileId };
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to download file");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -123,6 +179,7 @@ const studentSlice = createSlice({
       })
       .addCase(fetchProject.fulfilled, (state, action) => {
         state.project = action.payload?.project || action.payload || null;
+        state.files = action.payload?.files || [];
       })
       .addCase(getSupervisor.fulfilled, (state, action) => {
         state.supervisor = action.payload?.supervisor || action.payload || null;
@@ -131,9 +188,15 @@ const studentSlice = createSlice({
         state.supervisors = action.payload?.supervisors || action.payload || [];
       })
       .addCase(uploadFiles.fulfilled, (state, action) => {
-        const newFiles = action.payload?.files || action.payload || [];
-        state.files = [...state.files, ...newFiles];
-        
+        // const newFiles = action.payload?.project?.files || action.payload || [];
+        // state.files = [...state.files, ...newFiles];
+        state.project = action.payload;
+      })
+      .addCase(getFeedback.fulfilled, (state, action) => {
+        state.feedback = action.payload || [];
+      })
+      .addCase(fetchDashboardStats.fulfilled, (state, action) => {
+        state.dashboardStats = action.payload || [];
       });
   },
 });

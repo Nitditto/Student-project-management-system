@@ -99,6 +99,19 @@ export const deleteTeacher = createAsyncThunk(
   },
 );
 
+export const getAllProjects = createAsyncThunk(
+  "getAllProjects",
+  async (_, { thunkAPI }) => {
+    try {
+      const res = await axiosInstance.get("/admin/projects");
+      return res.data.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to fetch projects");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
+    }
+  },
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -130,6 +143,9 @@ const adminSlice = createSlice({
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
         state.users = action.payload;
+      })
+      .addCase(getAllProjects.fulfilled, (state, action) => {
+        state.projects = action.payload.projects;
       });
 
     builder
