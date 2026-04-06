@@ -63,7 +63,13 @@ const SupervisorPage = () => {
     const message =
       requestMessage?.trim() ||
       `${authUser.name || "Student"} has request ${selectedSupervisor.name} to be their supervisor.`;
-    dispatch(requestSupervisor({ teacherId: selectedSupervisor._id, message }));
+    dispatch(
+      requestSupervisor({ teacherId: selectedSupervisor._id, message }),
+    ).then((res) => {
+      if (res.type === "student/requestSupervisor/fulfilled") {
+        setShowRequestModal(false);
+      }
+    });
   };
   return (
     <div className="space-y-6">
@@ -109,9 +115,9 @@ const SupervisorPage = () => {
                         Expertise
                       </label>
                       <p className="font-medium text-slate-800">
-                        {Array.isArray(supervisor?.expertise)
-                          ? supervisor.expertise.join(", ")
-                          : supervisor?.expertise || "-"}
+                        {Array.isArray(supervisor?.experties)
+                          ? supervisor.experties.join(", ")
+                          : supervisor?.experties || "-"}
                       </p>
                     </div>
                   </div>
