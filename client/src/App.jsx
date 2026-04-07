@@ -34,7 +34,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import { Loader } from "lucide-react";
 import { getUser } from "./store/slices/authSlice";
-import { getAllUsers } from "./store/slices/adminSlice";
+import { getAllProjects, getAllUsers } from "./store/slices/adminSlice";
 
 const App = () => {
   const { authUser, isCheckingAuth } = useSelector((state) => state.auth);
@@ -47,6 +47,7 @@ const App = () => {
   useEffect(()=>{
     if(authUser?.role === "Admin"){
       dispatch(getAllUsers());
+      dispatch(getAllProjects());
     }
   },[authUser])
 
