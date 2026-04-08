@@ -125,7 +125,7 @@ const App = () => {
           path="/teacher"
           element={
             <ProtectedRoute allowedRoles={["Teacher"]}>
-              <DashboardLayout />
+              <DashboardLayout userRole={"Teacher"} />
             </ProtectedRoute>
           }
         >

@@ -43,3 +43,30 @@ export const getAllUsers = async () => {
 
   return users;
 }
+
+
+export const assignSupervisorDirectly = async (studentId, supervisorId) => {
+  const student = await User.findOne({
+    _id: studentId,
+    role: "Student"
+  })
+
+  const supervisor = await User.findOne({
+    _id: supervisorId,
+    role: "Teacher"
+  })
+
+  if(!student || !supervisor){
+    throw new Error("Student or Supervisor not found");
+  }
+
+  if(!supervisor.hasCapacity()){
+    throw new Error("Supervisor has no capacity");
+  }
+
+  student.supervisor = supervisorId;
+  supervisor.assignedStudents.push(studentId);
+  await Promise.all([student.save(), supervisor.save()]);
+
+  return {student, supervisor};
+}

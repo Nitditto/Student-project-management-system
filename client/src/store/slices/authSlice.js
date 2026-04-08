@@ -73,11 +73,11 @@ export const logout = createAsyncThunk(
   "auth/logout",
   async (_, thunkAPI) => {
     try {
-      const res = await axiosInstance.get("/auth/logout");
+      await axiosInstance.post("/auth/logout");
       return null
     } catch (error) {
-      toast.error(error.response.data.message || "Failed to logout")
-      return thunkAPI.rejectWithValue(error.response.data.message || "Failed to logout");
+      toast.error(error.response?.data?.message || "Failed to logout")
+      return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to logout");
     }
   },
 );
@@ -129,11 +129,11 @@ const authSlice = createSlice({
     });
 
     
-    builder.addCase(logout.fulfilled, (state, action) => {
+    builder.addCase(logout.fulfilled, (state) => {
       state.authUser = null
     });
-    builder.addCase(logout.rejected, (state) => {
-      state.authUser = state.authUser
+    builder.addCase(logout.rejected, () => {
+      // do nothing or keep as is
     });
 
     builder.addCase(forgotPassword.pending, (state) => {

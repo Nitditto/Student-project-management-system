@@ -9,6 +9,7 @@ import {
   getAllUsers,
   getAllProjects,
   getDashboardStats,
+  assignSupervisor,
 } from "../controllers/adminController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -64,4 +65,5 @@ router.get(
 
 router.get("/users", isAuthenticated, isAuthorized("Admin"), getAllUsers);
 
+router.post("/assign-supervisor", isAuthenticated, isAuthorized("Admin"), assignSupervisor);
 export default router;

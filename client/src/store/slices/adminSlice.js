@@ -126,6 +126,20 @@ export const getDashboardStats = createAsyncThunk(
   },
 );
 
+export const assignSupervisor = createAsyncThunk(
+  "assignSupervisor",
+  async (data, thunkAPI) => {
+    try{
+      const res = await axiosInstance.post("/admin/assign-supervisor", data);
+      toast.success(res.data.message);
+      return res.data.data;
+    }catch(error){
+      toast.error(error.response.data.message || "Failed to assign supervisor");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  }
+)
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
