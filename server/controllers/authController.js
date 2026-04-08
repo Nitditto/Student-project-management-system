@@ -13,7 +13,9 @@ export const registerUser = asyncHandler(async (req, res, next) => {
   }
   let user = await User.findOne({ email });
   if (user) {
-    return next(new ErrorHandler(`User with email ${user.email} already exists`, 400));
+    return next(
+      new ErrorHandler(`User with email ${user.email} already exists`, 400),
+    );
   }
   user = await User.create({ name, email, password, role });
 

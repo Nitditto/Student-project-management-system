@@ -86,6 +86,11 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+userSchema.methods.hasCapacity = function () {
+  if(this.role !== "Teacher") return false;
+  return this.assignedStudents.length < this.maxStudent;
+}
+
 userSchema.methods.getResetPasswordToken = function () {
   const resetToken = crypto.randomBytes(20).toString("hex");
 

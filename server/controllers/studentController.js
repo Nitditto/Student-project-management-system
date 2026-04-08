@@ -4,7 +4,7 @@ import { User } from "../models/user.js";
 import * as userServices from "../services/userServices.js";
 import * as projectServices from "../services/projectServices.js";
 import * as requestServices from "../services/requestServices.js";
-import * as notificationService from "../services/notificationServices.js";
+import * as notificationServices from "../services/notificationServices.js";
 import { Project } from "../models/project.js";
 import { Notification } from "../models/notification.js";
 import * as fileServices from "../services/fileServices.js";
@@ -128,7 +128,7 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Invalid supervisor selected", 400));
   }
 
-  if (student.maxStudents === supervisor.assignedStudents.length) {
+  if (supervisor.maxStudent <= supervisor.assignedStudents.length) {
     return next(
       new ErrorHandler(
         "Selected supervisor has reached maximum number of students",
@@ -145,9 +145,9 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
 
   const request = await requestServices.createRequest(requestData);
 
-  await notificationService.notifyUser(
+  await notificationServices.notifyUser(
     teacherId,
-    `${student.name} has request ${supervisor.name} to be their supervisor.`,
+    `${student.name} has requested you to be their supervisor.`,
     "request",
     "/teacher/requests",
     "medium",
