@@ -72,6 +72,17 @@ const App = () => {
     return children;
   };
 
+  const DashboardRedirect = () => {
+    if (!authUser) return <Navigate to="/login" replace />;
+    
+    switch (authUser.role) {
+      case "Admin": return <Navigate to="/admin" replace />;
+      case "Teacher": return <Navigate to="/teacher" replace />;
+      case "Student": return <Navigate to="/student" replace />;
+      default: return <Navigate to="/login" replace />;
+    }
+  };
+
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -85,12 +96,12 @@ const App = () => {
         {/* Auth Routes */}
         <Route
           path="/"
-          element={<Navigate to={authUser ? "/dashboard" : "/login"} />}
+          element={<DashboardRedirect />}
         />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/login" element={!authUser ? <LoginPage /> : <DashboardRedirect />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/dashboard" element={<DashboardLayout />} />
+        <Route path="/dashboard" element={<DashboardRedirect />} />
 
         {/* Admin Routes */}
         <Route
