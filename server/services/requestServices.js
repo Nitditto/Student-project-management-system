@@ -32,8 +32,8 @@ export const acceptRequest = async (requestId, supervisorId) => {
   if (!request) {
     throw new Error("Request not found");
   }
-  if (request.supervisor._id.toString() !== supervisorId) {
-    throw new Error("No authorized to accept this request");
+  if (request.supervisor._id.toString() !== supervisorId.toString()) {
+    throw new Error("Not authorized to accept this request");
   }
   if (request.status !== "pending") {
     throw new Error("Request has already been processed");
@@ -51,8 +51,8 @@ export const rejectRequest = async (requestId, supervisorId) => {
   if (!request) {
     throw new Error("Request not found");
   }
-  if (request.supervisor._id.toString() !== supervisorId) {
-    throw new Error("No authorized to accept this request");
+  if (request.supervisor._id.toString() !== supervisorId.toString()) {
+    throw new Error("Not authorized to reject this request");
   }
   if (request.status !== "pending") {
     throw new Error("Request has already been processed");

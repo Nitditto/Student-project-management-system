@@ -205,7 +205,7 @@
   }
   
   /* Animations */
-  .fade-in {
+  .custom-fade-in { /* Đổi tên class ở đây */
     @apply animate-in fade-in duration-200;
   }
   
