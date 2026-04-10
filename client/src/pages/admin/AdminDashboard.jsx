@@ -41,7 +41,7 @@ const AdminDashboard = () => {
   );
   const { stats, projects } = useSelector((state) => state.admin);
   // const { projects } = useSelector((state) => state.project);
-  const { notifications } = useSelector((state) => state.notification);
+  const notifications = useSelector((state) => state.notification.list);
 
   const dispatch = useDispatch();
 
@@ -339,26 +339,25 @@ const AdminDashboard = () => {
               {latestNotifications.map((notification) => (
                 <div key={notification._id} className="flex items-center gap-2">
                   <div
-                    className={`mt-1 h-2 w-2 ${getBulletColor(notification.type, notification.priority)} rounded-full mr-3`}
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-800">
-                        {notification.message}
-                      </p>
-                      <div className="flex mt-1 items-center gap-2">
+                    className={`mt-1.5 h-2 w-2 shrink-0 ${getBulletColor(notification.type, notification.priority)} rounded-full`}
+                  ></div>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-800">
+                      {notification.message}
+                    </p>
+                    <div className="flex mt-1 items-center gap-2">
                         <span
-                          className={`px-2 py-0.5 rounded text-sm font-medium ${(getBadgeClasses("type"), String(notification.type))}`}
+                          className={`px-2 py-0.5 rounded text-sm font-medium ${(getBadgeClasses("type", notification.type))} capitalize`}
                         >
-                          Type: {notification.type}
+                          {notification.type}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded text-sm font-medium `}
+                          className={`px-2 py-0.5 rounded text-sm font-medium capitalize ${getBulletColor(notification.type, notification.priority)}`}
                         >
-                          Priority: {notification.priority}
+                          {notification.priority}
                         </span>
                       </div>
                     </div>
-                  </div>
                 </div>
               ))}
               {latestNotifications.length === 0 && (
