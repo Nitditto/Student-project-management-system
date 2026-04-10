@@ -187,7 +187,7 @@ const StudentDashboard = () => {
                         {formatDate(feedback.createdAt)}
                       </p>
                     </div>
-                    <div className="text-slate-50 rounded-lg p-3">
+                    <div className="text-slate-500 rounded-lg p-3">
                       <p className="txt-slate-700 text-sm leading-relaxed">
                         {feedback.message}
                       </p>
@@ -250,32 +250,30 @@ const StudentDashboard = () => {
           <div className="card">
             <div className="card-header">
               <h2 className="card-title">Recent Notifications</h2>
-              {
-                topNotifications && topNotifications.length > 0 ? (
-                  <div className="space-y-3">
-                    {topNotifications.map((notification, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg"
-                      >
-                        <p className="font-medium text-slate-800">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {formatDate(notification.createdAt)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Bell className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 text-sm">
-                      No notifications yet.
-                    </p>
-                  </div>
-                )
-              }
+              {topNotifications && topNotifications.length > 0 ? (
+                <div className="space-y-3">
+                  {topNotifications.map((notification, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg"
+                    >
+                      <p className="font-medium text-slate-800">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {formatDate(notification.createdAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Bell className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">
+                    No notifications yet.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
