@@ -36,7 +36,9 @@ import "react-toastify/dist/ReactToastify.css";
 import { Loader } from "lucide-react";
 import { getUser } from "./store/slices/authSlice";
 import { getAllProjects, getAllUsers } from "./store/slices/adminSlice";
+import { fetchDashboardStats } from "./store/slices/studentSlice";
 
+import NotFound from "./pages/NotFound";
 const App = () => {
   const { authUser, isCheckingAuth } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -45,12 +47,15 @@ const App = () => {
     dispatch(getUser());
   }, [dispatch]);
 
-  useEffect(()=>{
-    if(authUser?.role === "Admin"){
+  useEffect(() => {
+    if (authUser?.role === "Admin") {
       dispatch(getAllUsers());
       dispatch(getAllProjects());
     }
-  },[authUser])
+    if (authUser?.role === "Student") {
+      dispatch(fetchDashboardStats());
+    }
+  }, [authUser]);
 
   const ProtectedRoute = ({ children, allowedRoles }) => {
     if (!authUser) {
@@ -74,12 +79,16 @@ const App = () => {
 
   const DashboardRedirect = () => {
     if (!authUser) return <Navigate to="/login" replace />;
-    
+
     switch (authUser.role) {
-      case "Admin": return <Navigate to="/admin" replace />;
-      case "Teacher": return <Navigate to="/teacher" replace />;
-      case "Student": return <Navigate to="/student" replace />;
-      default: return <Navigate to="/login" replace />;
+      case "Admin":
+        return <Navigate to="/admin" replace />;
+      case "Teacher":
+        return <Navigate to="/teacher" replace />;
+      case "Student":
+        return <Navigate to="/student" replace />;
+      default:
+        return <Navigate to="/login" replace />;
     }
   };
 
@@ -94,11 +103,11 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Auth Routes */}
+        <Route path="/" element={<DashboardRedirect />} />
         <Route
-          path="/"
-          element={<DashboardRedirect />}
+          path="/login"
+          element={!authUser ? <LoginPage /> : <DashboardRedirect />}
         />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <DashboardRedirect />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/dashboard" element={<DashboardRedirect />} />
@@ -140,7 +149,7 @@ const App = () => {
           path="/student"
           element={
             <ProtectedRoute allowedRoles={["Student"]}>
-              <DashboardLayout userRole={"Student"}/>
+              <DashboardLayout userRole={"Student"} />
             </ProtectedRoute>
           }
         >
@@ -151,6 +160,31 @@ const App = () => {
           <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
+
+        {/* Default Redirect */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/unauthorized"
+          element={
+            <div className="min-h-screen flex item-center justify-center bg-slate-50">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-slate-800 mb-4">
+                  Unauthorized Access
+                </h1>
+                <p className="text-slate-600 mb-4">
+                  You do not have permission to access this page.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={() => window.history.back()}
+                >
+                  Go Back
+                </button>
+              </div>
+            </div>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <ToastContainer theme="dark" />
     </BrowserRouter>
