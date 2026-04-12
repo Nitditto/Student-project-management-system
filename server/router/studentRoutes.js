@@ -2,7 +2,7 @@ import express from "express";
 import {
   getStudentProject,
   submitProposal,
-  updateFiles,
+  uploadFiles,
   getAvailableSupervisors,
   getSupervisor,
   requestSupervisor,
@@ -33,7 +33,7 @@ router.post(
   isAuthorized("Student"),
   upload.array("files", 10),
   handleUploadError,
-  updateFiles,
+  uploadFiles,
 );
 
 router.get(

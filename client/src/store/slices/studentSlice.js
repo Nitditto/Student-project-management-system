@@ -75,7 +75,7 @@ export const requestSupervisor = createAsyncThunk(
       return response.data.data?.request;
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to fetch available supervisors",
+        error.response.data.message || "Failed to request supervisor",
       );
       return thunkAPI.rejectWithValue(error.response.data.message);
     }

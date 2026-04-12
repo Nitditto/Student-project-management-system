@@ -39,7 +39,7 @@ export const submitProposal = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if(existingProject && existingProject.status === "rejected"){
+  if (existingProject && existingProject.status === "rejected") {
     await Project.findByIdAndDelete(existingProject._id);
   }
   const projectData = {
@@ -56,13 +56,16 @@ export const submitProposal = asyncHandler(async (req, res, next) => {
   });
 });
 
-export const updateFiles = asyncHandler(async (req, res, next) => {
+export const uploadFiles = asyncHandler(async (req, res, next) => {
   const { projectId } = req.params;
   const studentId = req.user._id;
   const project = await projectServices.getProjectById(projectId);
 
-
-  if (!project || project.student._id.toString() !== studentId.toString()) {
+  if (
+    !project ||
+    project.student._id.toString() !== studentId.toString() ||
+    project.status === "rejected"
+  ) {
     return next(
       new ErrorHandler("Not authorized to upload files to this project", 403),
     );
@@ -172,7 +175,7 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
     student: studentId,
     deadline: { $gte: now },
   })
-    .select("title description")
+    .select("title description deadline")
     .sort({ deadline: 1 })
     .limit(3)
     .lean();
@@ -218,18 +221,17 @@ export const getFeedback = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const sortedFeedback = project.feedback.sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-  ).map((f) => ({
-    _id: f._id,
-    type: f.type,
-    title: f.title,
-    message: f.message,
-    createdAt: f.createdAt,
-    supervisorName: f.supervisorId?.name,
-    supervisorEmail: f.supervisorId?.email,
-    
-  }));
+  const sortedFeedback = project.feedback
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((f) => ({
+      _id: f._id,
+      type: f.type,
+      title: f.title,
+      message: f.message,
+      createdAt: f.createdAt,
+      supervisorName: f.supervisorId?.name,
+      supervisorEmail: f.supervisorId?.email,
+    }));
 
   res.status(200).json({
     success: true,
