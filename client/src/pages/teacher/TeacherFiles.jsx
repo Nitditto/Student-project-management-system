@@ -55,7 +55,7 @@ const TeacherFiles = () => {
       category = "image";
 
     return {
-      if: f._id,
+      id: f._id,
       name: f.originalName,
       type: type.toUpperCase(),
       size: f.size || "-",
@@ -176,7 +176,7 @@ const TeacherFiles = () => {
           </div>
 
           {/* Controller */}
-          <div className="flex flex-col sm:flex-row justify-between itemms-center gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
             <div className="flex items-center gap-4">
               <select
                 value={filterType}
