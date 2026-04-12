@@ -4,6 +4,7 @@ import AddStudent from "../../components/modal/AddStudent";
 import {
   createStudent,
   getAllUsers,
+  getAllProjects,
   updateStudent,
   deleteStudent,
 } from "../../store/slices/adminSlice";
@@ -36,6 +37,7 @@ const ManageStudents = () => {
 
   useEffect(() => {
     dispatch(getAllUsers());
+    dispatch(getAllProjects());
   }, []);
 
   const students = useMemo(() => {
@@ -44,7 +46,7 @@ const ManageStudents = () => {
     );
     return studentUsers.map((student) => {
       const studentProject = (projects || []).find(
-        (project) => project.student === student._id,
+        (project) => (project.student?._id || project.student) === student._id,
       );
       return {
         ...student,
@@ -172,8 +174,9 @@ const ManageStudents = () => {
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {
-                    students.filter((student) => student.status === "completed")
-                      .length
+                    students.filter(
+                      (student) => student.projectStatus === "completed",
+                    ).length
                   }
                 </p>
               </div>
@@ -188,7 +191,7 @@ const ManageStudents = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">Unassigned</p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {students.filter((student) => !student.Supervisor).length}
+                  {students.filter((student) => !student.supervisor).length}
                 </p>
               </div>
             </div>
@@ -298,12 +301,13 @@ const ManageStudents = () => {
 
                         <td className="px-6 py-4 whitespace-nowrap">
                           {student.supervisor ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-green-800 bg-gray-100 text-xs font-medium">
-                              {
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-green-800 bg-green-100 text-xs font-medium">
+                              {/* {
                                 users?.find(
-                                  (user) => user._id === student.supervisor
+                                  (user) => user._id === student.supervisor,
                                 )?.name
-                              }
+                              } */}
+                              {student.supervisor.name || student.supervisor}
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-red-800 bg-red-100 text-xs font-medium">
