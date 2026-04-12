@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import {
   assignSupervisor as assignSupervisorThunk,
+  getAllProjects,
   getAllUsers,
 } from "../../store/slices/adminSlice";
 import { AlertTriangle, CheckCircle, Users } from "lucide-react";
@@ -15,10 +16,9 @@ const AssignSupervisor = () => {
   const { users, projects } = useSelector((state) => state.admin);
 
   useEffect(() => {
-    if (!users || users.length === 0) {
-      dispatch(getAllUsers());
-    }
-  }, [dispatch, users]);
+    dispatch(getAllUsers());
+    dispatch(getAllProjects());
+  }, [dispatch]);
 
   const teachers = useMemo(() => {
     const teacherUsers = (users || []).filter(
@@ -30,7 +30,7 @@ const AssignSupervisor = () => {
         ? t.assignedStudents.length
         : 0,
       capacityLeft:
-        (typeof t.maxStudent === "number" ? t.maxStudent : 10) -
+        (Number(t.maxStudents) || 10) -
         (Array.isArray(t.assignedStudents) ? t.assignedStudents.length : 0),
     }));
   }, [users]);
@@ -67,10 +67,10 @@ const AssignSupervisor = () => {
   });
 
   const [pendingFor, setPendingFor] = useState(null);
-  const handleSupervisorSelect = (projectId, supervisor) => {
-    setPendingFor((prev) => ({
+  const handleSupervisorSelect = (projectId, supervisorId) => {
+    setSelectedSupervisor((prev) => ({
       ...prev,
-      [projectId]: supervisor._id,
+      [projectId]: supervisorId,
     }));
   };
 
@@ -80,8 +80,13 @@ const AssignSupervisor = () => {
       toast.error("Please select a supervisor first");
       return;
     }
-    if (projectStatus === "rejected" || projectStatus === "pending") {
-      toast.error("Cannot assign supervisor to a rejected or pending project");
+    // if (projectStatus === "rejected" || projectStatus === "pending") {
+    //   toast.error("Cannot assign supervisor to a rejected or pending project");
+    //   return;
+    // }
+
+    if (projectStatus === "rejected") {
+      toast.error("Cannot assign supervisor to a rejected project");
       return;
     }
     setPendingFor(projectId);
@@ -89,14 +94,16 @@ const AssignSupervisor = () => {
       assignSupervisorThunk({ studentId, supervisorId }),
     );
     setPendingFor(null);
+
     if (assignSupervisorThunk.fulfilled.match(res)) {
-      toast.success("Supervisor assigned successfully");
+      // toast.success("Supervisor assigned successfully");
       setSelectedSupervisor((prev) => {
         const newState = { ...prev };
         delete newState[projectId];
         return newState;
       });
       dispatch(getAllUsers());
+      dispatch(getAllProjects());
     } else {
       toast.error("Failed to assign supervisor");
     }
@@ -119,9 +126,7 @@ const AssignSupervisor = () => {
     },
     {
       title: "Available Teachers",
-      value: teachers.filter(
-        (t) => (t.assignedCount ?? 0) < (t.maxStudents ?? 0),
-      ).length,
+      value: teachers.filter((t) => t.capacityLeft > 0).length,
       icon: Users,
       bg: "bg-blue-100",
       color: "text-blue-600",
@@ -249,11 +254,12 @@ const AssignSupervisor = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
-                        disabled={
-                          !!row.supervisor ||
-                          row.status === "rejected" ||
-                          !row.isApproved
-                        }
+                        // disabled={
+                        //     !!row.supervisor ||
+                        //     row.status === "rejected" ||
+                        //     !row.isApproved
+                        //   }
+                        disabled={!!row.supervisor}
                         className="input-field w-full"
                         value={selectedSupervisor[row.projectId] || ""}
                         onChange={(e) =>
@@ -280,8 +286,8 @@ const AssignSupervisor = () => {
                         disabled={
                           pendingFor === row.projectId ||
                           !!row.supervisor ||
-                          row.status === "rejected" ||
-                          !row.isApproved ||
+                          // row.status === "rejected" ||
+                          // !row.isApproved ||
                           !selectedSupervisor[row.projectId]
                         }
                       >
@@ -289,11 +295,11 @@ const AssignSupervisor = () => {
                           ? "Assigning..."
                           : row.supervisor
                             ? "Assigned"
-                            : row.status === "rejected"
-                              ? "Rejected"
-                              : !row.isApproved
-                                ? "Not Approved"
-                                : "Assign"}
+                            : // : row.status === "rejected"
+                              //   ? "Rejected"
+                              //   : !row.isApproved
+                              //     ? "Not Approved"
+                              "Assign"}
                       </button>
                     </td>
                   </tr>
