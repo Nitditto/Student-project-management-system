@@ -153,18 +153,54 @@ export const assignSupervisor = asyncHandler(async (req, res, next) => {
   if (!project) {
     return next(new ErrorHandler("Project not found", 404));
   }
-  if (project.supervisor !== null) {
+  if (project.SupervisorRequest) {
     return next(new ErrorHandler("Supervisor already assigned", 400));
   }
-  if (project.status !== "approved") {
-    return next(new ErrorHandler("Project is not approved yet", 400));
+
+  if (project.status === "pending") {
+    project.status = "approved";
   }
-  const { student, supervisor } = await userServices.assignSupervisorDirectly(
-    studentId,
-    supervisorId,
-  );
-  project.supervisor = supervisor;
+  
+  project.supervisor = supervisorId;
   await project.save();
+
+  // if (project.status !== "approved") {
+  //   return next(new ErrorHandler("Project is not approved yet", 400));
+  // }
+
+  // const { student, supervisor } = await userServices.assignSupervisorDirectly(
+  //   studentId,
+  //   supervisorId,
+  // );
+  const student = await User.findByIdAndUpdate(
+    studentId,
+    { supervisor: supervisorId },
+    { new: true }
+  );
+
+  const supervisor = await User.findByIdAndUpdate(
+    supervisorId,
+    { $addToSet: { assignedStudents: studentId } },
+    { new: true }
+  );
+  
+  if (!student || !supervisor)
+    return next(new ErrorHandler("User not found", 404));
+
+
+
+  // 4. Cập nhật Document của Student và Teacher (Bypass hàm service bị lỗi)
+  // student.supervisor = supervisorId;
+  // await student.save();
+
+  // if (!Array.isArray(supervisor.assignedStudents)) {
+  //   supervisor.assignedStudents = [];
+  // }
+
+  // if (!supervisor.assignedStudents.includes(studentId)) {
+  //   supervisor.assignedStudents.push(studentId);
+  //   await supervisor.save();
+  // }
 
   await notificationServices.notifyUser(
     studentId,
@@ -225,6 +261,63 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
       pendingRequests,
       completedProjects,
       rejectedProjects,
+    },
+  });
+});
+
+export const getProject = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const project = await projectServices.getProjectById(id);
+  if (!project) {
+    return next(new ErrorHandler("Project not found", 404));
+  }
+
+  const user = req.user;
+  const userRole = (user.role || "").toLowerCase();
+  const userId = user._id?.toString() || user.id;
+  const hasAccess =
+    userRole === "admin" ||
+    project.student._id.toString() === userId ||
+    (project.supervisor && project.supervisor._id.toString() === userId);
+  if (!hasAccess) {
+    return next(new ErrorHandler("Not authorized to fetch this project", 403));
+  }
+  res.status(200).json({
+    success: true,
+    data: {
+      project,
+    },
+  });
+});
+
+export const updateProjectStatus = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+  const user = req.user;
+
+  const project = await projectServices.getProjectById(id);
+  if (!project) {
+    return next(new ErrorHandler("Project not found", 404));
+  }
+
+  const userRole = (user.role || "").toLowerCase();
+  const userId = user._id?.toString() || user.id;
+  const hasAccess =
+    userRole === "admin" ||
+    project.student._id.toString() === userId ||
+    (project.supervisor && project.supervisor._id.toString() === userId);
+  if (!hasAccess) {
+    return next(
+      new ErrorHandler("Not authorized to update project status", 403),
+    );
+  }
+
+  const updatedProject = await projectServices.updateProject(id, updatedData);
+  res.status(200).json({
+    success: true,
+    message: "Project status updated successfully",
+    data: {
+      updatedProject,
     },
   });
 });

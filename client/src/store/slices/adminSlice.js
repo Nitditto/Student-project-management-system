@@ -134,12 +134,53 @@ export const assignSupervisor = createAsyncThunk(
       toast.success(res.data.message);
       return res.data.data;
     }catch(error){
-      toast.error(error.response.data.message || "Failed to assign supervisor");
+      toast.error(error.response?.data?.message || "Failed to assign supervisor");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
+    }
+  }
+)
+
+
+export const approveProject = createAsyncThunk(
+  "approveProject",
+  async (id, thunkAPI) => {
+    try{
+      const res = await axiosInstance.put(`/admin/project/${id}`,{status:"approved"} );
+      toast.success(res.data.message);
+      return id
+    }catch(error){
+      toast.error(error.response.data.message || "Failed to approve project");
       return thunkAPI.rejectWithValue(error.response.data.message);
     }
   }
 )
 
+export const rejectProject = createAsyncThunk(
+  "rejectProject",
+  async (id, thunkAPI) => {
+    try{
+      const res = await axiosInstance.put(`/admin/project/${id}`,{status:"rejected"} );
+      toast.success(res.data.message);
+      return id;
+    }catch(error){
+      toast.error(error.response.data.message || "Failed to reject project");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  }
+)
+
+export const getProject = createAsyncThunk(
+  "getProject",
+  async (id, thunkAPI) => {
+    try{
+      const res = await axiosInstance.get(`/admin/project/${id}`);
+      return res.data?.data?.project || res.data?.data || res.data;
+    }catch(error){
+      toast.error(error.response.data.message || "Failed to get project");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  }
+)
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -194,6 +235,22 @@ const adminSlice = createSlice({
       })
       .addCase(getDashboardStats.fulfilled, (state, action) => {
         state.stats = action.payload;
+      })
+
+      .addCase(approveProject.fulfilled, (state, action) => {
+        const projectId = action.payload;
+        state.projects = state.projects.map((p) =>
+          p._id === projectId ? { ...p, status: "approved" } : p,
+        );
+      })
+      .addCase(rejectProject.fulfilled, (state, action) => {
+        const projectId = action.payload;
+        state.projects = state.projects.map((p) =>
+          p._id === projectId ? { ...p, status: "rejected" } : p,
+        );
+      })
+      .addCase(getProject.fulfilled, (state, action) => {
+        state.project = action.payload;
       })
   },
 });

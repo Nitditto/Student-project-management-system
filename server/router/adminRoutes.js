@@ -10,6 +10,8 @@ import {
   getAllProjects,
   getDashboardStats,
   assignSupervisor,
+  updateProjectStatus,
+  getProject,
 } from "../controllers/adminController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -65,5 +67,17 @@ router.get(
 
 router.get("/users", isAuthenticated, isAuthorized("Admin"), getAllUsers);
 
-router.post("/assign-supervisor", isAuthenticated, isAuthorized("Admin"), assignSupervisor);
+router.post(
+  "/assign-supervisor",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  assignSupervisor,
+);
+router.get("/project/:id", isAuthenticated, isAuthorized("Admin"), getProject);
+router.put(
+  "/project/:id",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  updateProjectStatus,
+);
 export default router;
