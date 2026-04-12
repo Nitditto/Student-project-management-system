@@ -83,10 +83,18 @@ const NotificationsPage = () => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMs = now - date;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffDays === 1) {
+    if (diffMinutes < 1) {
+      return "Just now";
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} minutes ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hours ago`;
+    } else if (diffDays === 1) {
       return "Yesterday";
     } else if (diffDays <= 7) {
       return `${diffDays} days ago`;
@@ -186,11 +194,11 @@ const NotificationsPage = () => {
             {notifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`border border-slate-200 ${getPriorityColor(notification.priority)} ${!notification.isRead ? "bg-blue-50" : "bg-white hover:bg-slate-50"} p-4 rounded-lg transition-all duration-200`}
+                className={`flex relative gap-4 rounded-xl border p-4 transition-all ${getPriorityColor(notification.priority)} ${!notification.isRead ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-slate-50 border-slate-200"}`}
               >
                 <div className="flex items-center space-x-4">
-                  <div className="flex flex-shrink-0 mt-1">
-                    <getNotificationIcon type={notification.type} />
+                  <div className="flex-shrink-0 mt-1">
+                    {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex min-w-0">
                     <div className="flex items-center justify-between mb-2">
@@ -251,7 +259,7 @@ const NotificationsPage = () => {
           {notifications.length === 0 && (
             <div className="text-center py-8">
               <div className="flex items-center justify-center mb-3 text-slate-600">
-                <BellOff className="w-12 h-12"/>
+                <BellOff className="w-12 h-12" />
               </div>
               <p className="text-slate-500">No notifications yet.</p>
             </div>

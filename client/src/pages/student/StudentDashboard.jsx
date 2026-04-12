@@ -16,6 +16,7 @@ const StudentDashboard = () => {
   const project = dashboardStats?.project || {};
   const supervisorName = dashboardStats?.supervisorName || "N/A";
   const upcomingDeadlines = dashboardStats?.upcomingDeadlines || [];
+
   const topNotifications = dashboardStats?.notifications || [];
   const feedbackList = dashboardStats?.feedbackNotification || [];
 
@@ -141,7 +142,8 @@ const StudentDashboard = () => {
                   Status
                 </label>
                 <span
-                  className={`inline-flex items-center px-2 py-[2px] rounded-full text-sm capitalize font-medium ${project?.status === "approved" ? " bg-green-100 text-green-800" : project?.status === "pending" ? " bg-yellow-100 text-yellow-800" : project?.status === "rejected" ? " bg-red-100 text-red-800" : " bg-gray-100 text-gray-800"}`}
+                  className={`inline-flex items-center px-2 py-[2px] rounded-full text-sm capitalize font-medium 
+                    ${project?.status === "approved" ? " bg-green-100 text-green-800" : project?.status === "pending" ? " bg-yellow-100 text-yellow-800" : project?.status === "rejected" ? " bg-red-100 text-red-800" : project?.status === "completed" ? " bg-blue-100 text-blue-800" : " bg-gray-100 text-gray-800"}`}
                 >
                   {project?.status || "Unknown"}
                 </span>
@@ -232,7 +234,9 @@ const StudentDashboard = () => {
                         {formatDate(deadline.deadline)}
                       </p>
                     </div>
-                    <div className={`badge badge-pending`}>upcoming</div>
+                    <div className={`badge badge-pending capitalize font-bold`}>
+                      upcoming
+                    </div>
                   </div>
                 ))}
               </div>

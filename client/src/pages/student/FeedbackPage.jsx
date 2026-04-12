@@ -13,7 +13,7 @@ const FeedbackPage = () => {
 
   useEffect(() => {
     if (project?._id) {
-      dispatch(getFeedback(project._id));
+      dispatch(getFeedback({ projectId: project._id }));
     }
   }, [dispatch, project]);
 
