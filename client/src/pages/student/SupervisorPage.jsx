@@ -160,7 +160,7 @@ const SupervisorPage = () => {
                   </label>
                   <div className=" mt-1">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${project?.status === "approved" ? "bg-green-100 text-green-800" : project?.status === "pending" ? "bg-yellow-100 text-yellow-800" : project?.status === "rejected" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-800"}`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${project?.status === "approved" ? "bg-green-100 text-green-800" : project?.status === "pending" ? "bg-yellow-100 text-yellow-800" : project?.status === "rejected" ? "bg-red-100 text-red-800" : project?.status === "completed" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}
                     >
                       {project?.status || "Invalid"}
                     </span>
