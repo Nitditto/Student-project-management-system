@@ -2,33 +2,61 @@ import mongoose from "mongoose";
 
 const supervisorRequestSchema = new mongoose.Schema(
   {
-  student: {
+    registrationPeriod: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RegistrationPeriod",
+      required: true,
+    },
+
+    group: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ProjectGroup",
+      required: true,
+    },
+
+    teacher: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Student ID is required"],
+      required: true,
     },
-    supervisor: {
+
+    requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Supervisor ID is required"],
+      required: true,
     },
+
+    note: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     status: {
       type: String,
+      enum: ["pending", "approved", "rejected", "cancelled"],
       default: "pending",
-      enum: ["pending", "accepted", "rejected"],
+    },
+
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    reviewedAt: Date,
+
+    rejectionReason: {
+      type: String,
+      default: "",
+      trim: true,
     },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true }
 );
 
-// Indexing for battery query performance
+supervisorRequestSchema.index(
+  { registrationPeriod: 1, group: 1, status: 1 },
+  { name: "idx_group_active_requests" }
+);
 
-supervisorRequestSchema.index({ student: 1 });
-supervisorRequestSchema.index({ supervisor: 1});
-supervisorRequestSchema.index({ status: 1});
-
-export const SupervisorRequest =
-  mongoose.models.SupervisorRequest ||
-  mongoose.model("SupervisorRequest", supervisorRequestSchema);
+export default mongoose.model("SupervisorRequest", supervisorRequestSchema);
