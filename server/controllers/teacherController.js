@@ -78,49 +78,8 @@ export const getRequest = asyncHandler(async (req, res, next) => {
       total,
     },
   });
-});
-
-// export const acceptRequest = asyncHandler(async (req, res, next) => {
-//   const { requestId } = req.params;
-//   const teacherId = req.user._id;
-
-//   const request = await requestServices.acceptRequest(requestId, teacherId);
-//   if (!request) return next(new ErrorHandler("Request not found", 404));
-
-//   await User.findByIdAndUpdate(request.student._id, {
-//     supervisor: teacherId,
-//   });
-
-//   await User.findByIdAndUpdate(teacherId, {
-//     $addToSet: { assignedStudents: request.student._id },
-//   });
-
-//   await notificationServices.notifyUser(
-//     request.student._id,
-//     `Your supervisor request has been accepted by ${req.user.name}`,
-//     "approval",
-//     "/student/status",
-//     "low",
-//   );
-
-//   const student = await User.findById(request.student._id);
-//   const studentEmail = student.email;
-//   const message = generateRequestAcceptedTemplate(req.user.name);
-//   await sendEmail({
-//     to: studentEmail,
-//     subject: "Your Supervisor Request has been Accepted",
-//     message,
-//   });
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Request accepted successfully",
-//     data: {
-//       request,
-//     },
-//   });
-// });
-
+  }
+);
 
 export const acceptRequest = asyncHandler(async (req, res, next) => {
   const { requestId } = req.params;
@@ -139,7 +98,7 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
     $addToSet: { assignedStudents: request.student._id },
   });
 
-  // 3. Cập nhật Project của học sinh (QUAN TRỌNG NHẤT)
+  // 3. Cập nhật Project của học sinh
   const studentProject = await Project.findOne({ student: request.student._id });
   if (studentProject) {
     studentProject.supervisor = teacherId;
@@ -290,6 +249,7 @@ export const addFeedback = asyncHandler(async (req, res, next) => {
   });
 });
 
+// FIles controller
 export const getFiles = asyncHandler(async (req, res, next) => {
   const teacherId = req.user._id;
   const projects = await projectServices.getProjectsBySupervisor(teacherId);
@@ -312,9 +272,6 @@ export const getFiles = asyncHandler(async (req, res, next) => {
   });
 });
 
-
-
-
 export const downloadFile = asyncHandler(async (req, res, next) => {
   const { projectId, fileId } = req.params;
   const supervisorId = req.user._id;
@@ -331,4 +288,18 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
   }
 
   fileServices.streamDownload(file.fileUrl, res, file.originalName);
+});
+
+export const getDefenseSchedules = asyncHandler(async (req, res, next) => {
+    const teacherId = req.user._id;
+
+    const councils = await Council.find({
+      "members.teacherId": teacherId,
+    }).populate("projects.projectId", "title description status finalScore");
+
+    res.status(200).json({
+      success: true,
+      count: councils.length,
+      councils,
+    });
 });

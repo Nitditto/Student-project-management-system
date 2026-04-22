@@ -256,3 +256,24 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
 
   fileServices.streamDownload(file.fileUrl, res, file.originalName);
 });
+
+export const getMyCouncilInfo = asyncHandler(async (req, res, next) => {
+  const studentId = req.user._id;
+
+  const student = await Users.findById(studentId);
+
+  if(!student.project){
+    return next(new ErrorHandler("You have no project assigned", 404));
+  };
+  const council = await Council.findOne({
+    "projects.projectId": student.project,
+  }).populate("members.teacher", "name email experties department");
+
+  if(!council){
+    return next(new ErrorHandler("Your project has assigned yet", 404));
+  }
+  res.status(200).json({
+    success: true,
+    council,
+  });
+});
