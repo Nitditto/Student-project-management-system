@@ -16,6 +16,7 @@ import {
 import {
   assignProjectToCouncil,
   createCouncil,
+  deleteCouncil,
   getAdminCouncils,
 } from "../controllers/councilController.js";
 import {
@@ -100,6 +101,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin"),
   createCouncil,
+);
+router.delete(
+  "/councils/:councilId",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  deleteCouncil,
 );
 router.post(
   "/councils/:councilId/assign-project",

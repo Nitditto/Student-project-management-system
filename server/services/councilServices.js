@@ -146,6 +146,59 @@ export const getAdminCouncils = async () => {
     .sort({ createdAt: -1 });
 };
 
+export const deleteCouncil = async (councilId) => {
+  const council = await DefenseCouncil.findById(councilId)
+    .populate("projects.project", "title status defenseStatus");
+
+  if (!council) {
+    throw new ErrorHandler("Council not found", 404);
+  }
+
+  const finalizedProject = (council.projects || []).find(
+    (item) => item.status === "done",
+  );
+
+  if (finalizedProject) {
+    throw new ErrorHandler(
+      "Cannot delete a council that already contains finalized defense results",
+      400,
+    );
+  }
+
+  const assignedProjectIds = (council.projects || [])
+    .map((item) => item.project?._id || item.project)
+    .filter(Boolean);
+
+  if (assignedProjectIds.length > 0) {
+    await Project.updateMany(
+      { _id: { $in: assignedProjectIds } },
+      {
+        $set: {
+          councilId: null,
+          reviewerId: null,
+        },
+      },
+    );
+
+    const projects = await Project.find({ _id: { $in: assignedProjectIds } });
+    await Promise.all(
+      projects.map(async (project) => {
+        if (project.status === "done" || project.archiveLocked) {
+          return;
+        }
+
+        project.defenseStatus = project.selectedSchedule?.slotId
+          ? "scheduled"
+          : "in_progress";
+        await project.save();
+      }),
+    );
+  }
+
+  await council.deleteOne();
+  return council;
+};
+
 export const assignProjectToCouncil = async ({
   councilId,
   projectId,

@@ -19,6 +19,15 @@ export const getAdminCouncils = asyncHandler(async (req, res) => {
   });
 });
 
+export const deleteCouncil = asyncHandler(async (req, res) => {
+  const council = await councilServices.deleteCouncil(req.params.councilId);
+  res.status(200).json({
+    success: true,
+    message: "Council deleted successfully",
+    data: { council },
+  });
+});
+
 export const assignProjectToCouncil = asyncHandler(async (req, res) => {
   const council = await councilServices.assignProjectToCouncil({
     councilId: req.params.councilId,

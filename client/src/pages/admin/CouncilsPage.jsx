@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import { AlertTriangle } from "lucide-react";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -26,6 +27,7 @@ const CouncilsPage = () => {
     members: [createMember("chairman", 1.5), createMember("secretary", 1)],
   });
   const [assignForms, setAssignForms] = useState({});
+  const [councilToDelete, setCouncilToDelete] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -103,6 +105,19 @@ const CouncilsPage = () => {
       await loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to assign project");
+    }
+  };
+
+  const handleDeleteCouncil = async () => {
+    if (!councilToDelete?._id) return;
+
+    try {
+      await axiosInstance.delete(`/admin/councils/${councilToDelete._id}`);
+      toast.success("Council deleted");
+      setCouncilToDelete(null);
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete council");
     }
   };
 
@@ -219,10 +234,20 @@ const CouncilsPage = () => {
         {councils.map((council) => (
           <div key={council._id} className="card">
             <div className="card-header">
-              <h2 className="card-title">{council.name}</h2>
-              <p className="card-subtitle">
-                {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
-              </p>
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h2 className="card-title">{council.name}</h2>
+                  <p className="card-subtitle">
+                    {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
+                  </p>
+                </div>
+                <button
+                  className="btn-danger"
+                  onClick={() => setCouncilToDelete(council)}
+                >
+                  Delete Council
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -295,6 +320,42 @@ const CouncilsPage = () => {
         ))}
         {councils.length === 0 && <div className="card">No councils created yet.</div>}
       </div>
+
+      {councilToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-slate-900 mb-2">
+                Delete Defense Council
+              </h3>
+              <p className="text-sm text-slate-500 mb-2">
+                Are you sure you want to delete <strong>{councilToDelete.name}</strong>?
+              </p>
+              <p className="text-sm text-slate-500 mb-5">
+                If this council has assigned projects that are not finalized yet, they will be detached from the council automatically.
+              </p>
+
+              <div className="flex justify-center gap-3">
+                <button
+                  className="btn-outline"
+                  onClick={() => setCouncilToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button className="btn-danger" onClick={handleDeleteCouncil}>
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
