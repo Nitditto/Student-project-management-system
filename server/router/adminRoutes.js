@@ -13,6 +13,15 @@ import {
   updateProjectStatus,
   getProject,
 } from "../controllers/adminController.js";
+import {
+  assignProjectToCouncil,
+  createCouncil,
+  getAdminCouncils,
+} from "../controllers/councilController.js";
+import {
+  getRegistrationSettings,
+  updateRegistrationSettings,
+} from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import multer from "multer";
 
@@ -79,5 +88,35 @@ router.put(
   isAuthenticated,
   isAuthorized("Admin"),
   updateProjectStatus,
+);
+router.get(
+  "/councils",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAdminCouncils,
+);
+router.post(
+  "/councils",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  createCouncil,
+);
+router.post(
+  "/councils/:councilId/assign-project",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  assignProjectToCouncil,
+);
+router.get(
+  "/registration-settings",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getRegistrationSettings,
+);
+router.put(
+  "/registration-settings",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  updateRegistrationSettings,
 );
 export default router;
