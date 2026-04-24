@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
 const Sidebar = ({ open, setOpen, userRole }) => {
@@ -10,7 +9,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
         return [
           { name: "Home", path: "/student", icon: "home" },
           {
-            name: "Submit Proposal",
+            name: "Project Registration",
             path: "/student/submit-proposal",
             icon: "document",
           },
@@ -19,8 +18,17 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             path: "/student/upload-files",
             icon: "upload",
           },
-          { name: "Supervisor", path: "/student/supervisor", icon: "user" },
+          {
+            name: "Supervisor Flow",
+            path: "/student/supervisor",
+            icon: "user",
+          },
           { name: "Feedback", path: "/student/feedback", icon: "chat" },
+          {
+            name: "Defense & Attendance",
+            path: "/student/defense",
+            icon: "calendar",
+          },
           {
             name: "Notifications",
             path: "/student/notifications",
@@ -31,14 +39,24 @@ const Sidebar = ({ open, setOpen, userRole }) => {
         return [
           { name: "Home", path: "/teacher", icon: "home" },
           {
+            name: "Teacher Preselect",
+            path: "/teacher/preselect",
+            icon: "users",
+          },
+          {
             name: "Pending Requests",
             path: "/teacher/pending-requests",
             icon: "clock",
           },
           {
-            name: "Assigned Students",
+            name: "Supervised Students",
             path: "/teacher/assigned-students",
             icon: "users",
+          },
+          {
+            name: "Defense Hub",
+            path: "/teacher/defense",
+            icon: "calendar",
           },
           { name: "Files", path: "/teacher/files", icon: "folder" },
         ];
@@ -56,8 +74,14 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             path: "/admin/assign-supervisor",
             icon: "link",
           },
+          {
+            name: "Registration Settings",
+            path: "/admin/registration-settings",
+            icon: "check",
+          },
           { name: "Deadlines", path: "/admin/deadlines", icon: "calendar" },
           { name: "Projects", path: "/admin/projects", icon: "folder" },
+          { name: "Councils", path: "/admin/councils", icon: "academic" },
         ];
       default:
         return [];
