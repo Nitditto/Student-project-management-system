@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import QRCode from "qrcode";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -48,6 +49,7 @@ const DefenseHubPage = () => {
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [sessionQrCodes, setSessionQrCodes] = useState({});
   const [councils, setCouncils] = useState([]);
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -97,6 +99,40 @@ const DefenseHubPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const buildQrCodes = async () => {
+      const entries = await Promise.all(
+        (sessions || []).map(async (session) => {
+          if (!session?.qrToken) {
+            return [session?._id, null];
+          }
+
+          try {
+            const qrDataUrl = await QRCode.toDataURL(session.qrToken, {
+              width: 180,
+              margin: 1,
+            });
+            return [session._id, qrDataUrl];
+          } catch {
+            return [session._id, null];
+          }
+        }),
+      );
+
+      if (!isCancelled) {
+        setSessionQrCodes(Object.fromEntries(entries));
+      }
+    };
+
+    buildQrCodes();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [sessions]);
 
   const projectOptions = useMemo(() => {
     const map = new Map();
@@ -685,6 +721,29 @@ const DefenseHubPage = () => {
                 <p className="text-sm text-slate-500">
                   6-digit code: {session.accessCode} | QR token: {session.qrToken}
                 </p>
+              </div>
+              <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <p className="font-medium text-slate-800 mb-1">Student Check-in QR</p>
+                <p className="text-sm text-slate-500 mb-3">
+                  Students can scan this QR code to get the check-in token, then submit it on the student defense attendance page.
+                </p>
+                {sessionQrCodes[session._id] ? (
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                    <img
+                      src={sessionQrCodes[session._id]}
+                      alt={`Attendance QR for ${session.title}`}
+                      className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
+                    />
+                    <div className="text-sm text-slate-600">
+                      <p>QR token value: {session.qrToken}</p>
+                      <p>Fallback 6-digit code: {session.accessCode}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    QR is being generated or could not be generated for this session.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 {session.records.map((record) => (
