@@ -29,6 +29,52 @@ const feedbackSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+const selectedScheduleSchema = new mongoose.Schema(
+  {
+    scheduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TeacherSchedule",
+      default: null,
+    },
+    slotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    teacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    startAt: {
+      type: Date,
+      default: null,
+    },
+    endAt: {
+      type: Date,
+      default: null,
+    },
+    location: {
+      type: String,
+      default: null,
+    },
+    mode: {
+      type: String,
+      enum: ["online", "offline", "hybrid", null],
+      default: null,
+    },
+    pickedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    pickedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 const projectSchema = new mongoose.Schema(
   {
     student: {
@@ -55,9 +101,25 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "completed"],
+      enum: ["pending", "approved", "rejected", "completed", "done"],
       default: "pending",
     },
+    groupName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    projectMode: {
+      type: String,
+      enum: ["individual", "group"],
+      default: "individual",
+    },
+    members: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     files: [
       {
         fileType: {
@@ -82,6 +144,39 @@ const projectSchema = new mongoose.Schema(
     deadline: {
       type: Date,
     },
+    selectedSchedule: {
+      type: selectedScheduleSchema,
+      default: () => ({}),
+    },
+    defenseStatus: {
+      type: String,
+      enum: ["not_started", "scheduled", "in_progress", "done"],
+      default: "not_started",
+    },
+    defenseFinalScore: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 100,
+    },
+    councilId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DefenseCouncil",
+      default: null,
+    },
+    reviewerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    archiveLocked: {
+      type: Boolean,
+      default: false,
+    },
+    archivedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -91,8 +186,18 @@ const projectSchema = new mongoose.Schema(
 // Indexing for battery query performance
 
 projectSchema.index({ student: 1 });
+projectSchema.index({ members: 1 });
 projectSchema.index({ supervisor: 1 });
 projectSchema.index({ status: 1 });
+
+projectSchema.pre("save", function ensureOwnerInMembers() {
+  const studentId = this.student?.toString();
+  const members = (this.members || []).map((member) => member.toString());
+
+  if (studentId && !members.includes(studentId)) {
+    this.members = [this.student, ...(this.members || [])];
+  }
+});
 
 export const Project =
   mongoose.models.Project || mongoose.model("Project", projectSchema);

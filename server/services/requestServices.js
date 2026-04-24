@@ -2,7 +2,7 @@ import { SupervisorRequest } from "../models/supervisorRequest.js";
 
 export const createRequest = async (requestData) => {
   const existingRequest = await SupervisorRequest.findOne({
-    student: requestData.student,
+    project: requestData.project || null,
     supervisor: requestData.supervisor,
     status: "pending",
   });
@@ -19,6 +19,7 @@ export const getAllRequest = async (filters) => {
   const requests = await SupervisorRequest.find(filters)
     .populate("student", "name email")
     .populate("supervisor", "name email")
+    .populate("project", "title groupName members projectMode")
     .sort({ createdAt: -1 });
   const total = await SupervisorRequest.countDocuments(filters);
 
