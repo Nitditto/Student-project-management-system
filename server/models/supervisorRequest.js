@@ -40,6 +40,11 @@ supervisorRequestSchema.index({ student: 1 });
 supervisorRequestSchema.index({ supervisor: 1});
 supervisorRequestSchema.index({ status: 1});
 
-export const SupervisorRequest =
-  mongoose.models.SupervisorRequest ||
-  mongoose.model("SupervisorRequest", supervisorRequestSchema);
+if (mongoose.models.SupervisorRequest) {
+  delete mongoose.models.SupervisorRequest;
+}
+
+export const SupervisorRequest = mongoose.model(
+  "SupervisorRequest",
+  supervisorRequestSchema,
+);
