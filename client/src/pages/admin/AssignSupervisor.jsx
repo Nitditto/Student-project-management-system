@@ -8,6 +8,23 @@ import {
 } from "../../store/slices/adminSlice";
 import { AlertTriangle, CheckCircle, Users } from "lucide-react";
 
+const getTeacherCapacity = (teacher, fallback = 10) => {
+  if (typeof teacher?.maxStudent === "number") return teacher.maxStudent;
+  if (typeof teacher?.maxStudents === "number") return teacher.maxStudents;
+
+  const parsedMaxStudent = Number(teacher?.maxStudent);
+  if (!Number.isNaN(parsedMaxStudent) && parsedMaxStudent > 0) {
+    return parsedMaxStudent;
+  }
+
+  const parsedMaxStudents = Number(teacher?.maxStudents);
+  if (!Number.isNaN(parsedMaxStudents) && parsedMaxStudents > 0) {
+    return parsedMaxStudents;
+  }
+
+  return fallback;
+};
+
 const AssignSupervisor = () => {
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,7 +47,7 @@ const AssignSupervisor = () => {
         ? t.assignedStudents.length
         : 0,
       capacityLeft:
-        (Number(t.maxStudents) || 10) -
+        getTeacherCapacity(t) -
         (Array.isArray(t.assignedStudents) ? t.assignedStudents.length : 0),
     }));
   }, [users]);

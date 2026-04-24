@@ -5,6 +5,22 @@ import { getAllUsers, updateTeacher, deleteTeacher } from "../../store/slices/ad
 import { toggleTeacherModal } from "../../store/slices/popupSlice";
 import { BadgeCheck, Users, X, Plus, TriangleAlert, AlertTriangle } from "lucide-react";
 
+const getTeacherCapacity = (teacher, fallback = 36) => {
+  if (typeof teacher?.maxStudent === "number") return teacher.maxStudent;
+  if (typeof teacher?.maxStudents === "number") return teacher.maxStudents;
+
+  const parsedMaxStudent = Number(teacher?.maxStudent);
+  if (!Number.isNaN(parsedMaxStudent) && parsedMaxStudent > 0) {
+    return parsedMaxStudent;
+  }
+
+  const parsedMaxStudents = Number(teacher?.maxStudents);
+  if (!Number.isNaN(parsedMaxStudents) && parsedMaxStudents > 0) {
+    return parsedMaxStudents;
+  }
+
+  return fallback;
+};
 
 const ManageTeachers = () => {
   const { users } = useSelector((state) => state.admin);
@@ -82,8 +98,7 @@ const ManageTeachers = () => {
       experties: Array.isArray(teacher.experties)
         ? teacher.experties[0]
         : teacher.experties,
-      maxStudents:
-        typeof teacher.maxStudents === "number" ? teacher.maxStudents : 36,
+      maxStudents: getTeacherCapacity(teacher),
     });
     setShowModal(true);
   };
