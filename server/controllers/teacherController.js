@@ -47,9 +47,9 @@ export const getTeacherDashboardStats = asyncHandler(async (req, res) => {
 });
 
 export const getRequest = asyncHandler(async (req, res) => {
-  const { supervisor } = req.query;
-  const filters = {};
-  if (supervisor) filters.supervisor = supervisor;
+  const filters = {
+    supervisor: req.user._id,
+  };
 
   const { requests, total } = await requestServices.getAllRequest(filters);
   const updatedRequests = await Promise.all(
