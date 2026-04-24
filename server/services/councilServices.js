@@ -140,8 +140,14 @@ export const createCouncil = async (payload) => {
 export const getAdminCouncils = async () => {
   return DefenseCouncil.find()
     .populate("members.teacher", "name email department")
-    .populate("projects.project", "title status groupName supervisor defenseFinalScore")
-    .populate("projects.project.supervisor", "name email")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName supervisor defenseFinalScore",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
 };
@@ -314,8 +320,14 @@ export const getTeacherCouncils = async (teacherId) => {
     ],
   })
     .populate("members.teacher", "name email department")
-    .populate("projects.project", "title status groupName supervisor defenseFinalScore")
-    .populate("projects.project.supervisor", "name email")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName supervisor defenseFinalScore",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
 };
@@ -329,7 +341,14 @@ export const getStudentCouncilBoard = async (studentId) => {
 
   const council = await DefenseCouncil.findById(project.councilId)
     .populate("members.teacher", "name email department")
-    .populate("projects.project", "title status groupName defenseFinalScore")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName defenseFinalScore supervisor",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
     .populate("projects.reviewer", "name email");
 
   return { project, council };
