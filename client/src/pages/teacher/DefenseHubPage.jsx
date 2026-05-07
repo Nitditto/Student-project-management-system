@@ -881,12 +881,6 @@ const DefenseHubPage = () => {
             </button>
           </div>
         </div>
-        {qrUsesLocalhost && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
-            QR is currently pointing to a localhost address, so phones outside this computer cannot open it.
-            Open the teacher site by LAN IP or set <code>VITE_PUBLIC_APP_URL</code> to a phone-accessible URL such as <code>http://192.168.x.x:5173</code>.
-          </div>
-        )}
         <div className="space-y-4">
           {sessions.map((session) => {
             const metrics = buildAttendanceMetrics(session.records);
