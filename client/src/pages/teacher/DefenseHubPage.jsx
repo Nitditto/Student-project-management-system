@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import { isLocalOnlyHost, PUBLIC_APP_URL } from "../../lib/appConfig";
 import QRCode from "qrcode";
 
 const formatDateTime = (value) => {
@@ -10,9 +11,82 @@ const formatDateTime = (value) => {
 
 const getProjectDisplayName = (project) => project?.groupName || project?.title || "N/A";
 
+const attendanceStatusClassMap = {
+  present: "bg-green-100 text-green-800",
+  absent: "bg-red-100 text-red-800",
+  excused: "bg-blue-100 text-blue-800",
+  pending: "bg-yellow-100 text-yellow-800",
+};
+
+const attendanceStatusOrder = {
+  pending: 0,
+  present: 1,
+  excused: 2,
+  absent: 3,
+};
+
+const checkInMethodLabelMap = {
+  qr: "QR scan",
+  code: "teacher code",
+  manual: "manual confirmation",
+};
+
 const buildAttendanceCheckInUrl = (qrToken) => {
-  if (!qrToken || typeof window === "undefined") return "";
-  return `${window.location.origin}/student/defense?token=${encodeURIComponent(qrToken)}`;
+  if (!qrToken) return "";
+  return `${PUBLIC_APP_URL}/student/defense?token=${encodeURIComponent(qrToken)}`;
+};
+
+const buildAttendanceMetrics = (records = []) => {
+  const metrics = {
+    total: records.length,
+    pending: 0,
+    present: 0,
+    excused: 0,
+    absent: 0,
+  };
+
+  records.forEach((record) => {
+    if (metrics[record.status] !== undefined) {
+      metrics[record.status] += 1;
+    }
+  });
+
+  return {
+    ...metrics,
+    completed: metrics.total - metrics.pending,
+  };
+};
+
+const sortAttendanceRecords = (records = []) =>
+  [...records].sort((left, right) => {
+    const leftOrder = attendanceStatusOrder[left.status] ?? 99;
+    const rightOrder = attendanceStatusOrder[right.status] ?? 99;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return (left.student?.name || "").localeCompare(right.student?.name || "");
+  });
+
+const attendanceFilterOptions = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "present", label: "Present" },
+  { key: "other", label: "Other" },
+];
+
+const filterAttendanceRecords = (records = [], filterKey = "all") => {
+  switch (filterKey) {
+    case "pending":
+      return records.filter((record) => record.status === "pending");
+    case "present":
+      return records.filter((record) => record.status === "present");
+    case "other":
+      return records.filter((record) => ["excused", "absent"].includes(record.status));
+    case "all":
+    default:
+      return records;
+  }
 };
 
 const formatModeLabel = (mode) => {
@@ -72,6 +146,7 @@ const DefenseHubPage = () => {
     endsAt: "",
     windowMinutes: 15,
   });
+  const [attendanceFilters, setAttendanceFilters] = useState({});
   const [scoreForms, setScoreForms] = useState({});
   const [reviewerForms, setReviewerForms] = useState({});
   const [reviewerAssignments, setReviewerAssignments] = useState({});
@@ -103,6 +178,19 @@ const DefenseHubPage = () => {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        const sessionRes = await axiosInstance.get("/teacher/attendance-sessions");
+        setSessions(sessionRes.data.data?.sessions || []);
+      } catch {
+        // Ignore silent background refresh failures.
+      }
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -347,6 +435,13 @@ const DefenseHubPage = () => {
     }
   };
 
+  const updateAttendanceFilter = (sessionId, filterKey) => {
+    setAttendanceFilters((current) => ({
+      ...current,
+      [sessionId]: filterKey,
+    }));
+  };
+
   if (loading) {
     return <div className="card">Loading defense hub...</div>;
   }
@@ -363,6 +458,7 @@ const DefenseHubPage = () => {
         attendancePreviewStart.getTime() + attendanceWindowMinutes * 60 * 1000,
       )
     : null;
+  const qrUsesLocalhost = isLocalOnlyHost(PUBLIC_APP_URL);
 
   return (
     <div className="space-y-6">
@@ -710,59 +806,145 @@ const DefenseHubPage = () => {
 
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Section D. Attendance Sessions and Leave Review</h2>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="card-title">Section D. Attendance Sessions and Leave Review</h2>
+              <p className="card-subtitle">
+                Review live student check-in status, pending confirmations, and leave requests.
+              </p>
+            </div>
+            <button className="btn-outline" onClick={loadData}>
+              Refresh Attendance Status
+            </button>
+          </div>
         </div>
+        {qrUsesLocalhost && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+            QR is currently pointing to a localhost address, so phones outside this computer cannot open it.
+            Open the teacher site by LAN IP or set <code>VITE_PUBLIC_APP_URL</code> to a phone-accessible URL such as <code>http://192.168.x.x:5173</code>.
+          </div>
+        )}
         <div className="space-y-4">
-          {sessions.map((session) => (
-            <div key={session._id} className="rounded-lg border border-slate-200 p-4">
-              <div className="mb-3">
-                <p className="font-semibold text-slate-800">{session.title}</p>
-                <p className="text-sm text-slate-500">
-                  Project: {getProjectDisplayName(session.project)}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Meeting time: {formatDateTime(session.startsAt)} - {formatDateTime(session.endsAt)}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Check-in window: {formatDateTime(session.checkInOpensAt)} - {formatDateTime(session.checkInClosesAt)}
-                </p>
-                <p className="text-sm text-slate-500">
-                  6-digit fallback code: {session.accessCode}
-                </p>
-              </div>
-              <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4">
-                <p className="font-medium text-slate-800 mb-1">Student Check-in QR</p>
-                <p className="text-sm text-slate-500 mb-3">
-                  Students should scan while signed in to their student account. The QR opens the attendance page and the app confirms attendance with the temporary token automatically.
-                </p>
-                {sessionQrCodes[session._id] ? (
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <img
-                      src={sessionQrCodes[session._id]}
-                      alt={`Attendance QR for ${session.title}`}
-                      className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
-                    />
-                    <div className="text-sm text-slate-600">
-                      <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken)}</p>
-                      <p>Fallback 6-digit code: {session.accessCode}</p>
+          {sessions.map((session) => {
+            const metrics = buildAttendanceMetrics(session.records);
+            const sortedRecords = sortAttendanceRecords(session.records);
+            const activeFilter = attendanceFilters[session._id] || "all";
+            const visibleRecords = filterAttendanceRecords(sortedRecords, activeFilter);
+
+            return (
+              <div key={session._id} className="rounded-lg border border-slate-200 p-4">
+                <div className="mb-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-800">{session.title}</p>
+                      <p className="text-sm text-slate-500">
+                        Project: {getProjectDisplayName(session.project)}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Meeting time: {formatDateTime(session.startsAt)} - {formatDateTime(session.endsAt)}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Check-in window: {formatDateTime(session.checkInOpensAt)} - {formatDateTime(session.checkInClosesAt)}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        6-digit fallback code: {session.accessCode}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm lg:min-w-80">
+                      <div className="rounded-lg bg-slate-50 p-3">
+                        <p className="text-slate-500">Completed</p>
+                        <p className="font-semibold text-slate-800">
+                          {metrics.completed}/{metrics.total}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-green-50 p-3">
+                        <p className="text-green-700">Present</p>
+                        <p className="font-semibold text-green-800">{metrics.present}</p>
+                      </div>
+                      <div className="rounded-lg bg-yellow-50 p-3">
+                        <p className="text-yellow-700">Pending</p>
+                        <p className="font-semibold text-yellow-800">{metrics.pending}</p>
+                      </div>
+                      <div className="rounded-lg bg-blue-50 p-3">
+                        <p className="text-blue-700">Excused / Absent</p>
+                        <p className="font-semibold text-blue-800">
+                          {metrics.excused} / {metrics.absent}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500">
-                    QR is being generated or could not be generated for this session.
+                </div>
+                <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4">
+                  <p className="font-medium text-slate-800 mb-1">Student Check-in QR</p>
+                  <p className="text-sm text-slate-500 mb-3">
+                    Students should scan while signed in to their student account. The QR opens the attendance page and the app confirms attendance with the temporary token automatically.
                   </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                {session.records.map((record) => (
+                  {sessionQrCodes[session._id] ? (
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                      <img
+                        src={sessionQrCodes[session._id]}
+                        alt={`Attendance QR for ${session.title}`}
+                        className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
+                      />
+                      <div className="text-sm text-slate-600">
+                        <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken)}</p>
+                        <p>Fallback 6-digit code: {session.accessCode}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      QR is being generated or could not be generated for this session.
+                    </p>
+                  )}
+                </div>
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-slate-800">Student Status List</p>
+                    <p className="text-sm text-slate-500">
+                      Pending students are shown first.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {attendanceFilterOptions.map((option) => {
+                      const isActive = activeFilter === option.key;
+                      return (
+                        <button
+                          key={option.key}
+                          className={
+                            isActive
+                              ? "rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-white"
+                              : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
+                          }
+                          onClick={() => updateAttendanceFilter(session._id, option.key)}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {visibleRecords.map((record) => (
                   <div
                     key={record.student?._id}
                     className="rounded-lg bg-slate-50 p-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
                   >
                     <div>
-                      <p className="font-medium text-slate-800">{record.student?.name}</p>
-                      <p className="text-sm text-slate-500 capitalize">
-                        Attendance status: {record.status}
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                        <p className="font-medium text-slate-800">{record.student?.name}</p>
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${attendanceStatusClassMap[record.status] || attendanceStatusClassMap.pending}`}
+                        >
+                          {record.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500">
+                        {record.checkedInAt
+                          ? `Confirmed at ${formatDateTime(record.checkedInAt)}`
+                          : "No check-in confirmation yet"}
+                        {record.checkInMethod
+                          ? ` via ${checkInMethodLabelMap[record.checkInMethod] || record.checkInMethod}`
+                          : ""}
                       </p>
                       <p className="text-sm text-slate-500">
                         Manual override allowed if student has technical problems or late confirmation from teacher.
@@ -810,10 +992,16 @@ const DefenseHubPage = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                  ))}
+                  {visibleRecords.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
+                      No students match the current filter.
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {sessions.length === 0 && <p className="text-slate-500">No attendance session created yet.</p>}
         </div>
       </div>

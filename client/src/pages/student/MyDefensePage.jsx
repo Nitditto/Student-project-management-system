@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
@@ -16,6 +16,12 @@ const statusClassMap = {
   pending: "bg-yellow-100 text-yellow-800",
 };
 
+const checkInMethodLabelMap = {
+  qr: "QR scan",
+  code: "teacher code",
+  manual: "manual confirmation",
+};
+
 const MyDefensePage = () => {
   const { authUser } = useSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -30,7 +36,7 @@ const MyDefensePage = () => {
   const processedQrTokenRef = useRef(null);
   const qrToken = searchParams.get("token");
 
-  const clearQrTokenFromUrl = useEffectEvent(() => {
+  const clearQrTokenFromUrl = useCallback(() => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("token");
     navigate(
@@ -40,9 +46,9 @@ const MyDefensePage = () => {
       },
       { replace: true },
     );
-  });
+  }, [navigate, searchParams]);
 
-  const loadData = useEffectEvent(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [scheduleRes, attendanceRes, councilRes] = await Promise.all([
@@ -58,7 +64,7 @@ const MyDefensePage = () => {
     } finally {
       setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -156,7 +162,7 @@ const MyDefensePage = () => {
     }
   };
 
-  const handleQrCheckIn = useEffectEvent(async (token) => {
+  const handleQrCheckIn = useCallback(async (token) => {
     try {
       await axiosInstance.post("/student/attendance/check-in", {
         token,
@@ -170,19 +176,25 @@ const MyDefensePage = () => {
     } finally {
       clearQrTokenFromUrl();
     }
-  });
+  }, [clearQrTokenFromUrl, loadData]);
 
   useEffect(() => {
     if (!authUser?._id || !qrToken) {
       return;
     }
-    if (processedQrTokenRef.current === qrToken) {
+    const processedKey = `attendance-qr:${authUser._id}:${qrToken}`;
+    if (
+      processedQrTokenRef.current === qrToken ||
+      sessionStorage.getItem(processedKey) === "done"
+    ) {
+      clearQrTokenFromUrl();
       return;
     }
 
+    sessionStorage.setItem(processedKey, "done");
     processedQrTokenRef.current = qrToken;
     handleQrCheckIn(qrToken);
-  }, [authUser?._id, handleQrCheckIn, qrToken]);
+  }, [authUser?._id, clearQrTokenFromUrl, handleQrCheckIn, qrToken]);
 
   if (loading) {
     return <div className="card">Loading defense workspace...</div>;
@@ -362,6 +374,8 @@ const MyDefensePage = () => {
                 (item) => item.student?._id === authUser?._id,
               );
               const status = myRecord?.status || "pending";
+              const canConfirmByCode =
+                session.status === "active" && status === "pending";
               const form = leaveForms[session._id] || {};
               const canRequestLeave = new Date(session.startsAt) > new Date();
 
@@ -381,7 +395,7 @@ const MyDefensePage = () => {
                     </span>
                   </div>
 
-                  {session.status === "active" && (
+                  {canConfirmByCode && (
                     <div className="mt-3 flex flex-col gap-3 md:flex-row">
                       <input
                         className="input"
@@ -392,6 +406,25 @@ const MyDefensePage = () => {
                       <button className="btn-primary" onClick={() => handleCheckIn(session._id)}>
                         Confirm With Code
                       </button>
+                    </div>
+                  )}
+
+                  {status === "present" && (
+                    <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                      Attendance confirmed
+                      {myRecord?.checkedInAt
+                        ? ` at ${formatDateTime(myRecord.checkedInAt)}`
+                        : ""}
+                      {myRecord?.checkInMethod
+                        ? ` via ${checkInMethodLabelMap[myRecord.checkInMethod] || myRecord.checkInMethod}`
+                        : ""}
+                      .
+                    </div>
+                  )}
+
+                  {status === "excused" && (
+                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                      This session was marked as excused. No further check-in is required.
                     </div>
                   )}
 

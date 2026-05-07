@@ -21,9 +21,60 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URLS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+].filter(Boolean);
+
+const isPrivateNetworkOrigin = (origin) => {
+  if (!origin) return true;
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (!["http:", "https:"].includes(protocol)) {
+      return false;
+    }
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return true;
+    }
+
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL],
+    origin(origin, callback) {
+      if (
+        !origin ||
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin) ||
+        isPrivateNetworkOrigin(origin)
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
