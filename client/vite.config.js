@@ -8,8 +8,15 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    allowedHosts: ["uninclusive-unpatronizable-ossie.ngrok-free.dev", "localhost"],
     watch: {
       usePolling: true,
     },
+    proxy: {
+      '/api': {
+        target: 'http://server:4000',
+        changeOrigin: true,
+      }
+    }
   },
 })
