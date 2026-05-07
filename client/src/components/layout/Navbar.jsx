@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
+import QrScannerModal from "../modal/QrScannerModal";
+
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const { authUser } = useSelector((state) => state.auth);
 
   const navigate = useNavigate();
@@ -90,6 +93,18 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
+            {/* QR Scanner button — students only */}
+            {authUser?.role === "Student" && (
+              <button
+                onClick={() => setScannerOpen(true)}
+                title="Scan attendance QR"
+                className="p-2 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m10-16h4a2 2 0 012 2v4m0 10v4a2 2 0 01-2 2h-4" />
+                </svg>
+              </button>
+            )}
             {/* Profile dropdown */}
             <div className="relative">
               <button
@@ -163,6 +178,9 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
           }}
         />
       )}
+
+      {/* QR Scanner modal */}
+      {scannerOpen && <QrScannerModal onClose={() => setScannerOpen(false)} />}
     </nav>
   );
 };
