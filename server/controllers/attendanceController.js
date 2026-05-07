@@ -61,14 +61,26 @@ export const getStudentAttendanceBoard = asyncHandler(async (req, res) => {
 });
 
 export const studentCheckIn = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.studentCheckIn({
+  const session = await attendanceServices.studentCheckInWithAccessCode({
     studentId: req.user._id,
     sessionId: req.params.sessionId,
-    credential: req.body.credential,
+    accessCode: req.body.accessCode,
   });
   res.status(200).json({
     success: true,
-    message: "Check-in successful",
+    message: "Attendance confirmed successfully",
+    data: { session },
+  });
+});
+
+export const studentQrCheckIn = asyncHandler(async (req, res) => {
+  const session = await attendanceServices.studentCheckInWithQrToken({
+    studentId: req.user._id,
+    token: req.body.token,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Attendance confirmed successfully",
     data: { session },
   });
 });

@@ -193,7 +193,36 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
     .sort({ startsAt: -1 });
 };
 
-export const studentCheckIn = async ({ studentId, sessionId, credential }) => {
+const finalizeStudentCheckIn = async ({ session, studentId, method }) => {
+  const record = session.records.find((item) => isSameId(item.student, studentId));
+  if (!record) {
+    throw new ErrorHandler("Attendance record not found for this student", 404);
+  }
+
+  if (record.status === "present") {
+    throw new ErrorHandler("Attendance already confirmed", 400);
+  }
+
+  if (record.status === "excused") {
+    throw new ErrorHandler("Attendance was already marked as excused", 400);
+  }
+
+  record.status = "present";
+  record.checkedInAt = new Date();
+  record.checkInMethod = method;
+  record.manualOverride = false;
+  await session.save();
+
+  return AttendanceSession.findById(session._id)
+    .populate("project", "title groupName")
+    .populate("records.student", "name email");
+};
+
+export const studentCheckInWithAccessCode = async ({
+  studentId,
+  sessionId,
+  accessCode,
+}) => {
   const project = await requireProjectByUser(studentId);
   ensureProjectMember(project, studentId);
 
@@ -211,34 +240,44 @@ export const studentCheckIn = async ({ studentId, sessionId, credential }) => {
     throw new ErrorHandler("Attendance session is not active", 400);
   }
 
-  const record = session.records.find((item) => isSameId(item.student, studentId));
-  if (!record) {
-    throw new ErrorHandler("Attendance record not found for this student", 404);
+  if (!accessCode?.trim() || accessCode.trim() !== session.accessCode) {
+    throw new ErrorHandler("Attendance code is invalid", 400);
   }
 
-  if (record.status === "present") {
-    return session;
+  return finalizeStudentCheckIn({
+    session,
+    studentId,
+    method: "code",
+  });
+};
+
+export const studentCheckInWithQrToken = async ({ studentId, token }) => {
+  const project = await requireProjectByUser(studentId);
+  ensureProjectMember(project, studentId);
+
+  if (!token?.trim()) {
+    throw new ErrorHandler("Attendance QR token is required", 400);
   }
 
-  const method =
-    credential === session.accessCode
-      ? "code"
-      : credential === session.qrToken
-        ? "qr"
-        : null;
-
-  if (!method) {
-    throw new ErrorHandler("Check-in code or QR token is invalid", 400);
-  }
-
-  record.status = "present";
-  record.checkedInAt = new Date();
-  record.checkInMethod = method;
-  await session.save();
-
-  return AttendanceSession.findById(session._id)
-    .populate("project", "title groupName")
+  const session = await AttendanceSession.findOne({ qrToken: token.trim() })
+    .populate("project", "title groupName members student")
     .populate("records.student", "name email");
+
+  if (!session || !isSameId(session.project._id, project._id)) {
+    throw new ErrorHandler("Attendance session not found", 404);
+  }
+
+  await syncSessionStatus(session);
+
+  if (session.status !== "active") {
+    throw new ErrorHandler("Attendance QR is expired or not active", 400);
+  }
+
+  return finalizeStudentCheckIn({
+    session,
+    studentId,
+    method: "qr",
+  });
 };
 
 export const requestLeave = async ({

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
@@ -17,15 +18,31 @@ const statusClassMap = {
 
 const MyDefensePage = () => {
   const { authUser } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [scheduleBoard, setScheduleBoard] = useState(null);
   const [attendanceBoard, setAttendanceBoard] = useState(null);
   const [councilBoard, setCouncilBoard] = useState(null);
-  const [credential, setCredential] = useState("");
+  const [codeInputs, setCodeInputs] = useState({});
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [leaveForms, setLeaveForms] = useState({});
+  const processedQrTokenRef = useRef(null);
+  const qrToken = searchParams.get("token");
 
-  const loadData = async () => {
+  const clearQrTokenFromUrl = useEffectEvent(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("token");
+    navigate(
+      {
+        pathname: "/student/defense",
+        search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+      },
+      { replace: true },
+    );
+  });
+
+  const loadData = useEffectEvent(async () => {
     setLoading(true);
     try {
       const [scheduleRes, attendanceRes, councilRes] = await Promise.all([
@@ -41,11 +58,11 @@ const MyDefensePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handlePickSlot = async (scheduleId, slotId) => {
     try {
@@ -74,13 +91,29 @@ const MyDefensePage = () => {
     }
   };
 
+  const updateCodeField = (sessionId, value) => {
+    setCodeInputs((current) => ({
+      ...current,
+      [sessionId]: value,
+    }));
+  };
+
   const handleCheckIn = async (sessionId) => {
+    const accessCode = codeInputs[sessionId]?.trim();
+    if (!accessCode) {
+      toast.error("Please enter the 6-digit attendance code");
+      return;
+    }
+
     try {
       await axiosInstance.post(`/student/attendance/${sessionId}/check-in`, {
-        credential,
+        accessCode,
       });
-      toast.success("Attendance check-in successful");
-      setCredential("");
+      toast.success("Attendance confirmed successfully");
+      setCodeInputs((current) => ({
+        ...current,
+        [sessionId]: "",
+      }));
       await loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to check in");
@@ -122,6 +155,34 @@ const MyDefensePage = () => {
       toast.error(error.response?.data?.message || "Failed to submit leave request");
     }
   };
+
+  const handleQrCheckIn = useEffectEvent(async (token) => {
+    try {
+      await axiosInstance.post("/student/attendance/check-in", {
+        token,
+      });
+      toast.success("Attendance confirmed from QR scan");
+      await loadData();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to confirm attendance from QR scan",
+      );
+    } finally {
+      clearQrTokenFromUrl();
+    }
+  });
+
+  useEffect(() => {
+    if (!authUser?._id || !qrToken) {
+      return;
+    }
+    if (processedQrTokenRef.current === qrToken) {
+      return;
+    }
+
+    processedQrTokenRef.current = qrToken;
+    handleQrCheckIn(qrToken);
+  }, [authUser?._id, handleQrCheckIn, qrToken]);
 
   if (loading) {
     return <div className="card">Loading defense workspace...</div>;
@@ -268,6 +329,12 @@ const MyDefensePage = () => {
             <p className="card-subtitle">{summary?.formula}</p>
           </div>
 
+          {qrToken && (
+            <div className="mb-4 rounded-lg bg-cyan-50 border border-cyan-200 p-3 text-cyan-800">
+              Processing the QR attendance confirmation for your signed-in student account.
+            </div>
+          )}
+
           {summary?.warning && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-red-700">
               Warning: your attendance rate is below 70%.
@@ -318,12 +385,12 @@ const MyDefensePage = () => {
                     <div className="mt-3 flex flex-col gap-3 md:flex-row">
                       <input
                         className="input"
-                        placeholder="Enter 6-digit code or QR token"
-                        value={credential}
-                        onChange={(event) => setCredential(event.target.value)}
+                        placeholder="Enter 6-digit teacher code if QR scan is unavailable"
+                        value={codeInputs[session._id] || ""}
+                        onChange={(event) => updateCodeField(session._id, event.target.value)}
                       />
                       <button className="btn-primary" onClick={() => handleCheckIn(session._id)}>
-                        Check In Now
+                        Confirm With Code
                       </button>
                     </div>
                   )}

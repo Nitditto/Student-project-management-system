@@ -10,6 +10,11 @@ const formatDateTime = (value) => {
 
 const getProjectDisplayName = (project) => project?.groupName || project?.title || "N/A";
 
+const buildAttendanceCheckInUrl = (qrToken) => {
+  if (!qrToken || typeof window === "undefined") return "";
+  return `${window.location.origin}/student/defense?token=${encodeURIComponent(qrToken)}`;
+};
+
 const formatModeLabel = (mode) => {
   const labels = {
     offline: "Offline Defense",
@@ -111,10 +116,13 @@ const DefenseHubPage = () => {
           }
 
           try {
-            const qrDataUrl = await QRCode.toDataURL(session.qrToken, {
+            const qrDataUrl = await QRCode.toDataURL(
+              buildAttendanceCheckInUrl(session.qrToken),
+              {
               width: 180,
               margin: 1,
-            });
+              },
+            );
             return [session._id, qrDataUrl];
           } catch {
             return [session._id, null];
@@ -719,13 +727,13 @@ const DefenseHubPage = () => {
                   Check-in window: {formatDateTime(session.checkInOpensAt)} - {formatDateTime(session.checkInClosesAt)}
                 </p>
                 <p className="text-sm text-slate-500">
-                  6-digit code: {session.accessCode} | QR token: {session.qrToken}
+                  6-digit fallback code: {session.accessCode}
                 </p>
               </div>
               <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4">
                 <p className="font-medium text-slate-800 mb-1">Student Check-in QR</p>
                 <p className="text-sm text-slate-500 mb-3">
-                  Students can scan this QR code to get the check-in token, then submit it on the student defense attendance page.
+                  Students should scan while signed in to their student account. The QR opens the attendance page and the app confirms attendance with the temporary token automatically.
                 </p>
                 {sessionQrCodes[session._id] ? (
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -735,7 +743,7 @@ const DefenseHubPage = () => {
                       className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
                     />
                     <div className="text-sm text-slate-600">
-                      <p>QR token value: {session.qrToken}</p>
+                      <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken)}</p>
                       <p>Fallback 6-digit code: {session.accessCode}</p>
                     </div>
                   </div>

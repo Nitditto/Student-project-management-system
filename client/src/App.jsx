@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
 // Auth Pages
@@ -60,11 +60,19 @@ const App = () => {
     if (authUser?.role === "Student") {
       dispatch(fetchDashboardStats());
     }
-  }, [authUser]);
+  }, [authUser, dispatch]);
 
   const ProtectedRoute = ({ children, allowedRoles }) => {
+    const location = useLocation();
+
     if (!authUser) {
-      return <Navigate to="/login" replace />;
+      const redirectPath = `${location.pathname}${location.search}`;
+      return (
+        <Navigate
+          to={`/login?redirect=${encodeURIComponent(redirectPath)}`}
+          replace
+        />
+      );
     }
     if (
       allowedRoles?.length &&
@@ -109,10 +117,7 @@ const App = () => {
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<DashboardRedirect />} />
-        <Route
-          path="/login"
-          element={!authUser ? <LoginPage /> : <DashboardRedirect />}
-        />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/dashboard" element={<DashboardRedirect />} />
