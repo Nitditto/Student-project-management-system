@@ -31,9 +31,10 @@ const checkInMethodLabelMap = {
   manual: "manual confirmation",
 };
 
-const buildAttendanceCheckInUrl = (qrToken) => {
+const buildAttendanceCheckInUrl = (qrToken, ngrokBaseUrl) => {
   if (!qrToken) return "";
-  return `${PUBLIC_APP_URL}/student/defense?token=${encodeURIComponent(qrToken)}`;
+  const base = ngrokBaseUrl || (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base}/student/defense?token=${encodeURIComponent(qrToken)}`;
 };
 
 const buildAttendanceMetrics = (records = []) => {
@@ -126,6 +127,7 @@ const createSlot = () => ({
 
 const DefenseHubPage = () => {
   const [loading, setLoading] = useState(true);
+  const [ngrokBaseUrl, setNgrokBaseUrl] = useState("");
   const [schedules, setSchedules] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [sessionQrCodes, setSessionQrCodes] = useState({});
@@ -147,6 +149,7 @@ const DefenseHubPage = () => {
     windowMinutes: 15,
   });
   const [attendanceFilters, setAttendanceFilters] = useState({});
+  const [editSessionForms, setEditSessionForms] = useState({});
   const [scoreForms, setScoreForms] = useState({});
   const [reviewerForms, setReviewerForms] = useState({});
   const [reviewerAssignments, setReviewerAssignments] = useState({});
@@ -154,12 +157,13 @@ const DefenseHubPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [scheduleRes, sessionRes, councilRes, studentsRes, usersRes] = await Promise.all([
+      const [scheduleRes, sessionRes, councilRes, studentsRes, usersRes, ngrokRes] = await Promise.all([
         axiosInstance.get("/teacher/schedules"),
         axiosInstance.get("/teacher/attendance-sessions"),
         axiosInstance.get("/teacher/councils"),
         axiosInstance.get("/teacher/assigned-students"),
         axiosInstance.get("/teacher/teacher-directory"),
+        axiosInstance.get("/teacher/ngrok-url").catch(() => ({ data: { data: { publicUrl: null } } })),
       ]);
 
       setSchedules(scheduleRes.data.data?.schedules || []);
@@ -169,6 +173,7 @@ const DefenseHubPage = () => {
       setTeachers(
         usersRes.data.data?.teachers || [],
       );
+      setNgrokBaseUrl(ngrokRes.data.data?.publicUrl || "");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load defense hub");
     } finally {
@@ -205,14 +210,15 @@ const DefenseHubPage = () => {
 
           try {
             const qrDataUrl = await QRCode.toDataURL(
-              buildAttendanceCheckInUrl(session.qrToken),
+              buildAttendanceCheckInUrl(session.qrToken, ngrokBaseUrl),
               {
               width: 180,
               margin: 1,
               },
             );
             return [session._id, qrDataUrl];
-          } catch {
+          } catch (error) {
+            console.error("QR Code generation error:", error);
             return [session._id, null];
           }
         }),
@@ -228,7 +234,7 @@ const DefenseHubPage = () => {
     return () => {
       isCancelled = true;
     };
-  }, [sessions]);
+  }, [sessions, ngrokBaseUrl]);
 
   const projectOptions = useMemo(() => {
     const map = new Map();
@@ -307,8 +313,13 @@ const DefenseHubPage = () => {
       return;
     }
 
+    const toIso = (v) => v ? new Date(v).toISOString() : v;
     try {
-      await axiosInstance.post("/teacher/attendance-sessions", attendanceForm);
+      await axiosInstance.post("/teacher/attendance-sessions", {
+        ...attendanceForm,
+        startsAt: toIso(attendanceForm.startsAt),
+        endsAt: toIso(attendanceForm.endsAt),
+      });
       toast.success("Attendance session created");
       setAttendanceForm({
         projectId: "",
@@ -440,6 +451,58 @@ const DefenseHubPage = () => {
       ...current,
       [sessionId]: filterKey,
     }));
+  };
+
+  const toLocalInputValue = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const openEditSession = (session) => {
+    setEditSessionForms((prev) => ({
+      ...prev,
+      [session._id]: {
+        open: true,
+        title: session.title,
+        startsAt: toLocalInputValue(session.startsAt),
+        endsAt: toLocalInputValue(session.endsAt),
+        windowMinutes: session.checkInClosesAt && session.startsAt
+          ? Math.round((new Date(session.checkInClosesAt) - new Date(session.startsAt)) / 60000)
+          : 15,
+      },
+    }));
+  };
+
+  const closeEditSession = (sessionId) => {
+    setEditSessionForms((prev) => ({ ...prev, [sessionId]: { open: false } }));
+  };
+
+  const updateEditSessionField = (sessionId, field, value) => {
+    setEditSessionForms((prev) => ({
+      ...prev,
+      [sessionId]: { ...prev[sessionId], [field]: value },
+    }));
+  };
+
+  const saveEditSession = async (sessionId) => {
+    const form = editSessionForms[sessionId];
+    if (!form) return;
+    const toIso = (v) => v ? new Date(v).toISOString() : v;
+    try {
+      await axiosInstance.put(`/teacher/attendance-sessions/${sessionId}`, {
+        title: form.title,
+        startsAt: toIso(form.startsAt),
+        endsAt: toIso(form.endsAt),
+        windowMinutes: form.windowMinutes,
+      });
+      toast.success("Attendance session updated");
+      closeEditSession(sessionId);
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update session");
+    }
   };
 
   if (loading) {
@@ -836,7 +899,22 @@ const DefenseHubPage = () => {
                 <div className="mb-3">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <p className="font-semibold text-slate-800">{session.title}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-semibold text-slate-800">{session.title}</p>
+                        <button
+                          onClick={() =>
+                            editSessionForms[session._id]?.open
+                              ? closeEditSession(session._id)
+                              : openEditSession(session)
+                          }
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          {editSessionForms[session._id]?.open ? "Cancel" : "Edit"}
+                        </button>
+                      </div>
                       <p className="text-sm text-slate-500">
                         Project: {getProjectDisplayName(session.project)}
                       </p>
@@ -874,6 +952,55 @@ const DefenseHubPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {editSessionForms[session._id]?.open && (
+                  <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+                    <p className="font-medium text-blue-800">Edit Session Times</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="text-xs font-medium text-slate-600">Session Title</label>
+                        <input
+                          className="input"
+                          value={editSessionForms[session._id]?.title || ""}
+                          onChange={(e) => updateEditSessionField(session._id, "title", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-600">Meeting Start Time</label>
+                        <input
+                          className="input"
+                          type="datetime-local"
+                          value={editSessionForms[session._id]?.startsAt || ""}
+                          onChange={(e) => updateEditSessionField(session._id, "startsAt", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-600">Meeting End Time</label>
+                        <input
+                          className="input"
+                          type="datetime-local"
+                          value={editSessionForms[session._id]?.endsAt || ""}
+                          onChange={(e) => updateEditSessionField(session._id, "endsAt", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-600">Check-in Close Window (min after start)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min="5"
+                          value={editSessionForms[session._id]?.windowMinutes || 15}
+                          onChange={(e) => updateEditSessionField(session._id, "windowMinutes", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-700">Check-in opens 15 min before start. Saving recomputes the session status automatically.</p>
+                    <div className="flex gap-2 pt-1">
+                      <button className="btn-primary" onClick={() => saveEditSession(session._id)}>Save Changes</button>
+                      <button className="btn-outline" onClick={() => closeEditSession(session._id)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
                 <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4">
                   <p className="font-medium text-slate-800 mb-1">Student Check-in QR</p>
                   <p className="text-sm text-slate-500 mb-3">
@@ -887,7 +1014,7 @@ const DefenseHubPage = () => {
                         className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
                       />
                       <div className="text-sm text-slate-600">
-                        <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken)}</p>
+                        <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken, ngrokBaseUrl)}</p>
                         <p>Fallback 6-digit code: {session.accessCode}</p>
                       </div>
                     </div>
