@@ -1,20 +1,22 @@
 services:
+
   mongo:
     image: mongodb/mongodb-community-server:latest
     container_name: mongo_db
-    volumes: 
+    volumes:
       - mongo_data:/data/db
     restart: unless-stopped
 
   client:
     build: ./client
     ports:
-     - "5173:5173"
-    volumes: 
+      - "5173:5173"
+    volumes:
       - ./client:/client
       - /client/node_modules
     stdin_open: true
     tty: true
+
   server:
     build: ./server
     container_name: server
@@ -24,5 +26,17 @@ services:
       - ./server:/server
       - /server/node_modules
     restart: unless-stopped
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    command: http client:5173
+    environment:
+      NGROK_AUTHTOKEN: 343NCUHm2EHbtJhxrW9UX8mDvtf_3G5dv41j1XF5ooZZwGRpX
+    ports:
+      - "4040:4040"
+    depends_on:
+      - client
+
 volumes:
   mongo_data:
