@@ -54,6 +54,11 @@ const isPrivateNetworkOrigin = (origin) => {
       return true;
     }
 
+    // Allow any ngrok tunnel domain automatically
+    if (/\.ngrok-free\.app$/.test(hostname) || /\.ngrok-free\.dev$/.test(hostname) || /\.ngrok\.io$/.test(hostname)) {
+      return true;
+    }
+
     return false;
   } catch {
     return false;

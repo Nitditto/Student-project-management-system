@@ -9,16 +9,15 @@ const getBrowserOrigin = () => {
 };
 
 const getDefaultApiBaseUrl = () => {
-  if (typeof window === "undefined") {
-    return "http://localhost:4000/api/v1";
-  }
-
-  const { protocol, hostname } = window.location;
-  return `${protocol}//${hostname}:4000/api/v1`;
+  return "/api/v1";
 };
 
 export const PUBLIC_APP_URL = stripTrailingSlash(
   import.meta.env.VITE_PUBLIC_APP_URL || getBrowserOrigin(),
+);
+
+export const NGROK_APP_URL = stripTrailingSlash(
+  import.meta.env.VITE_NGROK_APP_URL || "https://uninclusive-unpatronizable-ossie.ngrok-free.dev",
 );
 
 export const API_BASE_URL = stripTrailingSlash(
