@@ -20,6 +20,7 @@ import {
   requestLeave,
   studentCheckIn,
   studentQrCheckIn,
+  studentCodeCheckIn,
 } from "../controllers/attendanceController.js";
 import {
   downloadReviewerForm,
@@ -163,6 +164,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Student"),
   studentQrCheckIn,
+);
+router.post(
+  "/attendance/check-in-code",
+  isAuthenticated,
+  isAuthorized("Student"),
+  studentCodeCheckIn,
 );
 router.post(
   "/attendance/:sessionId/check-in",

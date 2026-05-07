@@ -22,6 +22,8 @@ import {
   getTeacherAttendanceSessions,
   manualMarkAttendance,
   reviewLeaveRequest,
+  updateAttendanceSession,
+  getNgrokUrl,
 } from "../controllers/attendanceController.js";
 import {
   createTeacherPreselection,
@@ -146,6 +148,12 @@ router.post(
   runAutoAssign,
 );
 router.get(
+  "/ngrok-url",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  getNgrokUrl,
+);
+router.get(
   "/attendance-sessions",
   isAuthenticated,
   isAuthorized("Teacher"),
@@ -156,6 +164,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Teacher"),
   createAttendanceSession,
+);
+router.put(
+  "/attendance-sessions/:sessionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  updateAttendanceSession,
 );
 router.put(
   "/attendance-sessions/:sessionId/students/:studentId/manual",

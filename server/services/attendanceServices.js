@@ -193,6 +193,59 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
     .sort({ startsAt: -1 });
 };
 
+export const updateAttendanceSession = async (teacherId, sessionId, payload) => {
+  const session = await AttendanceSession.findById(sessionId)
+    .populate("project", "title groupName supervisor");
+
+  if (!session) {
+    throw new ErrorHandler("Attendance session not found", 404);
+  }
+
+  const project = await projectServices.getProjectById(session.project._id);
+  ensureTeacherOwnsProject(project, teacherId);
+
+  const startsAt = new Date(payload.startsAt);
+  const endsAt = new Date(payload.endsAt);
+  const windowMinutes = Number(payload.windowMinutes || 15);
+  const checkInOpensAt = new Date(startsAt.getTime() - 15 * 60 * 1000);
+  const checkInClosesAt = new Date(startsAt.getTime() + windowMinutes * 60 * 1000);
+
+  if (
+    Number.isNaN(startsAt.getTime()) ||
+    Number.isNaN(endsAt.getTime())
+  ) {
+    throw new ErrorHandler("Invalid session times", 400);
+  }
+
+  if (endsAt <= startsAt) {
+    throw new ErrorHandler("End time must be after start time", 400);
+  }
+
+  session.startsAt = startsAt;
+  session.endsAt = endsAt;
+  session.checkInOpensAt = checkInOpensAt;
+  session.checkInClosesAt = checkInClosesAt;
+  if (payload.title?.trim()) {
+    session.title = payload.title.trim();
+  }
+
+  // Recompute status based on new times
+  const now = new Date();
+  if (now >= checkInOpensAt && now <= checkInClosesAt) {
+    session.status = "active";
+  } else if (now > checkInClosesAt) {
+    session.status = "closed";
+  } else {
+    session.status = "draft";
+  }
+
+  await session.save();
+
+  return AttendanceSession.findById(session._id)
+    .populate("project", "title groupName")
+    .populate("records.student", "name email");
+};
+
 const finalizeStudentCheckIn = async ({ session, studentId, method }) => {
   const record = session.records.find((item) => isSameId(item.student, studentId));
   if (!record) {
@@ -277,6 +330,45 @@ export const studentCheckInWithQrToken = async ({ studentId, token }) => {
     session,
     studentId,
     method: "qr",
+  });
+};
+
+export const studentCheckInWithCodeOnly = async ({ studentId, accessCode }) => {
+  if (!accessCode?.trim()) {
+    throw new ErrorHandler("Attendance code is required", 400);
+  }
+
+  const project = await requireProjectByUser(studentId);
+  ensureProjectMember(project, studentId);
+
+  const sessions = await AttendanceSession.find({
+    project: project._id,
+    accessCode: accessCode.trim(),
+  })
+    .populate("project", "title groupName members student")
+    .populate("records.student", "name email");
+
+  if (!sessions.length) {
+    throw new ErrorHandler("No session found with this code", 404);
+  }
+
+  let targetSession = null;
+  for (const session of sessions) {
+    await syncSessionStatus(session);
+    if (session.status === "active") {
+      targetSession = session;
+      break;
+    }
+  }
+
+  if (!targetSession) {
+    throw new ErrorHandler("No active session found with this code", 400);
+  }
+
+  return finalizeStudentCheckIn({
+    session: targetSession,
+    studentId,
+    method: "code",
   });
 };
 
