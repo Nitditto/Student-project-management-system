@@ -2,6 +2,7 @@ import ErrorHandler from "../middleware/error.js";
 import * as projectServices from "../services/projectServices.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import * as fileServices from "../services/fileServices.js";
+import { isProjectMember } from "../utils/workflowHelpers.js";
 
 export const getAllProjects = async (req, res, next) => {
   const projects = await projectServices.getAllProjects();
@@ -24,7 +25,7 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
   const userId = user._id?.toString() || user.id;
   const hasAccess =
     userRole === "admin" ||
-    project.student._id.toString() === userId ||
+    isProjectMember(project, userId) ||
     (project.supervisor && project.supervisor._id.toString() === userId);
 
   if (!hasAccess) {

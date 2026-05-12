@@ -16,12 +16,15 @@ import UploadFiles from "./pages/student/UploadFiles";
 import SupervisorPage from "./pages/student/SupervisorPage";
 import FeedbackPage from "./pages/student/FeedbackPage";
 import NotificationsPage from "./pages/student/NotificationsPage";
+import MyDefensePage from "./pages/student/MyDefensePage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import PendingRequests from "./pages/teacher/PendingRequests";
 import AssignedStudents from "./pages/teacher/AssignedStudents";
 import TeacherFiles from "./pages/teacher/TeacherFiles";
+import DefenseHubPage from "./pages/teacher/DefenseHubPage";
+import TeacherPreselectionPage from "./pages/teacher/TeacherPreselectionPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -30,6 +33,8 @@ import ManageTeachers from "./pages/admin/ManageTeachers";
 import AssignSupervisor from "./pages/admin/AssignSupervisor";
 import DeadlinesPage from "./pages/admin/DeadlinesPage";
 import ProjectsPage from "./pages/admin/ProjectsPage";
+import CouncilsPage from "./pages/admin/CouncilsPage";
+import RegistrationSettingsPage from "./pages/admin/RegistrationSettingsPage";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -127,6 +132,8 @@ const App = () => {
           <Route path="assign-supervisor" element={<AssignSupervisor />} />
           <Route path="deadlines" element={<DeadlinesPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="councils" element={<CouncilsPage />} />
+          <Route path="registration-settings" element={<RegistrationSettingsPage />} />
         </Route>
 
         {/* Teacher Routes */}
@@ -142,6 +149,8 @@ const App = () => {
           <Route path="pending-requests" element={<PendingRequests />} />
           <Route path="assigned-students" element={<AssignedStudents />} />
           <Route path="files" element={<TeacherFiles />} />
+          <Route path="preselect" element={<TeacherPreselectionPage />} />
+          <Route path="defense" element={<DefenseHubPage />} />
         </Route>
 
         {/* Student Routes */}
@@ -159,6 +168,7 @@ const App = () => {
           <Route path="supervisor" element={<SupervisorPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="defense" element={<MyDefensePage />} />
         </Route>
 
         {/* Default Redirect */}

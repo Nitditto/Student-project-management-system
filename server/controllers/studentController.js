@@ -8,6 +8,9 @@ import * as notificationServices from "../services/notificationServices.js";
 import { Project } from "../models/project.js";
 import { Notification } from "../models/notification.js";
 import * as fileServices from "../services/fileServices.js";
+import { ensureProjectEditable } from "../services/workflowProjectServices.js";
+import { isProjectMember } from "../utils/workflowHelpers.js";
+import * as registrationServices from "../services/registrationServices.js";
 
 export const getStudentProject = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
@@ -27,28 +30,27 @@ export const getStudentProject = asyncHandler(async (req, res, next) => {
 
 export const submitProposal = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
-  const { title, description } = req.body;
+  const { title, description, groupName, memberIds } = req.body;
 
   const existingProject = await projectServices.getStudentProject(studentId);
-  if (existingProject && existingProject.status !== "rejected") {
-    return next(
-      new ErrorHandler(
-        "You already have an active project. You can only submit a new project after your current project is rejected.",
-        400,
-      ),
+  if (existingProject && existingProject.status === "rejected") {
+    await Project.findByIdAndDelete(existingProject._id);
+    await User.updateMany(
+      { _id: { $in: existingProject.members || [studentId] } },
+      {
+        project: null,
+        supervisor: null,
+      },
     );
   }
 
-  if (existingProject && existingProject.status === "rejected") {
-    await Project.findByIdAndDelete(existingProject._id);
-  }
-  const projectData = {
-    student: studentId,
+  const project = await registrationServices.createProjectProposalWithGroup({
+    studentId,
     title,
     description,
-  };
-  const project = await projectServices.createProject(projectData);
-  await User.findByIdAndUpdate(studentId, { project: project._id });
+    groupName,
+    memberIds,
+  });
   res.status(201).json({
     success: true,
     data: { project },
@@ -60,18 +62,20 @@ export const uploadFiles = asyncHandler(async (req, res, next) => {
   const { projectId } = req.params;
   const studentId = req.user._id;
   const project = await projectServices.getProjectById(projectId);
+  ensureProjectEditable(project);
 
   if (
     !project ||
     project.student._id.toString() !== studentId.toString() ||
     project.status === "rejected"
   ) {
-    return next(
-      new ErrorHandler("Not authorized to upload files to this project", 403),
+    throw new ErrorHandler(
+      "Only the group representative can upload official project files",
+      403,
     );
   }
   if (!req.files || req.files.length === 0) {
-    return next(new ErrorHandler("No files uploaded", 400));
+    throw new ErrorHandler("No files uploaded", 400);
   }
   const updatedProject = await projectServices.addFilesToProject(
     projectId,
@@ -85,8 +89,26 @@ export const uploadFiles = asyncHandler(async (req, res, next) => {
 });
 
 export const getAvailableSupervisors = asyncHandler(async (req, res, next) => {
+  const settings = await registrationServices.getRegistrationSettings();
+  if (!settings.freePickOpen) {
+    return res.status(200).json({
+      success: true,
+      data: { supervisors: [] },
+      message: "Free-pick supervisor phase is currently closed",
+    });
+  }
+
+  const project = await projectServices.getStudentProject(req.user._id);
+  if (project && project.student?._id?.toString() !== req.user._id.toString()) {
+    return res.status(200).json({
+      success: true,
+      data: { supervisors: [] },
+      message: "Only the group representative can browse and request supervisors",
+    });
+  }
+
   const supervisors = await User.find({ role: "Teacher" })
-    .select("name email department experties")
+    .select("name email department experties maxStudent assignedStudents")
     .lean();
   res.status(200).json({
     success: true,
@@ -120,23 +142,39 @@ export const getSupervisor = asyncHandler(async (req, res, next) => {
 export const requestSupervisor = asyncHandler(async (req, res, next) => {
   const { teacherId, message } = req.body;
   const studentId = req.user._id;
+  const settings = await registrationServices.getRegistrationSettings();
+  if (!settings.freePickOpen) {
+    throw new ErrorHandler(
+      "Free-pick supervisor phase is closed. Please wait for preselection or admin opening.",
+      400,
+    );
+  }
+
+  const project = await projectServices.getStudentProject(studentId);
+  if (!project) {
+    throw new ErrorHandler("Please create a project proposal first", 400);
+  }
+  if (project.student._id.toString() !== studentId.toString()) {
+    throw new ErrorHandler(
+      "Only the group representative can request a supervisor for the team",
+      403,
+    );
+  }
 
   const student = await User.findById(studentId);
   if (student.supervisor) {
-    return next(new ErrorHandler("You have a supervisor assigned", 400));
+    throw new ErrorHandler("You have a supervisor assigned", 400);
   }
 
   const supervisor = await User.findById(teacherId);
   if (!supervisor || supervisor.role !== "Teacher") {
-    return next(new ErrorHandler("Invalid supervisor selected", 400));
+    throw new ErrorHandler("Invalid supervisor selected", 400);
   }
 
   if (supervisor.maxStudent <= supervisor.assignedStudents.length) {
-    return next(
-      new ErrorHandler(
-        "Selected supervisor has reached maximum number of students",
-        400,
-      ),
+    throw new ErrorHandler(
+      "Selected supervisor has reached maximum number of students",
+      400,
     );
   }
 
@@ -144,6 +182,7 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
     student: studentId,
     supervisor: teacherId,
     message,
+    project: project._id,
   };
 
   const request = await requestServices.createRequest(requestData);
@@ -165,14 +204,17 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
 
 export const getDashboardStats = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
-  const project = await Project.findOne({ student: studentId })
+  const project = await Project.findOne({
+    $or: [{ student: studentId }, { members: studentId }],
+  })
     .sort({ createdAt: -1 })
     .populate("supervisor", "name")
+    .populate("members", "name email")
     .lean();
 
   const now = new Date();
   const upcomingDeadlines = await Project.find({
-    student: studentId,
+    $or: [{ student: studentId }, { members: studentId }],
     deadline: { $gte: now },
   })
     .select("title description deadline")
@@ -215,10 +257,8 @@ export const getFeedback = asyncHandler(async (req, res, next) => {
 
   const project = await projectServices.getProjectById(projectId);
 
-  if (!project || project.student._id.toString() !== studentId.toString()) {
-    return next(
-      new ErrorHandler("Not authorized to view feedback for this project", 403),
-    );
+  if (!project || !isProjectMember(project, studentId)) {
+    throw new ErrorHandler("Not authorized to view feedback for this project", 403);
   }
 
   const sortedFeedback = project.feedback
@@ -244,14 +284,14 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
   const studentId = req.user._id;
 
   const project = await projectServices.getProjectById(projectId);
-  if (project.student._id.toString() !== studentId.toString()) {
-    return next(new ErrorHandler("Not authorized to download file", 403));
+  if (!isProjectMember(project, studentId)) {
+    throw new ErrorHandler("Not authorized to download file", 403);
   }
 
   const file = project.files.id(fileId);
 
   if (!file) {
-    return next(new ErrorHandler("File not found", 404));
+    throw new ErrorHandler("File not found", 404);
   }
 
   fileServices.streamDownload(file.fileUrl, res, file.originalName);

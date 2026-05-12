@@ -1,110 +1,115 @@
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import ErrorHandler from "../middleware/error.js";
-import RegistrationPeriod from "../models/registrationPeriod.js";
-import * as registrationServices from "../services/registrationService.js";
+import * as registrationServices from "../services/registrationServices.js";
+import { User } from "../models/user.js";
 
-export const createRegistrationPeriod = asyncHandler(async (req, res, next) => {
-  const {
-    name,
-    semester,
-    academicYear,
-    allowGroup,
-    minGroupSize,
-    maxGroupSize,
-    maxStudentsPerTeacher,
-    startDate,
-    endDate,
-  } = req.body;
-
-  if (!name || !semester || !academicYear) {
-    return next(new ErrorHandler("Please provide all required fields", 400));
-  }
-
-  const registrationPeriod = await registrationServices.createRegistrationPeriod({
-    name,
-    semester,
-    academicYear,
-    allowGroup,
-    minGroupSize,
-    maxGroupSize,
-    maxStudentsPerTeacher,
-    startDate,
-    endDate,
+export const getRegistrationSettings = asyncHandler(async (req, res) => {
+  const settings = await registrationServices.getRegistrationSettings();
+  res.status(200).json({
+    success: true,
+    data: { settings },
   });
+});
 
+export const updateRegistrationSettings = asyncHandler(async (req, res) => {
+  const settings = await registrationServices.updateRegistrationSettings(req.body);
+  res.status(200).json({
+    success: true,
+    message: "Registration settings updated successfully",
+    data: { settings },
+  });
+});
+
+export const getStudentRegistrationSetup = asyncHandler(async (req, res) => {
+  const data = await registrationServices.getStudentRegistrationSetup(req.user._id);
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+export const getGroupCandidates = asyncHandler(async (req, res) => {
+  const students = await registrationServices.getGroupCandidates(req.user._id);
+  res.status(200).json({
+    success: true,
+    data: { students },
+  });
+});
+
+export const respondGroupInvitation = asyncHandler(async (req, res) => {
+  const invitation = await registrationServices.respondGroupInvitation({
+    studentId: req.user._id,
+    invitationId: req.params.invitationId,
+    decision: req.body.decision,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Group invitation updated successfully",
+    data: { invitation },
+  });
+});
+
+export const getTeacherPreselectionCandidates = asyncHandler(async (req, res) => {
+  const students = await registrationServices.getTeacherPreselectionCandidates(
+    req.user._id,
+  );
+  res.status(200).json({
+    success: true,
+    data: { students },
+  });
+});
+
+export const createTeacherPreselection = asyncHandler(async (req, res) => {
+  const invitation = await registrationServices.createTeacherPreselection({
+    teacherId: req.user._id,
+    studentId: req.body.studentId,
+    note: req.body.note,
+  });
   res.status(201).json({
     success: true,
-    message: "Registration period created successfully",
-    data: {
-      registrationPeriod,
-    },
+    message: "Teacher preselection sent successfully",
+    data: { invitation },
   });
 });
 
-export const openRegistrationPeriod = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  if (!id) {
-    return next(new ErrorHandler("Registration period id is required", 400));
-  }
-
-  const registrationPeriod = await registrationServices.openRegistrationPeriod(id);
-
-  if (!registrationPeriod) {
-    return next(new ErrorHandler("Registration period not found", 404));
-  }
-
+export const getTeacherPreselections = asyncHandler(async (req, res) => {
+  const invitations = await registrationServices.getTeacherPreselections(req.user._id);
   res.status(200).json({
     success: true,
-    message: "Registration period opened successfully",
-    data: {
-      registrationPeriod,
-    },
+    data: { invitations },
   });
 });
 
-export const closeRegistrationPeriod = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  if (!id) {
-    return next(new ErrorHandler("Registration period id is required", 400));
-  }
-
-  const registrationPeriod = await registrationServices.closeRegistrationPeriod(id);
-
-  if (!registrationPeriod) {
-    return next(new ErrorHandler("Registration period not found", 404));
-  }
+export const getTeacherDirectory = asyncHandler(async (req, res) => {
+  const teachers = await User.find({ role: "Teacher" })
+    .select("name email department")
+    .sort({ name: 1 });
 
   res.status(200).json({
     success: true,
-    message: "Registration period closed successfully",
-    data: {
-      registrationPeriod,
-    },
+    data: { teachers },
   });
 });
 
-export const getAllRegistrationPeriods = asyncHandler(async (req, res, next) => {
-  const registrationPeriods = await registrationServices.getAllRegistrationPeriods();
-
+export const acceptTeacherPreselection = asyncHandler(async (req, res) => {
+  const invitation = await registrationServices.acceptTeacherPreselection({
+    studentId: req.user._id,
+    preselectionId: req.params.preselectionId,
+  });
   res.status(200).json({
     success: true,
-    message: "Registration periods fetched successfully",
-    data: {
-      registrationPeriods,
-    },
+    message: "Teacher preselection accepted successfully",
+    data: { invitation },
   });
 });
 
-export const getCurrentOpenRegistrationPeriod = asyncHandler(async (req, res, next) => {
-  const registrationPeriod = await registrationServices.getCurrentOpenRegistrationPeriod();
-
+export const rejectTeacherPreselection = asyncHandler(async (req, res) => {
+  const invitation = await registrationServices.rejectTeacherPreselection({
+    studentId: req.user._id,
+    preselectionId: req.params.preselectionId,
+  });
   res.status(200).json({
     success: true,
-    message: "Current registration period fetched successfully",
-    data: {
-      registrationPeriod,
-    },
+    message: "Teacher preselection rejected successfully",
+    data: { invitation },
   });
 });

@@ -19,8 +19,12 @@ const supervisorRequestSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
-    requestedBy: {
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      default: null,
+    },
+    supervisor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -31,7 +35,12 @@ const supervisorRequestSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-
+    message: {
+      type: String,
+      trim: true,
+      default: "",
+      maxLength: 1000,
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected", "cancelled"],
@@ -59,5 +68,6 @@ supervisorRequestSchema.index(
   { name: "idx_group_active_requests" }
 );
 
-export const SupervisorRequest = mongoose.model("SupervisorRequest", supervisorRequestSchema);
-export default SupervisorRequest;
+export const SupervisorRequest =
+  mongoose.models.SupervisorRequest ||
+  mongoose.model("SupervisorRequest", supervisorRequestSchema);

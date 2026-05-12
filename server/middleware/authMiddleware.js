@@ -6,7 +6,7 @@ import { User } from "../models/user.js";
 export const isAuthenticated = asyncHandler(async (req, res, next) => {
   const { token } = req.cookies;
   if (!token) {
-    return next(new ErrorHandler("Please login to access this resource", 401));
+    throw new ErrorHandler("Please login to access this resource", 401);
   }
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
@@ -15,9 +15,9 @@ export const isAuthenticated = asyncHandler(async (req, res, next) => {
   );
 
   if (!req.user) {
-    return next(new ErrorHandler("User not found with this id", 401));
+    throw new ErrorHandler("User not found with this id", 401);
   }
-  next();
+  return next();
 });
 
 export const isAuthorized = (...roles) => {

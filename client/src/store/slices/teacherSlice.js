@@ -10,9 +10,9 @@ export const getTeacherDashboardStats = createAsyncThunk(
       return res.data.data?.dashboardStats || res.data.data;
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to get teacher dashboard stats",
+        error.response?.data?.message || "Failed to get teacher dashboard stats",
       );
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -27,9 +27,9 @@ export const getTeacherRequests = createAsyncThunk(
       return res.data.data?.requests || res.data.data;
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to get teacher requests",
+        error.response?.data?.message || "Failed to get teacher requests",
       );
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -44,8 +44,8 @@ export const acceptRequest = createAsyncThunk(
       toast.success(res.data.message || "Request accepted successfully");
       return res.data.data?.request || res.data.data;
     } catch (error) {
-      toast.error(error.response.data.message || "Failed to accept request");
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to accept request");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -60,8 +60,8 @@ export const rejectRequest = createAsyncThunk(
       toast.success(res.data.message || "Request rejected successfully");
       return res.data.data?.request || res.data.data;
     } catch (error) {
-      toast.error(error.response.data.message || "Failed to reject request");
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to reject request");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -80,8 +80,8 @@ export const addFeedback = createAsyncThunk(
         feedback: res.data.data?.feedback || res.data.data || res.data,
       };
     } catch (error) {
-      toast.error(error.response.data.message || "Failed to add feedback");
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to add feedback");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -97,9 +97,9 @@ export const markComplete = createAsyncThunk(
       return { projectId };
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to mark project as complete",
+        error.response?.data?.message || "Failed to mark project as complete",
       );
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -112,9 +112,9 @@ export const getAssignedStudents = createAsyncThunk(
       return res.data.data?.students || res.data.data || res.data;
     } catch (error) {
       toast.error(
-        error.response.data.message || "Failed to get assigned students",
+        error.response?.data?.message || "Failed to get assigned students",
       );
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
     }
   },
 );
@@ -165,7 +165,7 @@ const teacherSlice = createSlice({
   },
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(getAssignedStudents.pending, (state, action) => {
+    builder.addCase(getAssignedStudents.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
@@ -234,10 +234,18 @@ const teacherSlice = createSlice({
           ? { ...request, status: "accepted" }
           : request,
       );
+      state.pendingRequests = state.pendingRequests.map((request) =>
+        request._id === updatedRequest._id
+          ? { ...request, status: "accepted" }
+          : request,
+      );
     });
     builder.addCase(rejectRequest.fulfilled, (state, action) => {
       const rejectedRequest = action.payload;
       state.list = state.list.filter(
+        (request) => request._id !== rejectedRequest._id,
+      );
+      state.pendingRequests = state.pendingRequests.filter(
         (request) => request._id !== rejectedRequest._id,
       );
     });

@@ -1,7 +1,13 @@
 import ErrorHandler from "../middleware/error.js";
 import { Project } from "../models/project.js";
 export const getStudentProject = async (studentId) => {
-  return await Project.findOne({ student: studentId }).sort({ createdAt: -1 });
+  return await Project.findOne({
+    $or: [{ student: studentId }, { members: studentId }],
+  })
+    .sort({ createdAt: -1 })
+    .populate("student", "name email")
+    .populate("supervisor", "name email")
+    .populate("members", "name email");
 };
 
 export const createProject = async (projectData) => {
@@ -13,6 +19,7 @@ export const getProjectById = async (id) => {
   const project = await Project.findById(id)
     .populate("student", "name email")
     .populate("supervisor", "name email")
+    .populate("members", "name email")
     .populate("feedback.supervisorId", "name email");
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
@@ -40,6 +47,7 @@ export const getAllProjects = async () => {
   const projects = await Project.find()
     .populate("student", "name email")
     .populate("supervisor", "name email")
+    .populate("members", "name email")
     .sort({ createdAt: -1 });
   return projects;
 };
@@ -51,7 +59,8 @@ export const markComplete = async (projectId) => {
     { new: true, runValidators: true },
   )
     .populate("student", "name email")
-    .populate("supervisor", "name email");
+    .populate("supervisor", "name email")
+    .populate("members", "name email");
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }
@@ -83,7 +92,11 @@ export const addFeedback = async (
 };
 
 export const getProjectsBySupervisor = async (supervisorId) => {
-  return await getAllProjects({ supervisor: supervisorId });
+  return await Project.find({ supervisor: supervisorId })
+    .populate("student", "name email")
+    .populate("supervisor", "name email")
+    .populate("members", "name email")
+    .sort({ createdAt: -1 });
 };
 
 export const updateProject = async (projectId, updatedData) => {
@@ -92,7 +105,8 @@ export const updateProject = async (projectId, updatedData) => {
     runValidators: true,
   })
     .populate("student", "name email")
-    .populate("supervisor", "name email");
+    .populate("supervisor", "name email")
+    .populate("members", "name email");
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }

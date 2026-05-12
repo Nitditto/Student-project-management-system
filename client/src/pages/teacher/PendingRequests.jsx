@@ -7,6 +7,9 @@ import {
 } from "../../store/slices/teacherSlice";
 import { FileText } from "lucide-react";
 
+const getProjectDisplayName = (project) =>
+  project?.groupName || project?.title || "No project title";
+
 const PendingRequests = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -16,8 +19,10 @@ const PendingRequests = () => {
   const { authUser } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    dispatch(getTeacherRequests(authUser._id));
-  }, [dispatch, authUser._id]);
+    if (authUser?._id) {
+      dispatch(getTeacherRequests(authUser._id));
+    }
+  }, [dispatch, authUser?._id]);
 
   const setLoading = (id, key, value) => {
     setLoadingMap((prev) => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
@@ -51,12 +56,12 @@ const PendingRequests = () => {
 
 
   const filteredRequests =
-    list.filter((request) => {
+    (list || []).filter((request) => {
       const matchesSearch =
         (request?.student?.name || "")
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        (request?.latestProject?.title || "")
+        getProjectDisplayName(request?.latestProject)
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
       const matchesStatus =
@@ -103,8 +108,10 @@ const PendingRequests = () => {
           {filteredRequests.map((req) => {
             const id = req._id;
             const project = req.latestProject;
-            const projectStatus = project?.status.toLowerCase() || "pending";
-            const supervisorAssigned = !!project?.supervisor;
+            const projectStatus = (project?.status || "pending").toLowerCase();
+            const supervisorAssigned = Boolean(
+              project?.supervisor?._id || project?.supervisor,
+            );
             const canAccept = req.status === "pending" && !supervisorAssigned;
             // const canAccept =
             //   projectStatus === "approved" && !supervisorAssigned;
@@ -143,8 +150,11 @@ const PendingRequests = () => {
                       {req?.student?.email || "No email"}
                     </p>
                     <h4 className="font-medium text-slate-700 mb-2">
-                      {project?.title || "No project title"}
+                      {getProjectDisplayName(project)}
                     </h4>
+                    {req?.message && (
+                      <p className="text-sm text-slate-600 mb-2">{req.message}</p>
+                    )}
                     <p className="text-xs text-slate-500">
                       Submitted:{" "}
                       {req.createdAt
