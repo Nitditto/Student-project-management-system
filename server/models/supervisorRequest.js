@@ -59,4 +59,5 @@ supervisorRequestSchema.index(
   { name: "idx_group_active_requests" }
 );
 
-export default mongoose.model("SupervisorRequest", supervisorRequestSchema);
+export const SupervisorRequest = mongoose.model("SupervisorRequest", supervisorRequestSchema);
+export default SupervisorRequest;
