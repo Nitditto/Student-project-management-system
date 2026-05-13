@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import QRCode from "qrcode";
+import ComprehensiveAssessmentTab from "./ComprehensiveAssessmentTab.jsx";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -810,181 +811,31 @@ const DefenseHubPage = () => {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card w-full mx-auto">
         <div className="card-header">
-          <h2 className="card-title">Section E. Council Reviewer Assignment and Scoring</h2>
+          <h2 className="card-title">Section E. Comprehensive CLO Assessment (M1-M6)</h2>
           <p className="card-subtitle">
-            Chairman assigns reviewer. Then council members and reviewer submit scores and comments.
+            Manage full project lifecycle rubrics including M1-M3 Supervision, M4 Report, M5 Council, and M6 Peer Evaluations.
           </p>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-6 mt-4">
           {councils.map((council) => (
-            <div key={council._id} className="rounded-lg border border-slate-200 p-4">
-              <div className="mb-4">
-                <p className="font-semibold text-slate-800">{council.name}</p>
-                <p className="text-sm text-slate-500">
-                  {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
-                </p>
-              </div>
-
-              {(council.projects || []).map((projectItem) => {
-                const key = `${council._id}-${projectItem.project?._id}`;
-                return (
-                  <div key={projectItem.project?._id} className="rounded-lg bg-slate-50 p-4 mb-3">
-                    <p className="font-medium text-slate-800">
-                      {getProjectDisplayName(projectItem.project)}
-                    </p>
-                    <p className="text-sm text-slate-500 mb-3">
-                      Reviewer: {projectItem.reviewer?.name || "Not assigned yet"} | Weighted score:{" "}
-                      {projectItem.weightedAverage ?? "N/A"}
-                    </p>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <p className="font-medium text-slate-700">Reviewer Assignment</p>
-                        <p className="text-xs text-slate-500">
-                          Only the chairman should assign the reviewer for each project in this council.
-                        </p>
-                        <select
-                          className="input"
-                          value={reviewerAssignments[key]?.reviewerId || ""}
-                          onChange={(event) =>
-                            updateReviewerAssignment(key, "reviewerId", event.target.value)
-                          }
-                        >
-                          <option value="">Select reviewer teacher</option>
-                          {teachers.map((teacher) => (
-                            <option key={teacher._id} value={teacher._id}>
-                              {teacher.name}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          className="input"
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={reviewerAssignments[key]?.reviewerWeight || 1.5}
-                          onChange={(event) =>
-                            updateReviewerAssignment(key, "reviewerWeight", event.target.value)
-                          }
-                          placeholder="Reviewer score weight"
-                        />
-                        <button
-                          className="btn-outline"
-                          onClick={() => assignReviewer(council._id, projectItem.project?._id)}
-                        >
-                          Chairman Assigns Reviewer
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="font-medium text-slate-700">Council Score Entry</p>
-                        <p className="text-xs text-slate-500">
-                          Each council member enters their own score and comment. Chairman locks the final result after review.
-                        </p>
-                        <input
-                          className="input"
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="Score"
-                          value={scoreForms[key]?.score || ""}
-                          onChange={(event) => updateScoreForm(key, "score", event.target.value)}
-                        />
-                        <textarea
-                          className="input min-h-24"
-                          placeholder="Score comment"
-                          value={scoreForms[key]?.comment || ""}
-                          onChange={(event) => updateScoreForm(key, "comment", event.target.value)}
-                        />
-                        <textarea
-                          className="input min-h-20"
-                          placeholder="Chairman final lock comment"
-                          value={scoreForms[key]?.chairComment || ""}
-                          onChange={(event) =>
-                            updateScoreForm(key, "chairComment", event.target.value)
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            className="btn-primary"
-                            onClick={() => submitScore(council._id, projectItem.project?._id)}
-                          >
-                            Save Score
-                          </button>
-                          <button
-                            className="btn-outline"
-                            onClick={() => finalizeScore(council._id, projectItem.project?._id)}
-                          >
-                            Chairman Locks Final Score
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="font-medium text-slate-700">Reviewer Report</p>
-                        <p className="text-xs text-slate-500">
-                          The assigned reviewer writes the report here. The system exports it as a PDF file for project records.
-                        </p>
-                        <textarea
-                          className="input min-h-20"
-                          placeholder="Reviewer summary"
-                          value={reviewerForms[key]?.summary || ""}
-                          onChange={(event) =>
-                            updateReviewerForm(key, "summary", event.target.value)
-                          }
-                        />
-                        <textarea
-                          className="input min-h-20"
-                          placeholder="Project strengths"
-                          value={reviewerForms[key]?.strengths || ""}
-                          onChange={(event) =>
-                            updateReviewerForm(key, "strengths", event.target.value)
-                          }
-                        />
-                        <textarea
-                          className="input min-h-20"
-                          placeholder="Concerns or issues"
-                          value={reviewerForms[key]?.concerns || ""}
-                          onChange={(event) =>
-                            updateReviewerForm(key, "concerns", event.target.value)
-                          }
-                        />
-                        <textarea
-                          className="input min-h-20"
-                          placeholder="Recommendation"
-                          value={reviewerForms[key]?.recommendation || ""}
-                          onChange={(event) =>
-                            updateReviewerForm(key, "recommendation", event.target.value)
-                          }
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            className="btn-outline"
-                            onClick={() =>
-                              submitReviewerFormAction(council._id, projectItem.project?._id)
-                            }
-                          >
-                            Export Reviewer PDF
-                          </button>
-                          {projectItem.reviewerForm?.pdfUrl && (
-                            <a
-                              href={`${axiosInstance.defaults.baseURL}/teacher/councils/${council._id}/projects/${projectItem.project?._id}/reviewer-form/download`}
-                              className="btn-outline inline-flex"
-                            >
-                              Download Reviewer PDF
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div key={council._id} className="space-y-4">
+              <h3 className="font-semibold text-slate-800 border-b pb-2">{council.name}</h3>
+              {(council.projects || []).map((projectItem) => (
+                <div key={projectItem.project?._id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <p className="font-medium text-slate-800 mb-2">
+                    Project: {getProjectDisplayName(projectItem.project)}
+                  </p>
+                  <ComprehensiveAssessmentTab 
+                    projectId={projectItem.project?._id} 
+                    projectDisplayName={getProjectDisplayName(projectItem.project)}
+                  />
+                </div>
+              ))}
             </div>
           ))}
-          {councils.length === 0 && <p className="text-slate-500">You are not in any council yet.</p>}
+          {councils.length === 0 && <p className="text-slate-500 italic">No council assignments found to assess.</p>}
         </div>
       </div>
     </div>

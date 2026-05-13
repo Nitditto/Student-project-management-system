@@ -19,12 +19,8 @@ const supervisorRequestSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    project: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
-      default: null,
-    },
-    supervisor: {
+
+    requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -35,12 +31,7 @@ const supervisorRequestSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    message: {
-      type: String,
-      trim: true,
-      default: "",
-      maxLength: 1000,
-    },
+
     status: {
       type: String,
       enum: ["pending", "approved", "rejected", "cancelled"],

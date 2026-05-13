@@ -37,6 +37,12 @@ import {
   submitCouncilScore,
   submitReviewerForm,
 } from "../controllers/councilController.js";
+import {
+  initializeProjectAssessment,
+  submitMilestoneAssessment,
+  finalizeProjectAssessment,
+  getProjectAssessmentSummary,
+} from "../controllers/assessmentController.js";
 
 const router = express.Router();
 
@@ -204,6 +210,32 @@ router.get(
   isAuthenticated,
   isAuthorized("Teacher"),
   downloadReviewerForm,
+);
+
+// Assessment Routes
+router.post(
+  "/projects/:projectId/assessments/initialize",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  initializeProjectAssessment,
+);
+router.post(
+  "/projects/:projectId/assessments/milestones/:milestoneCode/submissions",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  submitMilestoneAssessment,
+);
+router.post(
+  "/projects/:projectId/assessments/finalize",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  finalizeProjectAssessment,
+);
+router.get(
+  "/projects/:projectId/assessments/summary",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  getProjectAssessmentSummary,
 );
 
 export default router;

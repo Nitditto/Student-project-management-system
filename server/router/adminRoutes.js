@@ -23,6 +23,10 @@ import {
   getRegistrationSettings,
   updateRegistrationSettings,
 } from "../controllers/registrationController.js";
+import {
+  createAssessmentTemplate,
+  getAssessmentTemplate,
+} from "../controllers/assessmentController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import multer from "multer";
 
@@ -126,4 +130,19 @@ router.put(
   isAuthorized("Admin"),
   updateRegistrationSettings,
 );
+
+// Assessment Template Routes
+router.post(
+  "/assessment-templates",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  createAssessmentTemplate,
+);
+router.get(
+  "/assessment-templates/:id",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAssessmentTemplate,
+);
+
 export default router;

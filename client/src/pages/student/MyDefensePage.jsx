@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import StudentAssessmentTab from "./StudentAssessmentTab.jsx";
+
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -431,6 +433,12 @@ const MyDefensePage = () => {
           )}
         </div>
       </div>
+      
+      {project?._id && (
+        <div className="mt-6">
+          <StudentAssessmentTab projectId={project._id} projectMembers={project.members || []} />
+        </div>
+      )}
     </div>
   );
 };

@@ -32,6 +32,7 @@ import {
   rejectTeacherPreselection,
   respondGroupInvitation,
 } from "../controllers/registrationController.js";
+import { submitPeerEvaluation, getStudentAssessmentBoard } from "../controllers/assessmentController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import { upload, handleUploadError } from "../middleware/upload.js";
 
@@ -182,6 +183,20 @@ router.get(
   isAuthenticated,
   isAuthorized("Student"),
   downloadReviewerForm,
+);
+
+// Assessment Routes
+router.get(
+  "/projects/:projectId/assessment-board",
+  isAuthenticated,
+  isAuthorized("Student"),
+  getStudentAssessmentBoard,
+);
+router.post(
+  "/projects/:projectId/peer-evaluations",
+  isAuthenticated,
+  isAuthorized("Student"),
+  submitPeerEvaluation,
 );
 
 export default router;
