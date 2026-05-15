@@ -3,6 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import RubricTable from "../../components/assessment/RubricTable";
+import {
+  buildRubricPayload,
+  createRubricEntries,
+  formatAssessmentScore,
+} from "../../lib/assessment";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -30,9 +36,17 @@ const MyDefensePage = () => {
   const [scheduleBoard, setScheduleBoard] = useState(null);
   const [attendanceBoard, setAttendanceBoard] = useState(null);
   const [councilBoard, setCouncilBoard] = useState(null);
+  const [assessmentBoard, setAssessmentBoard] = useState(null);
   const [codeInputs, setCodeInputs] = useState({});
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [leaveForms, setLeaveForms] = useState({});
+  const [peerForm, setPeerForm] = useState({
+    entries: createRubricEntries(),
+    overallComment: "",
+    files: [],
+  });
+  const [qrCheckInStatus, setQrCheckInStatus] = useState("idle");
+  const [qrCheckInError, setQrCheckInError] = useState("");
   const processedQrTokenRef = useRef(null);
   const qrToken = searchParams.get("token");
 
@@ -51,14 +65,16 @@ const MyDefensePage = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [scheduleRes, attendanceRes, councilRes] = await Promise.all([
+      const [scheduleRes, attendanceRes, councilRes, assessmentRes] = await Promise.all([
         axiosInstance.get("/student/schedule-board"),
         axiosInstance.get("/student/attendance-board"),
         axiosInstance.get("/student/council-board"),
+        axiosInstance.get("/student/assessment-board"),
       ]);
       setScheduleBoard(scheduleRes.data.data);
       setAttendanceBoard(attendanceRes.data.data);
       setCouncilBoard(councilRes.data.data);
+      setAssessmentBoard(assessmentRes.data.data);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load defense workspace");
     } finally {
@@ -162,19 +178,26 @@ const MyDefensePage = () => {
     }
   };
 
-  const handleQrCheckIn = useCallback(async (token) => {
+  const handleQrCheckIn = useCallback(async (token, processedKey) => {
+    setQrCheckInStatus("processing");
+    setQrCheckInError("");
+
     try {
       await axiosInstance.post("/student/attendance/check-in", {
         token,
       });
+      sessionStorage.setItem(processedKey, "done");
+      setQrCheckInStatus("success");
       toast.success("Attendance confirmed from QR scan");
       await loadData();
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to confirm attendance from QR scan",
-      );
-    } finally {
       clearQrTokenFromUrl();
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "Failed to confirm attendance from QR scan";
+      processedQrTokenRef.current = null;
+      setQrCheckInStatus("error");
+      setQrCheckInError(message);
+      toast.error(message);
     }
   }, [clearQrTokenFromUrl, loadData]);
 
@@ -187,14 +210,69 @@ const MyDefensePage = () => {
       processedQrTokenRef.current === qrToken ||
       sessionStorage.getItem(processedKey) === "done"
     ) {
+      setQrCheckInStatus("success");
       clearQrTokenFromUrl();
       return;
     }
 
-    sessionStorage.setItem(processedKey, "done");
     processedQrTokenRef.current = qrToken;
-    handleQrCheckIn(qrToken);
+    handleQrCheckIn(qrToken, processedKey);
   }, [authUser?._id, clearQrTokenFromUrl, handleQrCheckIn, qrToken]);
+
+  useEffect(() => {
+    if (!assessmentBoard?.myAssessment?.peerSubmission?.cloEntries?.length) {
+      return;
+    }
+
+    const byCode = new Map(
+      assessmentBoard.myAssessment.peerSubmission.cloEntries.map((item) => [item.cloCode, item]),
+    );
+    setPeerForm((current) => ({
+      ...current,
+      entries: current.entries.map((entry) => ({
+        ...entry,
+        score1to5: byCode.get(entry.cloCode)?.score1to5 ?? entry.score1to5,
+        comment: byCode.get(entry.cloCode)?.comment ?? entry.comment,
+      })),
+      overallComment:
+        assessmentBoard.myAssessment.peerSubmission.overallComment || current.overallComment,
+    }));
+  }, [assessmentBoard?.myAssessment?.peerSubmission]);
+
+  const updatePeerEntry = (cloCode, field, value) => {
+    setPeerForm((current) => ({
+      ...current,
+      entries: current.entries.map((entry) =>
+        entry.cloCode === cloCode ? { ...entry, [field]: value } : entry,
+      ),
+    }));
+  };
+
+  const submitPeerEvaluation = async () => {
+    if (!assessmentBoard?.project?._id) return;
+
+    const payload = new FormData();
+    payload.append("cloEntries", JSON.stringify(buildRubricPayload(peerForm.entries)));
+    payload.append("overallComment", peerForm.overallComment || "");
+    (peerForm.files || []).forEach((file) => payload.append("files", file));
+
+    try {
+      await axiosInstance.post(
+        `/student/projects/${assessmentBoard.project._id}/peer-evaluations`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      toast.success("Peer / ICS submission saved");
+      setPeerForm({
+        entries: createRubricEntries(),
+        overallComment: "",
+        files: [],
+      });
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit peer / ICS");
+    }
+  };
 
   if (loading) {
     return <div className="card">Loading defense workspace...</div>;
@@ -205,6 +283,8 @@ const MyDefensePage = () => {
   const selectedSchedule = project?.selectedSchedule;
   const council = councilBoard?.council;
   const isLeader = project?.student?._id === authUser?._id;
+  const assessmentSummary = assessmentBoard?.assessment;
+  const myAssessment = assessmentBoard?.myAssessment;
   const councilProject = council?.projects?.find(
     (item) => item.project?._id === project?._id,
   );
@@ -343,7 +423,23 @@ const MyDefensePage = () => {
 
           {qrToken && (
             <div className="mb-4 rounded-lg bg-cyan-50 border border-cyan-200 p-3 text-cyan-800">
-              Processing the QR attendance confirmation for your signed-in student account.
+              <p>
+                {qrCheckInStatus === "error"
+                  ? qrCheckInError || "QR attendance confirmation failed."
+                  : "Processing the QR attendance confirmation for your signed-in student account."}
+              </p>
+              {qrCheckInStatus === "error" && authUser?._id && (
+                <button
+                  className="mt-3 btn-outline"
+                  onClick={() => {
+                    const processedKey = `attendance-qr:${authUser._id}:${qrToken}`;
+                    processedQrTokenRef.current = qrToken;
+                    handleQrCheckIn(qrToken, processedKey);
+                  }}
+                >
+                  Retry QR Check-in
+                </button>
+              )}
             </div>
           )}
 
@@ -530,6 +626,134 @@ const MyDefensePage = () => {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="card space-y-4">
+        <div className="card-header">
+          <h2 className="card-title">Section D. CLO Assessment and QA Evidence</h2>
+          <p className="card-subtitle">
+            Track milestone progress, final CLO status, and submit your peer / ICS package for M6.
+          </p>
+        </div>
+
+        {!assessmentSummary ? (
+          <p className="text-slate-500">CLO assessment has not been initialized for this project yet.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Team score</p>
+                <p className="font-semibold text-slate-800">
+                  {formatAssessmentScore(assessmentSummary.teamFinalScore, "/10")}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Team result</p>
+                <p className="font-semibold text-slate-800">{assessmentSummary.teamPassStatus}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">My final score</p>
+                <p className="font-semibold text-slate-800">
+                  {formatAssessmentScore(myAssessment?.officialFinalScore, "/10")}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">QA completeness</p>
+                <p className="font-semibold text-slate-800">
+                  {assessmentSummary.qaEvidenceSummary?.completenessPercent || 0}%
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-3 font-medium text-slate-700">Milestone Timeline</p>
+              <div className="space-y-2">
+                {(assessmentSummary.milestones || []).map((milestone) => (
+                  <div
+                    key={milestone.code}
+                    className="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        {milestone.code}. {milestone.label}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Component: {formatAssessmentScore(milestone.componentScore5, "/5")} /{" "}
+                        {formatAssessmentScore(milestone.componentScore10, "/10")}
+                      </p>
+                    </div>
+                    <span className="text-sm font-medium text-slate-600">{milestone.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-3 font-medium text-slate-700">Final CLO Status</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {(assessmentSummary.cloResults || []).map((item) => (
+                  <div key={item.cloCode} className="rounded-lg bg-slate-50 p-3">
+                    <p className="font-medium text-slate-800">{item.cloCode}</p>
+                    <p className="text-sm text-slate-500">
+                      {formatAssessmentScore(item.score5, "/5")} | {item.status}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4 space-y-4">
+              <div>
+                <p className="font-medium text-slate-700">M6 Peer / ICS Submission</p>
+                <p className="text-sm text-slate-500">
+                  Submit your individual evidence for teamwork, communication, and innovation CLOs.
+                </p>
+              </div>
+
+              <RubricTable
+                entries={peerForm.entries}
+                onChange={updatePeerEntry}
+                title="My M6 CLO Rubric"
+              />
+
+              <textarea
+                className="input min-h-24"
+                placeholder="Overall peer / ICS note"
+                value={peerForm.overallComment}
+                onChange={(event) =>
+                  setPeerForm((current) => ({ ...current, overallComment: event.target.value }))
+                }
+              />
+
+              <input
+                type="file"
+                multiple
+                onChange={(event) =>
+                  setPeerForm((current) => ({
+                    ...current,
+                    files: Array.from(event.target.files || []),
+                  }))
+                }
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-primary" onClick={submitPeerEvaluation}>
+                  Submit M6 Peer / ICS
+                </button>
+                <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                  Current status: {myAssessment?.peerSubmission?.approvalStatus || "not submitted"}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-2 font-medium text-slate-700">Missing QA Evidence</p>
+              <p className="text-sm text-slate-500">
+                {assessmentSummary.qaEvidenceSummary?.missingItems?.join(", ") || "No missing evidence items"}
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

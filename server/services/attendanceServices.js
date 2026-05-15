@@ -181,7 +181,7 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
   const sessions = await AttendanceSession.find({ teacher: teacherId })
     .populate("project", "title groupName members student")
     .populate("records.student", "name email")
-    .sort({ startsAt: -1 });
+    .sort({ createdAt: -1 });
 
   for (const session of sessions) {
     await syncSessionStatus(session);
@@ -190,7 +190,7 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
   return AttendanceSession.find({ teacher: teacherId })
     .populate("project", "title groupName members student")
     .populate("records.student", "name email")
-    .sort({ startsAt: -1 });
+    .sort({ createdAt: -1 });
 };
 
 export const updateAttendanceSession = async (teacherId, sessionId, payload) => {
@@ -244,6 +244,23 @@ export const updateAttendanceSession = async (teacherId, sessionId, payload) => 
   return AttendanceSession.findById(session._id)
     .populate("project", "title groupName")
     .populate("records.student", "name email");
+};
+
+export const deleteAttendanceSession = async (teacherId, sessionId) => {
+  const session = await AttendanceSession.findById(sessionId)
+    .populate("project", "title groupName");
+
+  if (!session) {
+    throw new ErrorHandler("Attendance session not found", 404);
+  }
+
+  if (!isSameId(session.teacher, teacherId)) {
+    throw new ErrorHandler("Teacher is not allowed to delete this attendance session", 403);
+  }
+
+  await AttendanceSession.deleteOne({ _id: sessionId });
+
+  return session;
 };
 
 const finalizeStudentCheckIn = async ({ session, studentId, method }) => {

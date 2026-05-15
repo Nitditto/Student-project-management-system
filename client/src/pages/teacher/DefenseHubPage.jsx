@@ -3,6 +3,16 @@ import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import { isLocalOnlyHost, PUBLIC_APP_URL } from "../../lib/appConfig";
 import QRCode from "qrcode";
+import RubricTable from "../../components/assessment/RubricTable";
+import {
+  buildRubricPayload,
+  CLO_CODES,
+  createRubricEntries,
+  formatAssessmentScore,
+  mergeRubricEntries,
+  MILESTONE_LABELS,
+  TEACHER_ASSESSMENT_TABS,
+} from "../../lib/assessment";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
@@ -153,6 +163,12 @@ const DefenseHubPage = () => {
   const [scoreForms, setScoreForms] = useState({});
   const [reviewerForms, setReviewerForms] = useState({});
   const [reviewerAssignments, setReviewerAssignments] = useState({});
+  const [assessmentTab, setAssessmentTab] = useState("M1");
+  const [assessmentSummaries, setAssessmentSummaries] = useState({});
+  const [selectedAssessmentProjectId, setSelectedAssessmentProjectId] = useState("");
+  const [assessmentForms, setAssessmentForms] = useState({});
+  const [assessmentFileForms, setAssessmentFileForms] = useState({});
+  const [m6ReviewForms, setM6ReviewForms] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -169,11 +185,36 @@ const DefenseHubPage = () => {
       setSchedules(scheduleRes.data.data?.schedules || []);
       setSessions(sessionRes.data.data?.sessions || []);
       setCouncils(councilRes.data.data?.councils || []);
-      setStudents(studentsRes.data.data?.students || []);
+      const nextStudents = studentsRes.data.data?.students || [];
+      setStudents(nextStudents);
       setTeachers(
         usersRes.data.data?.teachers || [],
       );
       setNgrokBaseUrl(ngrokRes.data.data?.publicUrl || "");
+
+      const projectIds = Array.from(
+        new Set(
+          nextStudents
+            .map((student) => student.project?._id)
+            .filter(Boolean),
+        ),
+      );
+
+      if (!selectedAssessmentProjectId && projectIds.length > 0) {
+        setSelectedAssessmentProjectId(projectIds[0]);
+      }
+
+      const assessmentEntries = await Promise.all(
+        projectIds.map(async (projectId) => {
+          try {
+            const res = await axiosInstance.get(`/teacher/projects/${projectId}/assessment-summary`);
+            return [projectId, res.data.data?.assessment || null];
+          } catch {
+            return [projectId, null];
+          }
+        }),
+      );
+      setAssessmentSummaries(Object.fromEntries(assessmentEntries));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load defense hub");
     } finally {
@@ -245,6 +286,32 @@ const DefenseHubPage = () => {
     });
     return Array.from(map.values());
   }, [students]);
+
+  const selectedAssessmentProject = useMemo(
+    () => projectOptions.find((project) => project._id === selectedAssessmentProjectId) || projectOptions[0] || null,
+    [projectOptions, selectedAssessmentProjectId],
+  );
+
+  const selectedAssessmentSummary = selectedAssessmentProject?._id
+    ? assessmentSummaries[selectedAssessmentProject._id] || null
+    : null;
+
+  useEffect(() => {
+    if (!selectedAssessmentProject?._id || !selectedAssessmentSummary) {
+      return;
+    }
+
+    ["M1", "M2", "M3", "M4", "M5"].forEach((milestoneCode) => {
+      const formKey = `${selectedAssessmentProject._id}:${milestoneCode}`;
+      if (!assessmentForms[formKey]) {
+        seedAssessmentFormFromSummary(
+          selectedAssessmentProject._id,
+          milestoneCode,
+          selectedAssessmentSummary,
+        );
+      }
+    });
+  }, [selectedAssessmentProject, selectedAssessmentSummary]);
 
   const updateScheduleField = (field, value) => {
     setScheduleForm((current) => ({ ...current, [field]: value }));
@@ -502,6 +569,193 @@ const DefenseHubPage = () => {
       await loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update session");
+    }
+  };
+
+  const deleteSession = async (sessionId, sessionTitle) => {
+    const confirmed = window.confirm(
+      `Delete attendance session "${sessionTitle}"? This action cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await axiosInstance.delete(`/teacher/attendance-sessions/${sessionId}`);
+      toast.success("Attendance session deleted");
+      setEditSessionForms((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setAttendanceFilters((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setSessionQrCodes((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      await loadData();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || error.message || "Failed to delete session",
+      );
+    }
+  };
+
+  const refreshAssessmentSummary = async (projectId) => {
+    if (!projectId) return;
+    try {
+      const res = await axiosInstance.get(`/teacher/projects/${projectId}/assessment-summary`);
+      setAssessmentSummaries((current) => ({
+        ...current,
+        [projectId]: res.data.data?.assessment || null,
+      }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to refresh assessment summary");
+    }
+  };
+
+  const updateAssessmentFormEntry = (projectId, milestoneCode, cloCode, field, value) => {
+    const formKey = `${projectId}:${milestoneCode}`;
+    setAssessmentForms((current) => {
+      const existing = current[formKey]?.entries || createRubricEntries();
+      return {
+        ...current,
+        [formKey]: {
+          ...(current[formKey] || {}),
+          entries: existing.map((entry) =>
+            entry.cloCode === cloCode ? { ...entry, [field]: value } : entry,
+          ),
+        },
+      };
+    });
+  };
+
+  const updateAssessmentOverallComment = (projectId, milestoneCode, value) => {
+    const formKey = `${projectId}:${milestoneCode}`;
+    setAssessmentForms((current) => ({
+      ...current,
+      [formKey]: {
+        ...(current[formKey] || { entries: createRubricEntries() }),
+        overallComment: value,
+      },
+    }));
+  };
+
+  const updateAssessmentFiles = (projectId, milestoneCode, files) => {
+    setAssessmentFileForms((current) => ({
+      ...current,
+      [`${projectId}:${milestoneCode}`]: Array.from(files || []),
+    }));
+  };
+
+  const seedAssessmentFormFromSummary = (projectId, milestoneCode, summary, assessorId = null) => {
+    const milestone = summary?.milestones?.find((item) => item.code === milestoneCode);
+    const existingSubmission =
+      milestone
+        ? assessorId
+          ? milestone.assessorSubmissions?.find((item) => item.assessor?._id === assessorId || item.assessor === assessorId)
+          : milestone.assessorSubmissions?.[0]
+        : null;
+
+    const entries = mergeRubricEntries(existingSubmission?.cloEntries || []);
+    const formKey = `${projectId}:${milestoneCode}`;
+    setAssessmentForms((current) => ({
+      ...current,
+      [formKey]: {
+        entries,
+        overallComment: existingSubmission?.overallComment || "",
+      },
+    }));
+  };
+
+  const submitTeacherAssessment = async (projectId, milestoneCode) => {
+    const formKey = `${projectId}:${milestoneCode}`;
+    const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+    const files = assessmentFileForms[formKey] || [];
+    const payload = new FormData();
+    payload.append("cloEntries", JSON.stringify(buildRubricPayload(form.entries)));
+    payload.append("overallComment", form.overallComment || "");
+    files.forEach((file) => payload.append("files", file));
+
+    try {
+      await axiosInstance.post(
+        `/teacher/projects/${projectId}/assessments/${milestoneCode}/submissions`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      toast.success(`${milestoneCode} rubric saved`);
+      await refreshAssessmentSummary(projectId);
+    } catch (error) {
+      toast.error(error.response?.data?.message || `Failed to save ${milestoneCode} rubric`);
+    }
+  };
+
+  const submitTeacherM5Assessment = async (councilId, projectId) => {
+    const formKey = `${projectId}:M5`;
+    const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+    const files = assessmentFileForms[formKey] || [];
+    const payload = new FormData();
+    payload.append("cloEntries", JSON.stringify(buildRubricPayload(form.entries)));
+    payload.append("overallComment", form.overallComment || "");
+    files.forEach((file) => payload.append("files", file));
+
+    try {
+      await axiosInstance.post(
+        `/teacher/councils/${councilId}/projects/${projectId}/m5-submissions`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      toast.success("M5 CLO rubric submitted");
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit M5 rubric");
+    }
+  };
+
+  const updateM6ReviewForm = (submissionId, field, value) => {
+    setM6ReviewForms((current) => ({
+      ...current,
+      [submissionId]: {
+        ...(current[submissionId] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const reviewM6Submission = async (projectId, submissionId, approvalStatus) => {
+    const payload = new FormData();
+    payload.append("approvalStatus", approvalStatus);
+    payload.append("overallComment", m6ReviewForms[submissionId]?.overallComment || "");
+
+    try {
+      await axiosInstance.put(
+        `/teacher/projects/${projectId}/assessments/M6/submissions/${submissionId}`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      toast.success(`M6 submission ${approvalStatus}`);
+      await refreshAssessmentSummary(projectId);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to review M6 submission");
+    }
+  };
+
+  const finalizeCloAssessmentAction = async (councilId, projectId) => {
+    const formKey = `${projectId}:M5`;
+    try {
+      await axiosInstance.post(
+        `/teacher/councils/${councilId}/projects/${projectId}/finalize-clo`,
+        { chairComment: assessmentForms[formKey]?.overallComment || "" },
+      );
+      toast.success("CLO assessment finalized");
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to finalize CLO assessment");
     }
   };
 
@@ -893,7 +1147,7 @@ const DefenseHubPage = () => {
                 <div className="mb-3">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <p className="font-semibold text-slate-800">{session.title}</p>
                         <button
                           onClick={() =>
@@ -907,6 +1161,15 @@ const DefenseHubPage = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                           {editSessionForms[session._id]?.open ? "Cancel" : "Edit"}
+                        </button>
+                        <button
+                          onClick={() => deleteSession(session._id, session.title)}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:border-red-400 hover:bg-red-50 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
+                          </svg>
+                          Delete
                         </button>
                       </div>
                       <p className="text-sm text-slate-500">
@@ -1303,6 +1566,483 @@ const DefenseHubPage = () => {
           ))}
           {councils.length === 0 && <p className="text-slate-500">You are not in any council yet.</p>}
         </div>
+      </div>
+
+      <div className="card space-y-4">
+        <div className="card-header">
+          <h2 className="card-title">Section F. CLO Assessment Workspace</h2>
+          <p className="card-subtitle">
+            Score milestones M1-M6 by CLO rubric, review peer/ICS, and watch QA readiness before finalizing.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {TEACHER_ASSESSMENT_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              className={
+                assessmentTab === tab.key
+                  ? "rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-white"
+                  : "rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+              }
+              onClick={() => setAssessmentTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="label">Assessment Project</label>
+            <select
+              className="input"
+              value={selectedAssessmentProject?._id || ""}
+              onChange={(event) => setSelectedAssessmentProjectId(event.target.value)}
+            >
+              <option value="">Select supervised project</option>
+              {projectOptions.map((project) => (
+                <option key={project._id} value={project._id}>
+                  {getProjectDisplayName(project)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Current track / result</p>
+            <p className="font-semibold text-slate-800">
+              {selectedAssessmentSummary?.projectTrack || selectedAssessmentProject?.projectTrack || "capstone"} |{" "}
+              {formatAssessmentScore(selectedAssessmentSummary?.teamFinalScore, "/10")} |{" "}
+              {selectedAssessmentSummary?.teamPassStatus || "pending"}
+            </p>
+            <p className="text-sm text-slate-500">
+              QA completeness: {selectedAssessmentSummary?.qaEvidenceSummary?.completenessPercent || 0}%
+            </p>
+          </div>
+        </div>
+
+        {!selectedAssessmentProject && (
+          <p className="text-slate-500">Choose a supervised project to work with milestone CLO scoring.</p>
+        )}
+
+        {selectedAssessmentProject && assessmentTab === "M1" && (
+          <div className="space-y-4">
+            {["M1", "M2", "M3"].map((milestoneCode) => {
+              const formKey = `${selectedAssessmentProject._id}:${milestoneCode}`;
+              const milestoneSummary = selectedAssessmentSummary?.milestones?.find(
+                (item) => item.code === milestoneCode,
+              );
+              const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+
+              return (
+                <div key={milestoneCode} className="rounded-lg border border-slate-200 p-4 space-y-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-800">
+                        {milestoneCode}. {MILESTONE_LABELS[milestoneCode]}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Score: {formatAssessmentScore(milestoneSummary?.componentScore5, "/5")} | Status:{" "}
+                        {milestoneSummary?.status || "pending"}
+                      </p>
+                    </div>
+                    <button
+                      className="btn-outline"
+                      onClick={() =>
+                        seedAssessmentFormFromSummary(
+                          selectedAssessmentProject._id,
+                          milestoneCode,
+                          selectedAssessmentSummary,
+                        )
+                      }
+                    >
+                      Load Existing Submission
+                    </button>
+                  </div>
+
+                  <RubricTable
+                    entries={form.entries}
+                    onChange={(cloCode, field, value) =>
+                      updateAssessmentFormEntry(
+                        selectedAssessmentProject._id,
+                        milestoneCode,
+                        cloCode,
+                        field,
+                        value,
+                      )
+                    }
+                    title={`${milestoneCode} CLO Rubric`}
+                  />
+
+                  <textarea
+                    className="input min-h-24"
+                    placeholder={`Overall comment for ${milestoneCode}`}
+                    value={form.overallComment || ""}
+                    onChange={(event) =>
+                      updateAssessmentOverallComment(
+                        selectedAssessmentProject._id,
+                        milestoneCode,
+                        event.target.value,
+                      )
+                    }
+                  />
+
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(event) =>
+                      updateAssessmentFiles(
+                        selectedAssessmentProject._id,
+                        milestoneCode,
+                        event.target.files,
+                      )
+                    }
+                  />
+
+                  <button
+                    className="btn-primary"
+                    onClick={() => submitTeacherAssessment(selectedAssessmentProject._id, milestoneCode)}
+                  >
+                    Save {milestoneCode} Rubric
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedAssessmentProject && assessmentTab === "M4" && (
+          <div className="rounded-lg border border-slate-200 p-4 space-y-4">
+            <div>
+              <p className="font-semibold text-slate-800">M4. {MILESTONE_LABELS.M4}</p>
+              <p className="text-sm text-slate-500">
+                Use this section for report / thesis rubric before the defense milestone opens.
+              </p>
+            </div>
+
+            <RubricTable
+              entries={(assessmentForms[`${selectedAssessmentProject._id}:M4`] || { entries: createRubricEntries() }).entries}
+              onChange={(cloCode, field, value) =>
+                updateAssessmentFormEntry(
+                  selectedAssessmentProject._id,
+                  "M4",
+                  cloCode,
+                  field,
+                  value,
+                )
+              }
+              title="M4 CLO Rubric"
+            />
+
+            <textarea
+              className="input min-h-24"
+              placeholder="Overall comment for M4"
+              value={assessmentForms[`${selectedAssessmentProject._id}:M4`]?.overallComment || ""}
+              onChange={(event) =>
+                updateAssessmentOverallComment(
+                  selectedAssessmentProject._id,
+                  "M4",
+                  event.target.value,
+                )
+              }
+            />
+            <input
+              type="file"
+              multiple
+              onChange={(event) =>
+                updateAssessmentFiles(selectedAssessmentProject._id, "M4", event.target.files)
+              }
+            />
+            <button
+              className="btn-primary"
+              onClick={() => submitTeacherAssessment(selectedAssessmentProject._id, "M4")}
+            >
+              Save M4 Rubric
+            </button>
+          </div>
+        )}
+
+        {assessmentTab === "M5" && (
+          <div className="space-y-4">
+            {councils.flatMap((council) =>
+              (council.projects || []).map((projectItem) => {
+                const assessmentSummary = projectItem.assessmentSummary;
+                const projectId = projectItem.project?._id;
+                const formKey = `${projectId}:M5`;
+                const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+
+                return (
+                  <div key={`${council._id}-${projectId}`} className="rounded-lg border border-slate-200 p-4 space-y-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-800">{getProjectDisplayName(projectItem.project)}</p>
+                        <p className="text-sm text-slate-500">
+                          {council.name} | Team result: {formatAssessmentScore(assessmentSummary?.teamFinalScore, "/10")}
+                        </p>
+                      </div>
+                      <button
+                        className="btn-outline"
+                        onClick={() => seedAssessmentFormFromSummary(projectId, "M5", assessmentSummary)}
+                      >
+                        Load Existing M5 Submission
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                      <div className="rounded-lg bg-slate-50 p-4">
+                        <p className="font-medium text-slate-700 mb-2">Required Assessors</p>
+                        <div className="space-y-2">
+                          {(assessmentSummary?.milestones?.find((item) => item.code === "M5")?.requiredAssessors || []).map((assessor, index) => (
+                            <div key={`${assessor.teacher?._id || assessor.teacher}-${index}`} className="rounded-lg bg-white p-3">
+                              <p className="font-medium text-slate-700">
+                                {assessor.teacher?.name || assessor.teacher || "Assessor"}
+                              </p>
+                              <p className="text-sm text-slate-500">
+                                {assessor.role} | Weight {assessor.weight}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="xl:col-span-2 space-y-4">
+                        <RubricTable
+                          entries={form.entries}
+                          onChange={(cloCode, field, value) =>
+                            updateAssessmentFormEntry(projectId, "M5", cloCode, field, value)
+                          }
+                          title="M5 Council CLO Rubric"
+                        />
+                        <textarea
+                          className="input min-h-24"
+                          placeholder="Overall council comment / chair note"
+                          value={form.overallComment || ""}
+                          onChange={(event) =>
+                            updateAssessmentOverallComment(projectId, "M5", event.target.value)
+                          }
+                        />
+                        <input
+                          type="file"
+                          multiple
+                          onChange={(event) => updateAssessmentFiles(projectId, "M5", event.target.files)}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg bg-slate-50 p-4">
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">Reviewer form</p>
+                            <p className="font-medium text-slate-700">
+                              {projectItem.reviewerForm?.pdfUrl ? "Ready" : "Missing"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">QA completeness</p>
+                            <p className="font-medium text-slate-700">
+                              {assessmentSummary?.qaEvidenceSummary?.completenessPercent || 0}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">Missing items</p>
+                            <p className="font-medium text-slate-700">
+                              {assessmentSummary?.qaEvidenceSummary?.missingItems?.join(", ") || "None"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="btn-primary"
+                            onClick={() => submitTeacherM5Assessment(council._id, projectId)}
+                          >
+                            Submit M5 CLO Rubric
+                          </button>
+                          <button
+                            className="btn-outline"
+                            onClick={() => finalizeCloAssessmentAction(council._id, projectId)}
+                          >
+                            Chairman Finalizes CLO Result
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }),
+            )}
+            {councils.length === 0 && <p className="text-slate-500">No councils available for M5 scoring.</p>}
+          </div>
+        )}
+
+        {selectedAssessmentProject && assessmentTab === "M6" && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-slate-50 p-4">
+              <p className="font-semibold text-slate-800">M6. {MILESTONE_LABELS.M6}</p>
+              <p className="text-sm text-slate-500">
+                Students submit peer / ICS evidence first. Supervisor approves or rejects each submission here.
+              </p>
+            </div>
+
+            {(selectedAssessmentSummary?.studentAssessments || []).map((studentAssessment) => (
+              <div
+                key={studentAssessment.student?._id}
+                className="rounded-lg border border-slate-200 p-4 space-y-3"
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800">{studentAssessment.student?.name}</p>
+                    <p className="text-sm text-slate-500">
+                      M6 score: {formatAssessmentScore(studentAssessment.individualM6Score5, "/5")} | Final:{" "}
+                      {formatAssessmentScore(studentAssessment.officialFinalScore, "/10")} |{" "}
+                      {studentAssessment.officialPassStatus}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    {studentAssessment.peerSubmission?.approvalStatus || "No submission"}
+                  </span>
+                </div>
+
+                {studentAssessment.peerSubmission?.cloEntries?.length > 0 && (
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left">CLO</th>
+                          <th className="px-3 py-2 text-left">Score</th>
+                          <th className="px-3 py-2 text-left">Comment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {studentAssessment.peerSubmission.cloEntries.map((entry) => (
+                          <tr key={`${studentAssessment.student?._id}-${entry.cloCode}`}>
+                            <td className="px-3 py-2 font-medium text-slate-700">{entry.cloCode}</td>
+                            <td className="px-3 py-2">{entry.score1to5}</td>
+                            <td className="px-3 py-2">{entry.comment || "No comment"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <textarea
+                  className="input min-h-20"
+                  placeholder="Supervisor note for this M6 submission"
+                  value={m6ReviewForms[studentAssessment.peerSubmission?._id]?.overallComment || ""}
+                  onChange={(event) =>
+                    updateM6ReviewForm(
+                      studentAssessment.peerSubmission?._id,
+                      "overallComment",
+                      event.target.value,
+                    )
+                  }
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="btn-primary"
+                    disabled={!studentAssessment.peerSubmission?._id}
+                    onClick={() =>
+                      reviewM6Submission(
+                        selectedAssessmentProject._id,
+                        studentAssessment.peerSubmission?._id,
+                        "approved",
+                      )
+                    }
+                  >
+                    Approve M6
+                  </button>
+                  <button
+                    className="btn-outline"
+                    disabled={!studentAssessment.peerSubmission?._id}
+                    onClick={() =>
+                      reviewM6Submission(
+                        selectedAssessmentProject._id,
+                        studentAssessment.peerSubmission?._id,
+                        "rejected",
+                      )
+                    }
+                  >
+                    Reject M6
+                  </button>
+                </div>
+              </div>
+            ))}
+            {(selectedAssessmentSummary?.studentAssessments || []).length === 0 && (
+              <p className="text-slate-500">No student peer / ICS submissions yet.</p>
+            )}
+          </div>
+        )}
+
+        {selectedAssessmentProject && assessmentTab === "SUMMARY" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Team score</p>
+                <p className="font-semibold text-slate-800">
+                  {formatAssessmentScore(selectedAssessmentSummary?.teamFinalScore, "/10")}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Pass status</p>
+                <p className="font-semibold text-slate-800">
+                  {selectedAssessmentSummary?.teamPassStatus || "pending"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">QA completeness</p>
+                <p className="font-semibold text-slate-800">
+                  {selectedAssessmentSummary?.qaEvidenceSummary?.completenessPercent || 0}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Template version</p>
+                <p className="font-semibold text-slate-800">
+                  {selectedAssessmentSummary?.templateVersion || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-3 font-medium text-slate-700">Final CLO Status</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {(selectedAssessmentSummary?.cloResults || []).map((item) => (
+                  <div key={item.cloCode} className="rounded-lg bg-slate-50 p-3">
+                    <p className="font-medium text-slate-800">{item.cloCode}</p>
+                    <p className="text-sm text-slate-500">
+                      {formatAssessmentScore(item.score5, "/5")} | {item.status}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-3 font-medium text-slate-700">Milestone Overview</p>
+              <div className="space-y-2">
+                {(selectedAssessmentSummary?.milestones || []).map((milestone) => (
+                  <div
+                    key={milestone.code}
+                    className="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        {milestone.code}. {milestone.label}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Component: {formatAssessmentScore(milestone.componentScore5, "/5")} /{" "}
+                        {formatAssessmentScore(milestone.componentScore10, "/10")}
+                      </p>
+                    </div>
+                    <span className="text-sm font-medium text-slate-600">{milestone.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="mb-2 font-medium text-slate-700">Missing QA Evidence</p>
+              <p className="text-sm text-slate-500">
+                {selectedAssessmentSummary?.qaEvidenceSummary?.missingItems?.join(", ") || "No missing items"}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

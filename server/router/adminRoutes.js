@@ -20,11 +20,16 @@ import {
   getAdminCouncils,
 } from "../controllers/councilController.js";
 import {
+  createAssessmentTemplate,
+  getAdminQaDashboard,
+  getAssessmentTemplate,
+  listAssessmentTemplates,
+} from "../controllers/assessmentController.js";
+import {
   getRegistrationSettings,
   updateRegistrationSettings,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
-import multer from "multer";
 
 const router = express.Router();
 
@@ -113,6 +118,30 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin"),
   assignProjectToCouncil,
+);
+router.get(
+  "/assessment-templates",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  listAssessmentTemplates,
+);
+router.post(
+  "/assessment-templates",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  createAssessmentTemplate,
+);
+router.get(
+  "/assessment-templates/:templateId",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAssessmentTemplate,
+);
+router.get(
+  "/qa/clo-dashboard",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAdminQaDashboard,
 );
 router.get(
   "/registration-settings",

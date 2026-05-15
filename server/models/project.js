@@ -114,6 +114,11 @@ const projectSchema = new mongoose.Schema(
       enum: ["individual", "group"],
       default: "individual",
     },
+    projectTrack: {
+      type: String,
+      enum: ["capstone", "research"],
+      default: "capstone",
+    },
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -167,6 +172,11 @@ const projectSchema = new mongoose.Schema(
     reviewerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null,
+    },
+    assessmentTemplateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AssessmentTemplate",
       default: null,
     },
     archiveLocked: {

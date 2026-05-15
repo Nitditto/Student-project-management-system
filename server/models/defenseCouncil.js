@@ -120,6 +120,16 @@ const councilProjectSchema = new mongoose.Schema(
       type: reviewerFormSchema,
       default: () => ({}),
     },
+    projectTrack: {
+      type: String,
+      enum: ["capstone", "research"],
+      default: "capstone",
+    },
+    templateVersion: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     scores: [scoreEntrySchema],
     weightedAverage: {
       type: Number,

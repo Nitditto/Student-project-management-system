@@ -32,6 +32,8 @@ export const assignProjectToCouncil = asyncHandler(async (req, res) => {
   const council = await councilServices.assignProjectToCouncil({
     councilId: req.params.councilId,
     projectId: req.body.projectId,
+    projectTrack: req.body.projectTrack,
+    templateId: req.body.templateId,
   });
   res.status(200).json({
     success: true,

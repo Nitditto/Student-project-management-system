@@ -16,6 +16,7 @@ import {
   toIdString,
 } from "../utils/workflowHelpers.js";
 import { createSimplePdf } from "../utils/simplePdf.js";
+import * as projectAssessmentService from "./projectAssessmentService.js";
 
 const DEFAULT_ROLE_WEIGHTS = {
   chairman: 1.5,
@@ -89,6 +90,39 @@ const computeWeightedAverage = (council, projectItem) => {
   return roundScore(weightedTotal / totalWeight, 2);
 };
 
+const attachAssessmentSummaries = async (councils = []) => {
+  return Promise.all(
+    (councils || []).map(async (council) => {
+      const councilObj =
+        typeof council.toObject === "function" ? council.toObject() : { ...council };
+
+      councilObj.projects = await Promise.all(
+        (councilObj.projects || []).map(async (projectItem) => {
+          const projectId = projectItem.project?._id || projectItem.project;
+          if (!projectId) {
+            return projectItem;
+          }
+
+          const assessmentSummary = await projectAssessmentService.getProjectAssessmentSummary({
+            projectId,
+          }).catch(() => null);
+
+          return {
+            ...projectItem,
+            assessmentSummary,
+            weightedAverage:
+              assessmentSummary?.teamFinalScore100 ??
+              projectItem.weightedAverage ??
+              null,
+          };
+        }),
+      );
+
+      return councilObj;
+    }),
+  );
+};
+
 const ensureCouncilMembersValid = async (members) => {
   if (!Array.isArray(members) || members.length === 0) {
     throw new ErrorHandler("Council members are required", 400);
@@ -138,11 +172,11 @@ export const createCouncil = async (payload) => {
 };
 
 export const getAdminCouncils = async () => {
-  return DefenseCouncil.find()
+  const councils = await DefenseCouncil.find()
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName supervisor defenseFinalScore",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -150,6 +184,8 @@ export const getAdminCouncils = async () => {
     })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
+
+  return attachAssessmentSummaries(councils);
 };
 
 export const deleteCouncil = async (councilId) => {
@@ -208,6 +244,8 @@ export const deleteCouncil = async (councilId) => {
 export const assignProjectToCouncil = async ({
   councilId,
   projectId,
+  projectTrack = "capstone",
+  templateId = null,
 }) => {
   const council = await DefenseCouncil.findById(councilId)
     .populate("members.teacher", "name email");
@@ -241,6 +279,8 @@ export const assignProjectToCouncil = async ({
     project: project._id,
     reviewer: null,
     reviewerWeight: 1.5,
+    projectTrack,
+    templateVersion: "",
     status: "assigned",
   });
   council.status = "active";
@@ -248,8 +288,25 @@ export const assignProjectToCouncil = async ({
 
   project.councilId = council._id;
   project.reviewerId = null;
+  project.projectTrack = projectTrack || project.projectTrack || "capstone";
+  if (templateId) {
+    project.assessmentTemplateId = templateId;
+  }
   project.defenseStatus = project.selectedSchedule?.slotId ? "scheduled" : "in_progress";
   await project.save();
+
+  const assessment = await projectAssessmentService.ensureProjectAssessment({
+    projectId: project._id,
+    councilId: council._id,
+    projectTrack: project.projectTrack,
+    templateId,
+  });
+
+  const councilProject = council.projects.find((item) => isSameId(item.project, project._id));
+  if (councilProject) {
+    councilProject.templateVersion = assessment.templateVersion;
+    await council.save();
+  }
 
   await Promise.all(
     getProjectMemberIds(project).map((memberId) =>
@@ -263,7 +320,19 @@ export const assignProjectToCouncil = async ({
     ),
   );
 
-  return council;
+  const refreshed = await DefenseCouncil.findById(councilId)
+    .populate("members.teacher", "name email department")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
+    .populate("projects.reviewer", "name email");
+
+  return (await attachAssessmentSummaries([refreshed]))[0];
 };
 
 export const assignReviewerByChairman = async ({
@@ -313,7 +382,7 @@ export const assignReviewerByChairman = async ({
 };
 
 export const getTeacherCouncils = async (teacherId) => {
-  return DefenseCouncil.find({
+  const councils = await DefenseCouncil.find({
     $or: [
       { "members.teacher": teacherId },
       { "projects.reviewer": teacherId },
@@ -322,7 +391,7 @@ export const getTeacherCouncils = async (teacherId) => {
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName supervisor defenseFinalScore",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -330,6 +399,8 @@ export const getTeacherCouncils = async (teacherId) => {
     })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
+
+  return attachAssessmentSummaries(councils);
 };
 
 export const getStudentCouncilBoard = async (studentId) => {
@@ -343,7 +414,7 @@ export const getStudentCouncilBoard = async (studentId) => {
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName defenseFinalScore supervisor",
+      select: "title status groupName defenseFinalScore supervisor projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -351,7 +422,9 @@ export const getStudentCouncilBoard = async (studentId) => {
     })
     .populate("projects.reviewer", "name email");
 
-  return { project, council };
+  const [withAssessment] = await attachAssessmentSummaries([council]);
+
+  return { project, council: withAssessment };
 };
 
 export const submitCouncilScore = async ({

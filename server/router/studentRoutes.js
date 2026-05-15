@@ -23,6 +23,10 @@ import {
   studentCodeCheckIn,
 } from "../controllers/attendanceController.js";
 import {
+  getStudentAssessmentBoard,
+  submitStudentPeerEvaluation,
+} from "../controllers/assessmentController.js";
+import {
   downloadReviewerForm,
   getStudentCouncilBoard,
 } from "../controllers/councilController.js";
@@ -190,6 +194,26 @@ router.get(
   isAuthenticated,
   isAuthorized("Student"),
   getStudentCouncilBoard,
+);
+router.get(
+  "/assessment-board",
+  isAuthenticated,
+  isAuthorized("Student"),
+  getStudentAssessmentBoard,
+);
+router.get(
+  "/projects/:projectId/assessment-board",
+  isAuthenticated,
+  isAuthorized("Student"),
+  getStudentAssessmentBoard,
+);
+router.post(
+  "/projects/:projectId/peer-evaluations",
+  isAuthenticated,
+  isAuthorized("Student"),
+  upload.array("files", 5),
+  handleUploadError,
+  submitStudentPeerEvaluation,
 );
 router.get(
   "/councils/:councilId/projects/:projectId/reviewer-form/download",

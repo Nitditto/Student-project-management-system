@@ -21,6 +21,20 @@ const storage = multer.diskStorage({
         "../uploads/projects",
         req.params.projectId,
       );
+    } else if (req.route.path.includes("/assessments/")) {
+      uploadPath = path.join(
+        __dirname,
+        "../uploads/assessments",
+        req.params.projectId || "general",
+        req.params.milestoneCode || "misc",
+      );
+    } else if (req.route.path.includes("/peer-evaluations")) {
+      uploadPath = path.join(
+        __dirname,
+        "../uploads/assessments",
+        req.params.projectId || "general",
+        "M6",
+      );
     } else if (req.route.path.includes("/upload/:userId")) {
       uploadPath = path.join(__dirname, "../uploads/users", req.params.userId);
     } else {

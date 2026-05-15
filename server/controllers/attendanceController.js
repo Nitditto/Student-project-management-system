@@ -77,6 +77,18 @@ export const updateAttendanceSession = asyncHandler(async (req, res) => {
   });
 });
 
+export const deleteAttendanceSession = asyncHandler(async (req, res) => {
+  const session = await attendanceServices.deleteAttendanceSession(
+    req.user._id,
+    req.params.sessionId,
+  );
+  res.status(200).json({
+    success: true,
+    message: "Attendance session deleted successfully",
+    data: { session },
+  });
+});
+
 export const getStudentAttendanceBoard = asyncHandler(async (req, res) => {
   const data = await attendanceServices.getStudentAttendanceBoard(req.user._id);
   res.status(200).json({
