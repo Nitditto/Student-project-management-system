@@ -9,11 +9,78 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString("vi-VN");
 };
 
-const createMember = (role = "member", weight = 1) => ({
+const formatDateTimeInput = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+};
+
+const DEFAULT_ROLE_WEIGHTS = {
+  chairman: 1.5,
+  secretary: 1,
+  member: 1,
+};
+
+const createMember = (role = "member", weight = DEFAULT_ROLE_WEIGHTS[role] || 1) => ({
   teacher: "",
   role,
   weight,
 });
+
+const createEmptyCouncilForm = () => ({
+  name: "",
+  description: "",
+  defenseDate: "",
+  room: "",
+  members: [createMember("chairman"), createMember("secretary")],
+});
+
+const mapCouncilToForm = (council) => ({
+  name: council.name || "",
+  description: council.description || "",
+  defenseDate: formatDateTimeInput(council.defenseDate),
+  room: council.room || "",
+  members:
+    council.members?.map((member) => ({
+      teacher: member.teacher?._id || "",
+      role: member.role || "member",
+      weight: member.weight ?? DEFAULT_ROLE_WEIGHTS[member.role] ?? 1,
+    })) || [createMember("chairman"), createMember("secretary")],
+});
+
+const getCouncilFormValidationMessage = (form) => {
+  if (!form.name.trim()) {
+    return "Council name is required";
+  }
+
+  if (!Array.isArray(form.members) || form.members.length === 0) {
+    return "Council members are required";
+  }
+
+  const chairmanCount = form.members.filter((member) => member.role === "chairman").length;
+  const secretaryCount = form.members.filter((member) => member.role === "secretary").length;
+
+  if (chairmanCount !== 1) {
+    return "Council must have exactly one chairman";
+  }
+
+  if (secretaryCount !== 1) {
+    return "Council must have exactly one secretary";
+  }
+
+  const teacherIds = form.members.map((member) => member.teacher).filter(Boolean);
+  if (teacherIds.length !== form.members.length) {
+    return "Please select a teacher for every council member";
+  }
+
+  if (new Set(teacherIds).size !== teacherIds.length) {
+    return "Council members must not contain duplicate teachers";
+  }
+
+  return null;
+};
 
 const FieldBlock = ({ label, hint, children }) => (
   <div className="space-y-2">
@@ -32,15 +99,10 @@ const CouncilsPage = () => {
   const [councils, setCouncils] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [qaDashboard, setQaDashboard] = useState(null);
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    defenseDate: "",
-    room: "",
-    members: [createMember("chairman", 1.5), createMember("secretary", 1)],
-  });
+  const [form, setForm] = useState(createEmptyCouncilForm);
   const [assignForms, setAssignForms] = useState({});
   const [councilToDelete, setCouncilToDelete] = useState(null);
+  const [editingCouncilId, setEditingCouncilId] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -86,20 +148,59 @@ const CouncilsPage = () => {
     }));
   };
 
-  const createCouncil = async () => {
+  const removeMember = (index) => {
+    setForm((current) => ({
+      ...current,
+      members: current.members.filter((_, memberIndex) => memberIndex !== index),
+    }));
+  };
+
+  const resetForm = () => {
+    setForm(createEmptyCouncilForm());
+    setEditingCouncilId(null);
+  };
+
+  const startEditingCouncil = (council) => {
+    setEditingCouncilId(council._id);
+    setForm(mapCouncilToForm(council));
+    globalThis.scrollTo?.({ top: 0, behavior: "smooth" });
+  };
+
+  const isTeacherSelectedInOtherMember = (memberIndex, teacherId) =>
+    form.members.some(
+      (member, currentIndex) =>
+        currentIndex !== memberIndex && member.teacher && member.teacher === teacherId,
+    );
+
+  const isRoleTakenInOtherMember = (memberIndex, role) =>
+    role !== "member" &&
+    form.members.some(
+      (member, currentIndex) => currentIndex !== memberIndex && member.role === role,
+    );
+
+  const saveCouncil = async () => {
+    const validationMessage = getCouncilFormValidationMessage(form);
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+
     try {
-      await axiosInstance.post("/admin/councils", form);
-      toast.success("Council created");
-      setForm({
-        name: "",
-        description: "",
-        defenseDate: "",
-        room: "",
-        members: [createMember("chairman", 1.5), createMember("secretary", 1)],
-      });
+      if (editingCouncilId) {
+        await axiosInstance.put(`/admin/councils/${editingCouncilId}`, form);
+        toast.success("Council updated");
+      } else {
+        await axiosInstance.post("/admin/councils", form);
+        toast.success("Council created");
+      }
+
+      resetForm();
       await loadData();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create council");
+      toast.error(
+        error.response?.data?.message ||
+          (editingCouncilId ? "Failed to update council" : "Failed to create council"),
+      );
     }
   };
 
@@ -225,9 +326,13 @@ const CouncilsPage = () => {
 
       <div className="card space-y-4">
         <div className="card-header">
-          <h2 className="card-title">Create New Defense Council</h2>
+          <h2 className="card-title">
+            {editingCouncilId ? "Edit Defense Council" : "Create New Defense Council"}
+          </h2>
           <p className="card-subtitle">
-            Chairman and secretary are mandatory. Chairman will assign reviewer later.
+            {editingCouncilId
+              ? "Update council information and members. Member changes are blocked after scoring starts."
+              : "Chairman and secretary are mandatory. Chairman will assign reviewer later."}
           </p>
         </div>
 
@@ -289,17 +394,27 @@ const CouncilsPage = () => {
             key={index}
             className="rounded-lg border border-slate-200 p-3 grid grid-cols-1 md:grid-cols-3 gap-3"
           >
-            <div className="md:col-span-3 border-b border-slate-200 pb-2">
-              <p className="font-medium text-slate-800">
-                C5.{index + 1}. Council Member {index + 1}
-              </p>
-              <p className="text-xs text-slate-500">
-                {member.role === "chairman"
-                  ? "Required: choose the chairman who will coordinate the council and assign reviewer later."
-                  : member.role === "secretary"
-                    ? "Required: choose the secretary who records the defense process."
-                    : "Optional: add another council member and set their score weight."}
-              </p>
+            <div className="md:col-span-3 border-b border-slate-200 pb-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-slate-800">
+                  C5.{index + 1}. Council Member {index + 1}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {member.role === "chairman"
+                    ? "Required: choose the chairman who will coordinate the council and assign reviewer later."
+                    : member.role === "secretary"
+                      ? "Required: choose the secretary who records the defense process."
+                      : "Optional: add another council member and set their score weight."}
+                </p>
+              </div>
+              {member.role === "member" && (
+                <button
+                  className="text-sm font-medium text-red-600 hover:text-red-700"
+                  onClick={() => removeMember(index)}
+                >
+                  Remove
+                </button>
+              )}
             </div>
             <FieldBlock label="Teacher" hint="Select the teacher for this council position.">
               <select
@@ -309,7 +424,11 @@ const CouncilsPage = () => {
               >
                 <option value="">Select teacher</option>
                 {teachers.map((teacher) => (
-                  <option key={teacher._id} value={teacher._id}>
+                  <option
+                    key={teacher._id}
+                    value={teacher._id}
+                    disabled={isTeacherSelectedInOtherMember(index, teacher._id)}
+                  >
                     {teacher.name}
                   </option>
                 ))}
@@ -321,8 +440,18 @@ const CouncilsPage = () => {
                 value={member.role}
                 onChange={(event) => handleMemberChange(index, "role", event.target.value)}
               >
-                <option value="chairman">Chairman</option>
-                <option value="secretary">Secretary</option>
+                <option
+                  value="chairman"
+                  disabled={isRoleTakenInOtherMember(index, "chairman")}
+                >
+                  Chairman
+                </option>
+                <option
+                  value="secretary"
+                  disabled={isRoleTakenInOtherMember(index, "secretary")}
+                >
+                  Secretary
+                </option>
                 <option value="member">Additional Member</option>
               </select>
             </FieldBlock>
@@ -352,15 +481,23 @@ const CouncilsPage = () => {
           >
             Add Additional Member
           </button>
-          <button className="btn-primary" onClick={createCouncil}>
-            Create Defense Council
+          {editingCouncilId && (
+            <button className="btn-outline" onClick={resetForm}>
+              Cancel Edit
+            </button>
+          )}
+          <button className="btn-primary" onClick={saveCouncil}>
+            {editingCouncilId ? "Update Defense Council" : "Create Defense Council"}
           </button>
         </div>
       </div>
 
       <div className="space-y-4">
         {councils.map((council) => (
-          <div key={council._id} className="card">
+          <div
+            key={council._id}
+            className={`card ${editingCouncilId === council._id ? "ring-2 ring-blue-200" : ""}`}
+          >
             <div className="card-header">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -369,12 +506,20 @@ const CouncilsPage = () => {
                     {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
                   </p>
                 </div>
-                <button
-                  className="btn-danger"
-                  onClick={() => setCouncilToDelete(council)}
-                >
-                  Delete Council
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className="btn-outline"
+                    onClick={() => startEditingCouncil(council)}
+                  >
+                    Edit Council
+                  </button>
+                  <button
+                    className="btn-danger"
+                    onClick={() => setCouncilToDelete(council)}
+                  >
+                    Delete Council
+                  </button>
+                </div>
               </div>
             </div>
 

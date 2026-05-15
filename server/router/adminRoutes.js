@@ -18,6 +18,7 @@ import {
   createCouncil,
   deleteCouncil,
   getAdminCouncils,
+  updateCouncil,
 } from "../controllers/councilController.js";
 import {
   createAssessmentTemplate,
@@ -106,6 +107,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin"),
   createCouncil,
+);
+router.put(
+  "/councils/:councilId",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  updateCouncil,
 );
 router.delete(
   "/councils/:councilId",

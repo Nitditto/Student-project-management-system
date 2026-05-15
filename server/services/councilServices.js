@@ -17,12 +17,59 @@ import {
 } from "../utils/workflowHelpers.js";
 import { createSimplePdf } from "../utils/simplePdf.js";
 import * as projectAssessmentService from "./projectAssessmentService.js";
+import { getCouncilMembersValidationMessage } from "../utils/councilValidation.js";
 
 const DEFAULT_ROLE_WEIGHTS = {
   chairman: 1.5,
   secretary: 1,
   member: 1,
 };
+
+const buildCouncilMembers = (members = []) =>
+  members.map((member) => {
+    const defaultWeight = DEFAULT_ROLE_WEIGHTS[member.role] ?? 1;
+    const weight =
+      member.weight === "" || member.weight === null || typeof member.weight === "undefined"
+        ? defaultWeight
+        : Number(member.weight);
+
+    return {
+      teacher: member.teacher?._id || member.teacher,
+      role: member.role,
+      weight,
+    };
+  });
+
+const serializeCouncilMembers = (members = []) =>
+  members
+    .map((member) => ({
+      teacher: toIdString(member.teacher),
+      role: member.role,
+      weight: Number(member.weight),
+    }))
+    .sort((left, right) => {
+      if (left.teacher !== right.teacher) {
+        return left.teacher.localeCompare(right.teacher);
+      }
+      if (left.role !== right.role) {
+        return left.role.localeCompare(right.role);
+      }
+
+      return left.weight - right.weight;
+    });
+
+const areCouncilMembersEqual = (currentMembers = [], nextMembers = []) =>
+  JSON.stringify(serializeCouncilMembers(currentMembers)) ===
+  JSON.stringify(serializeCouncilMembers(nextMembers));
+
+const hasCouncilScoringStarted = (council) =>
+  (council.projects || []).some(
+    (projectItem) =>
+      projectItem.status !== "assigned" ||
+      (projectItem.scores || []).length > 0 ||
+      projectItem.finalizedAt ||
+      projectItem.reviewerForm?.pdfUrl,
+  );
 
 const getCouncilProjectItem = (council, projectId) => {
   const projectItem = council.projects.find((item) =>
@@ -124,17 +171,9 @@ const attachAssessmentSummaries = async (councils = []) => {
 };
 
 const ensureCouncilMembersValid = async (members) => {
-  if (!Array.isArray(members) || members.length === 0) {
-    throw new ErrorHandler("Council members are required", 400);
-  }
-
-  const chairmanCount = members.filter((member) => member.role === "chairman").length;
-  const secretaryCount = members.filter((member) => member.role === "secretary").length;
-  if (chairmanCount !== 1) {
-    throw new ErrorHandler("Council must have exactly one chairman", 400);
-  }
-  if (secretaryCount !== 1) {
-    throw new ErrorHandler("Council must have exactly one secretary", 400);
+  const validationMessage = getCouncilMembersValidationMessage(members);
+  if (validationMessage) {
+    throw new ErrorHandler(validationMessage, 400);
   }
 
   const uniqueTeacherIds = new Set(members.map((member) => toIdString(member.teacher)));
@@ -153,11 +192,7 @@ const ensureCouncilMembersValid = async (members) => {
 };
 
 export const createCouncil = async (payload) => {
-  const members = (payload.members || []).map((member) => ({
-    teacher: member.teacher,
-    role: member.role,
-    weight: Number(member.weight || DEFAULT_ROLE_WEIGHTS[member.role] || 1),
-  }));
+  const members = buildCouncilMembers(payload.members);
 
   await ensureCouncilMembersValid(members);
 
@@ -169,6 +204,51 @@ export const createCouncil = async (payload) => {
     members,
     status: "draft",
   });
+};
+
+export const updateCouncil = async (councilId, payload) => {
+  const council = await DefenseCouncil.findById(councilId).populate({
+    path: "projects.project",
+    select: "title groupName supervisor",
+  });
+
+  if (!council) {
+    throw new ErrorHandler("Council not found", 404);
+  }
+
+  const members = buildCouncilMembers(payload.members);
+  await ensureCouncilMembersValid(members);
+
+  const membersChanged = !areCouncilMembersEqual(council.members, members);
+  if (membersChanged && hasCouncilScoringStarted(council)) {
+    throw new ErrorHandler(
+      "Cannot change council members after scoring has started or results were finalized",
+      400,
+    );
+  }
+
+  if (membersChanged && (council.projects || []).length > 0) {
+    const memberTeacherIds = new Set(members.map((member) => toIdString(member.teacher)));
+    const supervisorConflict = council.projects.find((projectItem) =>
+      memberTeacherIds.has(toIdString(projectItem.project?.supervisor)),
+    );
+
+    if (supervisorConflict?.project) {
+      throw new ErrorHandler(
+        `Supervisor of project "${supervisorConflict.project.groupName || supervisorConflict.project.title}" cannot be a council member`,
+        400,
+      );
+    }
+  }
+
+  council.name = payload.name;
+  council.description = payload.description || "";
+  council.defenseDate = payload.defenseDate || null;
+  council.room = payload.room || "";
+  council.members = members;
+  await council.save();
+
+  return council;
 };
 
 export const getAdminCouncils = async () => {
