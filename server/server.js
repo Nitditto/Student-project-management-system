@@ -1,10 +1,12 @@
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
+import { startEvaluatorCron } from "./cron/evaluatorCron.js";
 
 
 // DATABASE CONNECTION
 
 connectDB()
+startEvaluatorCron()
 
 // START SERVER
 const PORT = process.env.PORT || 4000

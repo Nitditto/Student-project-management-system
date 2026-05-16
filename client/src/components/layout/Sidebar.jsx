@@ -24,11 +24,8 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             icon: "user",
           },
           { name: "Feedback", path: "/student/feedback", icon: "chat" },
-          {
-            name: "Defense & Attendance",
-            path: "/student/defense",
-            icon: "calendar",
-          },
+          { name: "Defense & Attendance", path: "/student/defense", icon: "calendar" },
+          { name: "My Deadlines", path: "/student/deadlines", icon: "clock" },
         ];
       case "Teacher":
         return [

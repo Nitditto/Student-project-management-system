@@ -1,31 +1,22 @@
 import express from "express";
 import {
   createDeadline,
-  updateDeadline,
-  deleteDeadline,
-  getAllDeadlines,
+  getTeacherDeadlines,
+  getStudentDeadlines,
+  submitDeadline,
+  unsubmitDeadline,
+  getTeacherMatrix,
 } from "../controllers/deadlineController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
+import { upload, handleUploadError } from "../middleware/upload.js";
 
 const router = express.Router();
 
-router.post(
-  "/create-deadline/:id",
-  isAuthenticated,
-  isAuthorized("Admin", "Teacher"),
-  createDeadline,
-);
-router.put(
-  "/:id/update",
-  isAuthenticated,
-  isAuthorized("Admin"),
-  updateDeadline,
-);
-router.delete(
-  "/:id/delete",
-  isAuthenticated,
-  isAuthorized("Admin"),
-  deleteDeadline,
-);
+router.post("/", isAuthenticated, isAuthorized("Teacher", "Admin"), createDeadline);
+router.get("/teacher", isAuthenticated, isAuthorized("Teacher", "Admin"), getTeacherDeadlines);
+router.get("/student", isAuthenticated, isAuthorized("Student"), getStudentDeadlines);
+router.post("/:deadlineId/submit", isAuthenticated, isAuthorized("Student"), upload.single("file"), handleUploadError, submitDeadline);
+router.post("/:deadlineId/unsubmit", isAuthenticated, isAuthorized("Student"), unsubmitDeadline);
+router.get("/teacher/matrix", isAuthenticated, isAuthorized("Teacher", "Admin"), getTeacherMatrix);
 
 export default router;
