@@ -19,6 +19,11 @@ export default defineConfig({
       '/api': {
         target: apiProxyTarget,
         changeOrigin: true,
+      },
+      '/socket.io': {
+        target: apiProxyTarget,
+        ws: true,
+        changeOrigin: true,
       }
     }
   },

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import ChatWidget from "../chat/ChatWidget";
 
 const DashboardLayout = ({ userRole }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,6 +43,8 @@ const DashboardLayout = ({ userRole }) => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+      {/* Chat Widget */}
+      <ChatWidget />
     </div>
   );
 };

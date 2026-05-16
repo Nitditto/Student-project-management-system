@@ -13,6 +13,8 @@ services:
       - "5173:5173"
     environment:
       VITE_API_PROXY_TARGET: http://server:4000
+    depends_on:
+      - server
     volumes:
       - ./client:/client
       - /client/node_modules
@@ -24,6 +26,10 @@ services:
     container_name: server
     ports:
       - "4000:4000"
+    env_file:
+      - ./server/.env
+    depends_on:
+      - mongo
     volumes:
       - ./server:/server
       - /server/node_modules

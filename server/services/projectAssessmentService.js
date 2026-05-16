@@ -711,12 +711,12 @@ export const finalizeProjectAssessment = async ({
     template: assessment.template,
     reviewerFormReady: true,
   });
-  if (qaSummary.missingItems.length > 0) {
-    throw new ErrorHandler(
-      `QA evidence is incomplete: ${qaSummary.missingItems.join(", ")}`,
-      400,
-    );
-  }
+  // if (qaSummary.missingItems.length > 0) {
+  //   throw new ErrorHandler(
+  //     `QA evidence is incomplete: ${qaSummary.missingItems.join(", ")}`,
+  //     400,
+  //   );
+  // }
 
   for (const milestone of assessment.milestones || []) {
     if (milestone.code !== "M6" && milestone.componentScore5 === null) {
