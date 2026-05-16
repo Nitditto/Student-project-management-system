@@ -26,6 +26,9 @@ import TeacherFiles from "./pages/teacher/TeacherFiles";
 import DefenseHubPage from "./pages/teacher/DefenseHubPage";
 import TeacherPreselectionPage from "./pages/teacher/TeacherPreselectionPage";
 import TeacherNotificationsPage from "./pages/teacher/NotificationsPage";
+import DeadlineManagement from "./pages/teacher/DeadlineManagement";
+import SubmissionTracking from "./pages/teacher/SubmissionTracking";
+import DeadlinesPageStudent from "./pages/student/DeadlinesPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -158,6 +161,8 @@ const App = () => {
           <Route path="preselect" element={<TeacherPreselectionPage />} />
           <Route path="defense" element={<DefenseHubPage />} />
           <Route path="notifications" element={<TeacherNotificationsPage />} />
+          <Route path="deadlines" element={<DeadlineManagement />} />
+          <Route path="submission-tracking" element={<SubmissionTracking />} />
         </Route>
 
         {/* Student Routes */}
@@ -176,6 +181,7 @@ const App = () => {
           <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="defense" element={<MyDefensePage />} />
+          <Route path="deadlines" element={<DeadlinesPageStudent />} />
         </Route>
 
         {/* Default Redirect */}
