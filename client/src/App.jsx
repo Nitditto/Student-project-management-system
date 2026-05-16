@@ -44,6 +44,8 @@ import { getAllProjects, getAllUsers } from "./store/slices/adminSlice";
 import { fetchDashboardStats } from "./store/slices/studentSlice";
 
 import NotFound from "./pages/NotFound";
+import UserSettings from "./pages/UserSettings";
+
 const App = () => {
   const { authUser, isCheckingAuth } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -139,6 +141,7 @@ const App = () => {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="councils" element={<CouncilsPage />} />
           <Route path="registration-settings" element={<RegistrationSettingsPage />} />
+          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Teacher Routes */}
@@ -156,6 +159,7 @@ const App = () => {
           <Route path="files" element={<TeacherFiles />} />
           <Route path="preselect" element={<TeacherPreselectionPage />} />
           <Route path="defense" element={<DefenseHubPage />} />
+          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Student Routes */}
@@ -174,6 +178,7 @@ const App = () => {
           <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="defense" element={<MyDefensePage />} />
+          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Default Redirect */}

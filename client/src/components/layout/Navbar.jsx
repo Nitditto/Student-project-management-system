@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
+import { Link } from "react-router-dom";
+import { User, Settings, LogOut } from "lucide-react";
 import QrScannerModal from "../modal/QrScannerModal";
 
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -154,12 +156,25 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                         {authUser?.role}
                       </p>
                     </div>
-                    <button
-                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md mt-2"
-                      onClick={handleLogout}
-                    >
-                      Sign out
-                    </button>
+                    <div className="py-1">
+                      <Link
+                        to={`/${authUser?.role?.toLowerCase() || 'student'}/settings`}
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 mr-3 text-slate-400" />
+                        Settings
+                      </Link>
+                    </div>
+                    <div className="border-t border-slate-100 py-1">
+                      <button
+                        className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="w-4 h-4 mr-3 text-red-400" />
+                        Sign out
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

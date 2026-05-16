@@ -121,3 +121,63 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
 
   generateToken(user, 200, "Password reset successful", res);
 });
+
+// UPDATE PROFILE (for logged-in user)
+export const updateProfile = asyncHandler(async (req, res, next) => {
+  const { name, department, experties } = req.body;
+
+  const updateFields = {};
+  if (name) updateFields.name = name;
+  if (department) updateFields.department = department;
+  if (experties !== undefined) updateFields.experties = experties;
+
+  const user = await User.findByIdAndUpdate(req.user._id, updateFields, {
+    new: true,
+    runValidators: true,
+  }).select("-password -resetPasswordToken -resetPasswordExpire");
+
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    user,
+  });
+});
+
+// CHANGE PASSWORD (for logged-in user)
+export const changePassword = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return next(new ErrorHandler("Please provide all password fields", 400));
+  }
+
+  if (newPassword !== confirmPassword) {
+    return next(new ErrorHandler("New password and confirm password do not match", 400));
+  }
+
+  if (newPassword.length < 8) {
+    return next(new ErrorHandler("Password must be at least 8 characters", 400));
+  }
+
+  const user = await User.findById(req.user._id).select("+password");
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  const isMatched = await user.comparePassword(currentPassword);
+  if (!isMatched) {
+    return next(new ErrorHandler("Current password is incorrect", 400));
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Password changed successfully",
+  });
+});
