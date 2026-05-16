@@ -19,6 +19,11 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             icon: "upload",
           },
           {
+            name: "My Deadlines",
+            path: "/student/deadlines",
+            icon: "calendar",
+          },
+          {
             name: "Supervisor Flow",
             path: "/student/supervisor",
             icon: "user",
@@ -47,6 +52,16 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             name: "Supervised Students",
             path: "/teacher/assigned-students",
             icon: "users",
+          },
+          {
+            name: "Deadline Management",
+            path: "/teacher/deadlines",
+            icon: "calendar",
+          },
+          {
+            name: "Submissions Matrix",
+            path: "/teacher/submissions",
+            icon: "document",
           },
           {
             name: "Defense Hub",
