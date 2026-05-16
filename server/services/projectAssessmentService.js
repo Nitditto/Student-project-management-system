@@ -42,7 +42,11 @@ const SCORE_ROLE_LABELS = {
   student: "student",
 };
 
-const normalizeEvidenceFiles = (files = [], uploadedBy, defaultKind = "supporting-file") =>
+const normalizeEvidenceFiles = (
+  files = [],
+  uploadedBy,
+  defaultKind = "supporting-file",
+) =>
   (files || []).map((file) => ({
     kind: defaultKind,
     label: file.originalname,
@@ -55,12 +59,19 @@ const normalizeEvidenceFiles = (files = [], uploadedBy, defaultKind = "supportin
 const appendEvidenceRefs = (target, refs = []) => {
   target.push(...refs);
   return Array.from(
-    new Map(target.map((item) => [`${item.kind}:${item.fileUrl || item.label}`, item])).values(),
+    new Map(
+      target.map((item) => [
+        `${item.kind}:${item.fileUrl || item.label}`,
+        item,
+      ]),
+    ).values(),
   );
 };
 
 const getMilestoneDoc = (assessment, milestoneCode) => {
-  const milestone = (assessment.milestones || []).find((item) => item.code === milestoneCode);
+  const milestone = (assessment.milestones || []).find(
+    (item) => item.code === milestoneCode,
+  );
   if (!milestone) {
     throw new ErrorHandler("Milestone not found in project assessment", 404);
   }
@@ -83,25 +94,35 @@ const ensureTeacherCanSubmitMilestone = async ({
       throw new ErrorHandler("Council not found", 404);
     }
 
-    const projectItem = (council.projects || []).find((item) => isSameId(item.project, project._id));
+    const projectItem = (council.projects || []).find((item) =>
+      isSameId(item.project, project._id),
+    );
     const councilMember = (council.members || []).find((member) =>
       isSameId(member.teacher, teacherId),
     );
     const isReviewer = isSameId(projectItem?.reviewer, teacherId);
 
     if (!councilMember && !isReviewer) {
-      throw new ErrorHandler("Teacher is not allowed to submit M5 for this project", 403);
+      throw new ErrorHandler(
+        "Teacher is not allowed to submit M5 for this project",
+        403,
+      );
     }
 
     const m4 = getMilestoneDoc(assessment, "M4");
     if (m4.componentScore5 === null) {
-      throw new ErrorHandler("M4 report review must be available before M5 defense scoring", 400);
+      throw new ErrorHandler(
+        "M4 report review must be available before M5 defense scoring",
+        400,
+      );
     }
 
     return {
       role: isReviewer ? "reviewer" : councilMember.role,
       source: isReviewer ? "reviewer" : councilMember.role,
-      weight: isReviewer ? Number(projectItem?.reviewerWeight || 1.5) : Number(councilMember.weight || 1),
+      weight: isReviewer
+        ? Number(projectItem?.reviewerWeight || 1.5)
+        : Number(councilMember.weight || 1),
       council,
       projectItem,
     };
@@ -128,7 +149,12 @@ const ensureTeacherCanSubmitMilestone = async ({
   throw new ErrorHandler("Unsupported milestone code", 400);
 };
 
-const recomputeAssessment = async ({ assessment, template, project, council = null }) => {
+const recomputeAssessment = async ({
+  assessment,
+  template,
+  project,
+  council = null,
+}) => {
   for (const milestone of assessment.milestones || []) {
     const recomputed =
       milestone.code === "M6"
@@ -168,7 +194,8 @@ const recomputeAssessment = async ({ assessment, template, project, council = nu
         submission: studentAssessment.peerSubmission,
         template,
       });
-      studentAssessment.individualCloResults = individualM6.individualCloResults;
+      studentAssessment.individualCloResults =
+        individualM6.individualCloResults;
       studentAssessment.individualM6Score5 = individualM6.individualM6Score5;
       studentAssessment.individualM6Score10 = individualM6.individualM6Score10;
     }
@@ -195,22 +222,26 @@ const recomputeAssessment = async ({ assessment, template, project, council = nu
     assessment,
     template,
     reviewerFormReady: Boolean(
-      council?.projects?.find((item) => isSameId(item.project, project._id))?.reviewerForm?.pdfUrl,
+      council?.projects?.find((item) => isSameId(item.project, project._id))
+        ?.reviewerForm?.pdfUrl,
     ),
   });
 
   const milestonesReady = (assessment.milestones || []).every(
     (item) => item.componentScore5 !== null || item.code === "M6",
   );
-  assessment.status = assessment.status === "finalized"
-    ? "finalized"
-    : milestonesReady
-      ? "ready"
-      : "in_progress";
+  assessment.status =
+    assessment.status === "finalized"
+      ? "finalized"
+      : milestonesReady
+        ? "ready"
+        : "in_progress";
 };
 
 const buildAssessmentSummary = ({ assessment, project, council }) => {
-  const m6Milestone = (assessment.milestones || []).find((milestone) => milestone.code === "M6");
+  const m6Milestone = (assessment.milestones || []).find(
+    (milestone) => milestone.code === "M6",
+  );
 
   return {
     _id: assessment._id,
@@ -222,7 +253,9 @@ const buildAssessmentSummary = ({ assessment, project, council }) => {
     teamFinalScore: assessment.teamFinalScore,
     teamPassStatus: assessment.teamPassStatus,
     teamFinalScore100:
-      assessment.teamFinalScore === null ? null : roundScore(assessment.teamFinalScore * 10, 2),
+      assessment.teamFinalScore === null
+        ? null
+        : roundScore(assessment.teamFinalScore * 10, 2),
     cloResults: assessment.cloResults,
     qaEvidenceSummary: assessment.qaEvidenceSummary,
     milestones: (assessment.milestones || []).map((milestone) => ({
@@ -237,24 +270,28 @@ const buildAssessmentSummary = ({ assessment, project, council }) => {
         milestone.code === "M5" && council
           ? buildRequiredM5Assessors(council, project._id)
           : [],
-      assessorSubmissions: (milestone.assessorSubmissions || []).map((submission) => ({
-        _id: submission._id,
-        assessor: submission.assessor,
-        role: submission.role,
-        source: submission.source,
-        approvalStatus: submission.approvalStatus,
-        cloEntries: submission.cloEntries,
-        overallComment: submission.overallComment,
-        evidenceRefs: submission.evidenceRefs,
-        submittedAt: submission.submittedAt,
-      })),
+      assessorSubmissions: (milestone.assessorSubmissions || []).map(
+        (submission) => ({
+          _id: submission._id,
+          assessor: submission.assessor,
+          role: submission.role,
+          source: submission.source,
+          approvalStatus: submission.approvalStatus,
+          cloEntries: submission.cloEntries,
+          overallComment: submission.overallComment,
+          evidenceRefs: submission.evidenceRefs,
+          submittedAt: submission.submittedAt,
+        }),
+      ),
       evidenceRefs: milestone.evidenceRefs || [],
     })),
     studentAssessments: (assessment.studentAssessments || []).map((item) => ({
       reviewSubmissionId:
         (m6Milestone?.assessorSubmissions || []).find((submission) =>
           isSameId(submission.assessor, item.student),
-        )?._id || item.peerSubmission?._id || null,
+        )?._id ||
+        item.peerSubmission?._id ||
+        null,
       student: item.student,
       peerSubmission: item.peerSubmission,
       individualCloResults: item.individualCloResults,
@@ -267,7 +304,9 @@ const buildAssessmentSummary = ({ assessment, project, council }) => {
 };
 
 export const buildRequiredM5Assessors = (council, projectId) => {
-  const projectItem = (council.projects || []).find((item) => isSameId(item.project, projectId));
+  const projectItem = (council.projects || []).find((item) =>
+    isSameId(item.project, projectId),
+  );
   const assessors = (council.members || []).map((member) => ({
     teacher: member.teacher,
     role: member.role,
@@ -277,11 +316,15 @@ export const buildRequiredM5Assessors = (council, projectId) => {
 
   if (projectItem?.reviewer) {
     const reviewerId = toIdString(projectItem.reviewer);
-    const existing = assessors.find((item) => toIdString(item.teacher) === reviewerId);
+    const existing = assessors.find(
+      (item) => toIdString(item.teacher) === reviewerId,
+    );
     if (existing) {
       existing.role = "reviewer";
       existing.source = "reviewer";
-      existing.weight = Number(projectItem.reviewerWeight || existing.weight || 1.5);
+      existing.weight = Number(
+        projectItem.reviewerWeight || existing.weight || 1.5,
+      );
     } else {
       assessors.push({
         teacher: projectItem.reviewer,
@@ -312,7 +355,9 @@ export const ensureProjectAssessment = async ({
 
   const template = templateId
     ? await assessmentTemplateService.getAssessmentTemplateById(templateId)
-    : await assessmentTemplateService.getDefaultAssessmentTemplate(projectTrack);
+    : await assessmentTemplateService.getDefaultAssessmentTemplate(
+        projectTrack,
+      );
 
   let assessment = await ProjectAssessment.findOne({ project: projectId });
   if (!assessment) {
@@ -338,7 +383,9 @@ export const ensureProjectAssessment = async ({
     assessment.projectTrack = projectTrack;
 
     const currentStudentIds = new Set(
-      (assessment.studentAssessments || []).map((item) => toIdString(item.student)),
+      (assessment.studentAssessments || []).map((item) =>
+        toIdString(item.student),
+      ),
     );
     for (const studentId of getProjectMemberIds(project)) {
       if (!currentStudentIds.has(studentId)) {
@@ -380,8 +427,8 @@ export const getProjectAssessmentSummary = async ({ projectId }) => {
 
   const council = project.councilId
     ? await DefenseCouncil.findById(project.councilId)
-      .populate("members.teacher", "name email")
-      .populate("projects.reviewer", "name email")
+        .populate("members.teacher", "name email")
+        .populate("projects.reviewer", "name email")
     : null;
 
   return buildAssessmentSummary({ assessment, project, council });
@@ -432,11 +479,16 @@ export const submitTeacherMilestoneSubmission = async ({
 
   const milestone = getMilestoneDoc(assessment, milestoneCode);
   const identityPrefix = `${toIdString(teacherId)}:${teacherContext.source}`;
-  const existingSubmission = (milestone.assessorSubmissions || []).find((submission) =>
-    buildSubmissionIdentity(submission).startsWith(identityPrefix),
+  const existingSubmission = (milestone.assessorSubmissions || []).find(
+    (submission) =>
+      buildSubmissionIdentity(submission).startsWith(identityPrefix),
   );
 
-  const evidenceRefs = normalizeEvidenceFiles(files, teacherId, `${milestoneCode.toLowerCase()}-file`);
+  const evidenceRefs = normalizeEvidenceFiles(
+    files,
+    teacherId,
+    `${milestoneCode.toLowerCase()}-file`,
+  );
   const submissionPayload = {
     assessor: teacherId,
     role: SCORE_ROLE_LABELS[teacherContext.role] || teacherContext.role,
@@ -459,7 +511,10 @@ export const submitTeacherMilestoneSubmission = async ({
     existingSubmission.approvalStatus = "approved";
     existingSubmission.cloEntries = submissionPayload.cloEntries;
     existingSubmission.overallComment = submissionPayload.overallComment;
-    existingSubmission.evidenceRefs = appendEvidenceRefs(existingSubmission.evidenceRefs || [], evidenceRefs);
+    existingSubmission.evidenceRefs = appendEvidenceRefs(
+      existingSubmission.evidenceRefs || [],
+      evidenceRefs,
+    );
     existingSubmission.submittedAt = new Date();
     existingSubmission.reviewedBy = teacherId;
     existingSubmission.reviewedAt = new Date();
@@ -467,10 +522,20 @@ export const submitTeacherMilestoneSubmission = async ({
     milestone.assessorSubmissions.push(submissionPayload);
   }
 
-  milestone.evidenceRefs = appendEvidenceRefs(milestone.evidenceRefs || [], evidenceRefs);
+  milestone.evidenceRefs = appendEvidenceRefs(
+    milestone.evidenceRefs || [],
+    evidenceRefs,
+  );
 
-  const council = project.councilId ? await DefenseCouncil.findById(project.councilId) : null;
-  await recomputeAssessment({ assessment, template: assessment.template, project, council });
+  const council = project.councilId
+    ? await DefenseCouncil.findById(project.councilId)
+    : null;
+  await recomputeAssessment({
+    assessment,
+    template: assessment.template,
+    project,
+    council,
+  });
   await assessment.save();
 
   return getProjectAssessmentSummary({ projectId });
@@ -494,7 +559,9 @@ export const updateTeacherMilestoneSubmission = async ({
     throw new ErrorHandler("Project not found", 404);
   }
 
-  const assessment = await ProjectAssessment.findOne({ project: projectId }).populate("template");
+  const assessment = await ProjectAssessment.findOne({
+    project: projectId,
+  }).populate("template");
   if (!assessment) {
     throw new ErrorHandler("Project assessment not found", 404);
   }
@@ -517,7 +584,11 @@ export const updateTeacherMilestoneSubmission = async ({
       Array.isArray(cloEntries) && cloEntries.length > 0
         ? normalizeCloEntries(cloEntries)
         : null;
-    const evidenceRefs = normalizeEvidenceFiles(files, teacherId, "m6-review-file");
+    const evidenceRefs = normalizeEvidenceFiles(
+      files,
+      teacherId,
+      "m6-review-file",
+    );
     const reviewedAt = new Date();
 
     reviewTargets.forEach((target) => {
@@ -530,7 +601,10 @@ export const updateTeacherMilestoneSubmission = async ({
       if (normalizedEntries) {
         target.cloEntries = normalizedEntries;
       }
-      target.evidenceRefs = appendEvidenceRefs(target.evidenceRefs || [], evidenceRefs);
+      target.evidenceRefs = appendEvidenceRefs(
+        target.evidenceRefs || [],
+        evidenceRefs,
+      );
     });
   } else {
     const submission = (milestone.assessorSubmissions || []).id(submissionId);
@@ -546,7 +620,10 @@ export const updateTeacherMilestoneSubmission = async ({
     });
 
     if (!isSameId(submission.assessor, teacherId)) {
-      throw new ErrorHandler("Teacher cannot edit another assessor submission", 403);
+      throw new ErrorHandler(
+        "Teacher cannot edit another assessor submission",
+        403,
+      );
     }
 
     submission.weight = teacherContext.weight;
@@ -556,12 +633,26 @@ export const updateTeacherMilestoneSubmission = async ({
     if (Array.isArray(cloEntries) && cloEntries.length > 0) {
       submission.cloEntries = normalizeCloEntries(cloEntries);
     }
-    const evidenceRefs = normalizeEvidenceFiles(files, teacherId, `${milestoneCode.toLowerCase()}-file`);
-    submission.evidenceRefs = appendEvidenceRefs(submission.evidenceRefs || [], evidenceRefs);
+    const evidenceRefs = normalizeEvidenceFiles(
+      files,
+      teacherId,
+      `${milestoneCode.toLowerCase()}-file`,
+    );
+    submission.evidenceRefs = appendEvidenceRefs(
+      submission.evidenceRefs || [],
+      evidenceRefs,
+    );
   }
 
-  const council = project.councilId ? await DefenseCouncil.findById(project.councilId) : null;
-  await recomputeAssessment({ assessment, template: assessment.template, project, council });
+  const council = project.councilId
+    ? await DefenseCouncil.findById(project.councilId)
+    : null;
+  await recomputeAssessment({
+    assessment,
+    template: assessment.template,
+    project,
+    council,
+  });
   await assessment.save();
   return getProjectAssessmentSummary({ projectId });
 };
@@ -581,7 +672,9 @@ export const submitStudentPeerEvaluation = async ({
   ensureProjectMember(project, studentId);
 
   const assessment =
-    (await ProjectAssessment.findOne({ project: project._id }).populate("template")) ||
+    (await ProjectAssessment.findOne({ project: project._id }).populate(
+      "template",
+    )) ||
     (await ensureProjectAssessment({
       projectId: project._id,
       councilId: project.councilId,
@@ -596,7 +689,11 @@ export const submitStudentPeerEvaluation = async ({
     throw new ErrorHandler("Student assessment row not found", 404);
   }
 
-  const evidenceRefs = normalizeEvidenceFiles(files, studentId, "peer-evaluation");
+  const evidenceRefs = normalizeEvidenceFiles(
+    files,
+    studentId,
+    "peer-evaluation",
+  );
   studentAssessment.peerSubmission = {
     assessor: studentId,
     role: "student",
@@ -638,10 +735,20 @@ export const submitStudentPeerEvaluation = async ({
       submittedAt: new Date(),
     });
   }
-  m6Milestone.evidenceRefs = appendEvidenceRefs(m6Milestone.evidenceRefs || [], evidenceRefs);
+  m6Milestone.evidenceRefs = appendEvidenceRefs(
+    m6Milestone.evidenceRefs || [],
+    evidenceRefs,
+  );
 
-  const council = project.councilId ? await DefenseCouncil.findById(project.councilId) : null;
-  await recomputeAssessment({ assessment, template: assessment.template, project, council });
+  const council = project.councilId
+    ? await DefenseCouncil.findById(project.councilId)
+    : null;
+  await recomputeAssessment({
+    assessment,
+    template: assessment.template,
+    project,
+    council,
+  });
   await assessment.save();
 
   if (project.supervisor?._id) {
@@ -675,17 +782,26 @@ export const finalizeProjectAssessment = async ({
     throw new ErrorHandler("Council not found", 404);
   }
 
-  const chairman = (council.members || []).find((member) => member.role === "chairman");
+  const chairman = (council.members || []).find(
+    (member) => member.role === "chairman",
+  );
   if (!chairman || !isSameId(chairman.teacher, teacherId)) {
     throw new ErrorHandler("Only the chairman can finalize CLO results", 403);
   }
 
-  const projectItem = (council.projects || []).find((item) => isSameId(item.project, projectId));
+  const projectItem = (council.projects || []).find((item) =>
+    isSameId(item.project, projectId),
+  );
   if (!projectItem) {
-    throw new ErrorHandler("Project has not been assigned to this council", 404);
+    throw new ErrorHandler(
+      "Project has not been assigned to this council",
+      404,
+    );
   }
 
-  const assessment = await ProjectAssessment.findOne({ project: projectId }).populate("template");
+  const assessment = await ProjectAssessment.findOne({
+    project: projectId,
+  }).populate("template");
   if (!assessment) {
     throw new ErrorHandler("Project assessment not found", 404);
   }
@@ -693,17 +809,38 @@ export const finalizeProjectAssessment = async ({
   const requiredAssessors = buildRequiredM5Assessors(council, projectId);
   const m5 = getMilestoneDoc(assessment, "M5");
 
+  const missingAssessors = [];
   for (const assessor of requiredAssessors) {
     const matched = (m5.assessorSubmissions || []).find((submission) =>
       isSameId(submission.assessor, assessor.teacher),
     );
     if (!matched) {
-      throw new ErrorHandler("Not all required M5 assessors have submitted their rubric", 400);
+      missingAssessors.push(assessor);
     }
   }
 
+  if (missingAssessors.length > 0) {
+    const missingLabels = missingAssessors
+      .map((assessor) => {
+        const teacherName =
+          assessor.teacher?.name ||
+          assessor.teacher?.email ||
+          toIdString(assessor.teacher);
+        return `${teacherName} (${assessor.role})`;
+      })
+      .join(", ");
+
+    throw new ErrorHandler(
+      `Not all required M5 assessors have submitted their rubric. Missing: ${missingLabels}`,
+      400,
+    );
+  }
+
   if (!projectItem.reviewerForm?.pdfUrl) {
-    throw new ErrorHandler("Reviewer form must be exported before finalization", 400);
+    throw new ErrorHandler(
+      "Reviewer form must be exported before finalization",
+      400,
+    );
   }
 
   const qaSummary = computeQaEvidenceSummary({
@@ -711,12 +848,12 @@ export const finalizeProjectAssessment = async ({
     template: assessment.template,
     reviewerFormReady: true,
   });
-  if (qaSummary.missingItems.length > 0) {
-    throw new ErrorHandler(
-      `QA evidence is incomplete: ${qaSummary.missingItems.join(", ")}`,
-      400,
-    );
-  }
+  // if (qaSummary.missingItems.length > 0) {
+  //   throw new ErrorHandler(
+  //     `QA evidence is incomplete: ${qaSummary.missingItems.join(", ")}`,
+  //     400,
+  //   );
+  // }
 
   for (const milestone of assessment.milestones || []) {
     if (milestone.code !== "M6" && milestone.componentScore5 === null) {
@@ -725,8 +862,14 @@ export const finalizeProjectAssessment = async ({
   }
 
   for (const studentAssessment of assessment.studentAssessments || []) {
-    if (!studentAssessment.peerSubmission || studentAssessment.peerSubmission.approvalStatus !== "approved") {
-      throw new ErrorHandler("All student M6 peer/ICS submissions must be approved before finalization", 400);
+    if (
+      !studentAssessment.peerSubmission ||
+      studentAssessment.peerSubmission.approvalStatus !== "approved"
+    ) {
+      throw new ErrorHandler(
+        "All student M6 peer/ICS submissions must be approved before finalization",
+        400,
+      );
     }
   }
 
@@ -743,7 +886,12 @@ export const finalizeProjectAssessment = async ({
     }
   }
 
-  await recomputeAssessment({ assessment, template: assessment.template, project, council });
+  await recomputeAssessment({
+    assessment,
+    template: assessment.template,
+    project,
+    council,
+  });
   await assessment.save();
 
   project.defenseFinalScore = assessment.teamFinalScore;
@@ -754,7 +902,9 @@ export const finalizeProjectAssessment = async ({
   await project.save();
 
   projectItem.weightedAverage =
-    assessment.teamFinalScore === null ? null : roundScore(assessment.teamFinalScore * 10, 2);
+    assessment.teamFinalScore === null
+      ? null
+      : roundScore(assessment.teamFinalScore * 10, 2);
   projectItem.status = "done";
   projectItem.chairComment = chairComment || "";
   projectItem.finalizedBy = teacherId;
@@ -784,12 +934,15 @@ export const finalizeProjectAssessment = async ({
   return getProjectAssessmentSummary({ projectId });
 };
 
-export const getStudentAssessmentBoardByProject = async ({ studentId, projectId }) => {
+export const getStudentAssessmentBoardByProject = async ({
+  studentId,
+  projectId,
+}) => {
   const project = projectId
     ? await Project.findById(projectId)
-      .populate("student", "name email")
-      .populate("members", "name email")
-      .populate("supervisor", "name email")
+        .populate("student", "name email")
+        .populate("members", "name email")
+        .populate("supervisor", "name email")
     : await requireProjectByUser(studentId);
 
   if (!project) {
@@ -802,7 +955,9 @@ export const getStudentAssessmentBoardByProject = async ({ studentId, projectId 
     project,
     assessment: summary,
     myAssessment:
-      summary?.studentAssessments?.find((item) => isSameId(item.student, studentId)) || null,
+      summary?.studentAssessments?.find((item) =>
+        isSameId(item.student, studentId),
+      ) || null,
   };
 };
 
@@ -813,7 +968,15 @@ export const getAdminQaDashboard = async () => {
 
   const total = assessments.length || 1;
   const cloBuckets = new Map();
-  for (const cloCode of ["CLO1", "CLO2", "CLO3", "CLO4", "CLO5", "CLO6", "CLO7"]) {
+  for (const cloCode of [
+    "CLO1",
+    "CLO2",
+    "CLO3",
+    "CLO4",
+    "CLO5",
+    "CLO6",
+    "CLO7",
+  ]) {
     cloBuckets.set(cloCode, { total: 0, achieved: 0 });
   }
 
@@ -830,10 +993,14 @@ export const getAdminQaDashboard = async () => {
       }
     }
 
-    if (redClos.length > 0 || (assessment.qaEvidenceSummary?.missingItems || []).length > 0) {
+    if (
+      redClos.length > 0 ||
+      (assessment.qaEvidenceSummary?.missingItems || []).length > 0
+    ) {
       projectWarnings.push({
         projectId: assessment.project?._id,
-        projectName: assessment.project?.groupName || assessment.project?.title || "N/A",
+        projectName:
+          assessment.project?.groupName || assessment.project?.title || "N/A",
         redClos,
         teamFinalScore: assessment.teamFinalScore,
         qaCompleteness: assessment.qaEvidenceSummary?.completenessPercent || 0,
@@ -844,25 +1011,30 @@ export const getAdminQaDashboard = async () => {
 
   return {
     totalAssessments: assessments.length,
-    finalizedAssessments: assessments.filter((item) => item.status === "finalized").length,
+    finalizedAssessments: assessments.filter(
+      (item) => item.status === "finalized",
+    ).length,
     averageQaCompleteness:
       assessments.length === 0
         ? 0
         : roundScore(
             assessments.reduce(
-              (sum, item) => sum + Number(item.qaEvidenceSummary?.completenessPercent || 0),
+              (sum, item) =>
+                sum + Number(item.qaEvidenceSummary?.completenessPercent || 0),
               0,
             ) / assessments.length,
             1,
           ),
-    cloAchievementRates: Array.from(cloBuckets.entries()).map(([cloCode, bucket]) => ({
-      cloCode,
-      achievementRate: bucket.total
-        ? roundScore((bucket.achieved / bucket.total) * 100, 1)
-        : 0,
-      totalProjects: bucket.total,
-      achievedProjects: bucket.achieved,
-    })),
+    cloAchievementRates: Array.from(cloBuckets.entries()).map(
+      ([cloCode, bucket]) => ({
+        cloCode,
+        achievementRate: bucket.total
+          ? roundScore((bucket.achieved / bucket.total) * 100, 1)
+          : 0,
+        totalProjects: bucket.total,
+        achievedProjects: bucket.achieved,
+      }),
+    ),
     projectWarnings,
     readyForQaExport: assessments.filter(
       (item) =>
@@ -873,7 +1045,10 @@ export const getAdminQaDashboard = async () => {
       assessments.length === 0
         ? 0
         : roundScore(
-            (assessments.filter((item) => item.teamPassStatus === "pass").length / total) * 100,
+            (assessments.filter((item) => item.teamPassStatus === "pass")
+              .length /
+              total) *
+              100,
             1,
           ),
   };

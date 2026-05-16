@@ -29,11 +29,6 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             path: "/student/defense",
             icon: "calendar",
           },
-          {
-            name: "Notifications",
-            path: "/student/notifications",
-            icon: "bell",
-          },
         ];
       case "Teacher":
         return [

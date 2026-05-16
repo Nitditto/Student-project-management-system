@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import { isLocalOnlyHost, PUBLIC_APP_URL } from "../../lib/appConfig";
@@ -20,6 +21,7 @@ const formatDateTime = (value) => {
 };
 
 const getProjectDisplayName = (project) => project?.groupName || project?.title || "N/A";
+const toEntityId = (value) => value?._id || value || "";
 
 const attendanceStatusClassMap = {
   present: "bg-green-100 text-green-800",
@@ -136,6 +138,7 @@ const createSlot = () => ({
 });
 
 const DefenseHubPage = () => {
+  const { authUser } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(true);
   const [ngrokBaseUrl, setNgrokBaseUrl] = useState("");
   const [schedules, setSchedules] = useState([]);
@@ -308,10 +311,11 @@ const DefenseHubPage = () => {
           selectedAssessmentProject._id,
           milestoneCode,
           selectedAssessmentSummary,
+          milestoneCode === "M5" ? authUser?._id : null,
         );
       }
     });
-  }, [selectedAssessmentProject, selectedAssessmentSummary]);
+  }, [authUser?._id, selectedAssessmentProject, selectedAssessmentSummary]);
 
   const updateScheduleField = (field, value) => {
     setScheduleForm((current) => ({ ...current, [field]: value }));
@@ -658,7 +662,9 @@ const DefenseHubPage = () => {
     const existingSubmission =
       milestone
         ? assessorId
-          ? milestone.assessorSubmissions?.find((item) => item.assessor?._id === assessorId || item.assessor === assessorId)
+          ? milestone.assessorSubmissions?.find(
+              (item) => toEntityId(item.assessor) === toEntityId(assessorId),
+            )
           : milestone.assessorSubmissions?.[0]
         : null;
 
@@ -717,6 +723,22 @@ const DefenseHubPage = () => {
     }
   };
 
+  const submitTeacherM5AssessmentSilently = async (councilId, projectId) => {
+    const formKey = `${projectId}:M5`;
+    const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+    const files = assessmentFileForms[formKey] || [];
+    const payload = new FormData();
+    payload.append("cloEntries", JSON.stringify(buildRubricPayload(form.entries)));
+    payload.append("overallComment", form.overallComment || "");
+    files.forEach((file) => payload.append("files", file));
+
+    await axiosInstance.post(
+      `/teacher/councils/${councilId}/projects/${projectId}/m5-submissions`,
+      payload,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+  };
+
   const updateM6ReviewForm = (submissionId, field, value) => {
     setM6ReviewForms((current) => ({
       ...current,
@@ -747,7 +769,22 @@ const DefenseHubPage = () => {
 
   const finalizeCloAssessmentAction = async (councilId, projectId) => {
     const formKey = `${projectId}:M5`;
+    const form = assessmentForms[formKey] || { entries: createRubricEntries(), overallComment: "" };
+    const files = assessmentFileForms[formKey] || [];
+    const hasPendingFormData =
+      buildRubricPayload(form.entries).length > 0 ||
+      Boolean(form.overallComment?.trim()) ||
+      files.length > 0;
+    const currentM5Submission = selectedAssessmentSummary?.milestones
+      ?.find((item) => item.code === "M5")
+      ?.assessorSubmissions?.find(
+        (submission) => toEntityId(submission.assessor) === toEntityId(authUser?._id),
+      );
+
     try {
+      if (hasPendingFormData || !currentM5Submission) {
+        await submitTeacherM5AssessmentSilently(councilId, projectId);
+      }
       await axiosInstance.post(
         `/teacher/councils/${councilId}/projects/${projectId}/finalize-clo`,
         { chairComment: assessmentForms[formKey]?.overallComment || "" },
@@ -1782,7 +1819,14 @@ const DefenseHubPage = () => {
                       </div>
                       <button
                         className="btn-outline"
-                        onClick={() => seedAssessmentFormFromSummary(projectId, "M5", assessmentSummary)}
+                        onClick={() =>
+                          seedAssessmentFormFromSummary(
+                            projectId,
+                            "M5",
+                            assessmentSummary,
+                            authUser?._id,
+                          )
+                        }
                       >
                         Load Existing M5 Submission
                       </button>

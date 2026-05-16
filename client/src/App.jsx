@@ -25,6 +25,7 @@ import AssignedStudents from "./pages/teacher/AssignedStudents";
 import TeacherFiles from "./pages/teacher/TeacherFiles";
 import DefenseHubPage from "./pages/teacher/DefenseHubPage";
 import TeacherPreselectionPage from "./pages/teacher/TeacherPreselectionPage";
+import TeacherNotificationsPage from "./pages/teacher/NotificationsPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -156,6 +157,7 @@ const App = () => {
           <Route path="files" element={<TeacherFiles />} />
           <Route path="preselect" element={<TeacherPreselectionPage />} />
           <Route path="defense" element={<DefenseHubPage />} />
+          <Route path="notifications" element={<TeacherNotificationsPage />} />
         </Route>
 
         {/* Student Routes */}
