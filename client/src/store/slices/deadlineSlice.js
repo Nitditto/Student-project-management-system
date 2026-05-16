@@ -17,6 +17,42 @@ export const createDeadline = createAsyncThunk(
   }
 );
 
+export const updateDeadline = createAsyncThunk(
+  "deadline/update",
+  async ({ deadlineId, data }, thunkAPI) => {
+    try {
+      const res = await axiosInstance.put(`/deadline/${deadlineId}`, data);
+      toast.success(res.data.message || "Deadline updated successfully");
+      return res.data.data.deadline;
+    } catch (error) {
+      let message = error.response?.data?.message;
+      if (!message && error.response?.status === 404) {
+        message = "API endpoint not found. Please restart your backend server.";
+      }
+      toast.error(message || "Failed to update deadline");
+      return thunkAPI.rejectWithValue(message || "Failed to update deadline");
+    }
+  }
+);
+
+export const deleteDeadline = createAsyncThunk(
+  "deadline/delete",
+  async (deadlineId, thunkAPI) => {
+    try {
+      const res = await axiosInstance.delete(`/deadline/${deadlineId}`);
+      toast.success(res.data.message || "Deadline deleted successfully");
+      return deadlineId;
+    } catch (error) {
+      let message = error.response?.data?.message;
+      if (!message && error.response?.status === 404) {
+        message = "API endpoint not found. Please restart your backend server.";
+      }
+      toast.error(message || "Failed to delete deadline");
+      return thunkAPI.rejectWithValue(message || "Failed to delete deadline");
+    }
+  }
+);
+
 export const fetchTeacherDeadlines = createAsyncThunk(
   "deadline/fetchTeacher",
   async (_, thunkAPI) => {
@@ -128,6 +164,17 @@ const deadlineSlice = createSlice({
       // Create deadline
       .addCase(createDeadline.fulfilled, (state, action) => {
         state.deadlines.push(action.payload);
+      })
+      // Update deadline
+      .addCase(updateDeadline.fulfilled, (state, action) => {
+        const index = state.deadlines.findIndex((d) => d._id === action.payload._id);
+        if (index !== -1) {
+          state.deadlines[index] = action.payload;
+        }
+      })
+      // Delete deadline
+      .addCase(deleteDeadline.fulfilled, (state, action) => {
+        state.deadlines = state.deadlines.filter((d) => d._id !== action.payload);
       })
       // Submit deadline
       .addCase(submitDeadline.fulfilled, (state, action) => {

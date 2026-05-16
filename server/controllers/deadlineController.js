@@ -35,6 +35,7 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
 
 // Update a deadline (Teacher)
 export const updateDeadline = asyncHandler(async (req, res, next) => {
+  console.log("UPDATE DEADLINE CALLED", req.params, req.body, req.user);
   const { deadlineId } = req.params;
   const { title, description, endDate, startDate } = req.body;
 
@@ -44,8 +45,9 @@ export const updateDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Deadline not found", 404));
   }
 
-  // Ensure only the creator can update
-  if (deadline.teacherId.toString() !== req.user._id.toString()) {
+  // Ensure only the creator or Admin can update
+  if (deadline.teacherId.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+    console.error("Update Deadline: Not authorized", { teacherId: deadline.teacherId, userId: req.user._id, role: req.user.role });
     return next(new ErrorHandler("Not authorized to update this deadline", 403));
   }
 
@@ -53,10 +55,15 @@ export const updateDeadline = asyncHandler(async (req, res, next) => {
   if (endDate) updateData.endDate = new Date(endDate);
   if (startDate) updateData.startDate = new Date(startDate);
 
-  deadline = await Deadline.findByIdAndUpdate(deadlineId, updateData, {
-    new: true,
-    runValidators: true,
-  });
+  try {
+    deadline = await Deadline.findByIdAndUpdate(deadlineId, updateData, {
+      new: true,
+      runValidators: true,
+    });
+  } catch (error) {
+    console.error("Error updating deadline in DB:", error);
+    return next(new ErrorHandler("Failed to update deadline in database", 500));
+  }
 
   res.status(200).json({
     success: true,
@@ -67,6 +74,7 @@ export const updateDeadline = asyncHandler(async (req, res, next) => {
 
 // Delete a deadline (Teacher)
 export const deleteDeadline = asyncHandler(async (req, res, next) => {
+  console.log("DELETE DEADLINE CALLED", req.params, req.user);
   const { deadlineId } = req.params;
 
   const deadline = await Deadline.findById(deadlineId);
@@ -75,7 +83,9 @@ export const deleteDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Deadline not found", 404));
   }
 
-  if (deadline.teacherId.toString() !== req.user._id.toString()) {
+  // Ensure only the creator or Admin can delete
+  if (deadline.teacherId.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+    console.error("Delete Deadline: Not authorized", { teacherId: deadline.teacherId, userId: req.user._id, role: req.user.role });
     return next(new ErrorHandler("Not authorized to delete this deadline", 403));
   }
 

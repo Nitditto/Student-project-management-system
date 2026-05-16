@@ -6,6 +6,8 @@ import {
   submitDeadline,
   unsubmitDeadline,
   getTeacherMatrix,
+  updateDeadline,
+  deleteDeadline,
 } from "../controllers/deadlineController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import { upload, handleUploadError } from "../middleware/upload.js";
@@ -17,6 +19,20 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin", "Teacher"),
   createDeadline,
+);
+
+router.put(
+  "/:deadlineId",
+  isAuthenticated,
+  isAuthorized("Admin", "Teacher"),
+  updateDeadline,
+);
+
+router.delete(
+  "/:deadlineId",
+  isAuthenticated,
+  isAuthorized("Admin", "Teacher"),
+  deleteDeadline,
 );
 
 router.get(
