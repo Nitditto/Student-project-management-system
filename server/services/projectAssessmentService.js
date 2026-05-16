@@ -24,6 +24,7 @@ import {
   roundScore,
   toIdString,
 } from "../utils/workflowHelpers.js";
+import { resolveM6SubmissionTargets } from "../utils/m6SubmissionSync.js";
 import {
   ensureProjectEditable,
   ensureProjectMember,
@@ -209,6 +210,8 @@ const recomputeAssessment = async ({ assessment, template, project, council = nu
 };
 
 const buildAssessmentSummary = ({ assessment, project, council }) => {
+  const m6Milestone = (assessment.milestones || []).find((milestone) => milestone.code === "M6");
+
   return {
     _id: assessment._id,
     projectId: project._id,
@@ -248,6 +251,10 @@ const buildAssessmentSummary = ({ assessment, project, council }) => {
       evidenceRefs: milestone.evidenceRefs || [],
     })),
     studentAssessments: (assessment.studentAssessments || []).map((item) => ({
+      reviewSubmissionId:
+        (m6Milestone?.assessorSubmissions || []).find((submission) =>
+          isSameId(submission.assessor, item.student),
+        )?._id || item.peerSubmission?._id || null,
       student: item.student,
       peerSubmission: item.peerSubmission,
       individualCloResults: item.individualCloResults,
@@ -493,25 +500,44 @@ export const updateTeacherMilestoneSubmission = async ({
   }
 
   const milestone = getMilestoneDoc(assessment, milestoneCode);
-  const submission = (milestone.assessorSubmissions || []).id(submissionId);
-  if (!submission) {
-    throw new ErrorHandler("Submission not found", 404);
-  }
 
   if (milestoneCode === "M6") {
     ensureTeacherOwnsProject(project, teacherId);
-    submission.approvalStatus = approvalStatus || submission.approvalStatus;
-    submission.reviewedBy = teacherId;
-    submission.reviewedAt = new Date();
-    if (overallComment !== undefined) {
-      submission.overallComment = overallComment;
+
+    const { milestoneSubmission, peerSubmission } = resolveM6SubmissionTargets(
+      assessment,
+      submissionId,
+    );
+    if (!milestoneSubmission && !peerSubmission) {
+      throw new ErrorHandler("Submission not found", 404);
     }
-    if (Array.isArray(cloEntries) && cloEntries.length > 0) {
-      submission.cloEntries = normalizeCloEntries(cloEntries);
-    }
+
+    const reviewTargets = [milestoneSubmission, peerSubmission].filter(Boolean);
+    const normalizedEntries =
+      Array.isArray(cloEntries) && cloEntries.length > 0
+        ? normalizeCloEntries(cloEntries)
+        : null;
     const evidenceRefs = normalizeEvidenceFiles(files, teacherId, "m6-review-file");
-    submission.evidenceRefs = appendEvidenceRefs(submission.evidenceRefs || [], evidenceRefs);
+    const reviewedAt = new Date();
+
+    reviewTargets.forEach((target) => {
+      target.approvalStatus = approvalStatus || target.approvalStatus;
+      target.reviewedBy = teacherId;
+      target.reviewedAt = reviewedAt;
+      if (overallComment !== undefined) {
+        target.overallComment = overallComment;
+      }
+      if (normalizedEntries) {
+        target.cloEntries = normalizedEntries;
+      }
+      target.evidenceRefs = appendEvidenceRefs(target.evidenceRefs || [], evidenceRefs);
+    });
   } else {
+    const submission = (milestone.assessorSubmissions || []).id(submissionId);
+    if (!submission) {
+      throw new ErrorHandler("Submission not found", 404);
+    }
+
     const teacherContext = await ensureTeacherCanSubmitMilestone({
       project,
       assessment,

@@ -1879,90 +1879,95 @@ const DefenseHubPage = () => {
               </p>
             </div>
 
-            {(selectedAssessmentSummary?.studentAssessments || []).map((studentAssessment) => (
-              <div
-                key={studentAssessment.student?._id}
-                className="rounded-lg border border-slate-200 p-4 space-y-3"
-              >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-800">{studentAssessment.student?.name}</p>
-                    <p className="text-sm text-slate-500">
-                      M6 score: {formatAssessmentScore(studentAssessment.individualM6Score5, "/5")} | Final:{" "}
-                      {formatAssessmentScore(studentAssessment.officialFinalScore, "/10")} |{" "}
-                      {studentAssessment.officialPassStatus}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                    {studentAssessment.peerSubmission?.approvalStatus || "No submission"}
-                  </span>
-                </div>
+            {(selectedAssessmentSummary?.studentAssessments || []).map((studentAssessment) => {
+              const reviewSubmissionId =
+                studentAssessment.reviewSubmissionId || studentAssessment.peerSubmission?._id;
 
-                {studentAssessment.peerSubmission?.cloEntries?.length > 0 && (
-                  <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-slate-100">
-                        <tr>
-                          <th className="px-3 py-2 text-left">CLO</th>
-                          <th className="px-3 py-2 text-left">Score</th>
-                          <th className="px-3 py-2 text-left">Comment</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        {studentAssessment.peerSubmission.cloEntries.map((entry) => (
-                          <tr key={`${studentAssessment.student?._id}-${entry.cloCode}`}>
-                            <td className="px-3 py-2 font-medium text-slate-700">{entry.cloCode}</td>
-                            <td className="px-3 py-2">{entry.score1to5}</td>
-                            <td className="px-3 py-2">{entry.comment || "No comment"}</td>
+              return (
+                <div
+                  key={studentAssessment.student?._id}
+                  className="rounded-lg border border-slate-200 p-4 space-y-3"
+                >
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-800">{studentAssessment.student?.name}</p>
+                      <p className="text-sm text-slate-500">
+                        M6 score: {formatAssessmentScore(studentAssessment.individualM6Score5, "/5")} | Final:{" "}
+                        {formatAssessmentScore(studentAssessment.officialFinalScore, "/10")} |{" "}
+                        {studentAssessment.officialPassStatus}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {studentAssessment.peerSubmission?.approvalStatus || "No submission"}
+                    </span>
+                  </div>
+
+                  {studentAssessment.peerSubmission?.cloEntries?.length > 0 && (
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-slate-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left">CLO</th>
+                            <th className="px-3 py-2 text-left">Score</th>
+                            <th className="px-3 py-2 text-left">Comment</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {studentAssessment.peerSubmission.cloEntries.map((entry) => (
+                            <tr key={`${studentAssessment.student?._id}-${entry.cloCode}`}>
+                              <td className="px-3 py-2 font-medium text-slate-700">{entry.cloCode}</td>
+                              <td className="px-3 py-2">{entry.score1to5}</td>
+                              <td className="px-3 py-2">{entry.comment || "No comment"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
-                <textarea
-                  className="input min-h-20"
-                  placeholder="Supervisor note for this M6 submission"
-                  value={m6ReviewForms[studentAssessment.peerSubmission?._id]?.overallComment || ""}
-                  onChange={(event) =>
-                    updateM6ReviewForm(
-                      studentAssessment.peerSubmission?._id,
-                      "overallComment",
-                      event.target.value,
-                    )
-                  }
-                />
-                <div className="flex gap-2">
-                  <button
-                    className="btn-primary"
-                    disabled={!studentAssessment.peerSubmission?._id}
-                    onClick={() =>
-                      reviewM6Submission(
-                        selectedAssessmentProject._id,
-                        studentAssessment.peerSubmission?._id,
-                        "approved",
+                  <textarea
+                    className="input min-h-20"
+                    placeholder="Supervisor note for this M6 submission"
+                    value={m6ReviewForms[reviewSubmissionId]?.overallComment || ""}
+                    onChange={(event) =>
+                      updateM6ReviewForm(
+                        reviewSubmissionId,
+                        "overallComment",
+                        event.target.value,
                       )
                     }
-                  >
-                    Approve M6
-                  </button>
-                  <button
-                    className="btn-outline"
-                    disabled={!studentAssessment.peerSubmission?._id}
-                    onClick={() =>
-                      reviewM6Submission(
-                        selectedAssessmentProject._id,
-                        studentAssessment.peerSubmission?._id,
-                        "rejected",
-                      )
-                    }
-                  >
-                    Reject M6
-                  </button>
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      className="btn-primary"
+                      disabled={!reviewSubmissionId}
+                      onClick={() =>
+                        reviewM6Submission(
+                          selectedAssessmentProject._id,
+                          reviewSubmissionId,
+                          "approved",
+                        )
+                      }
+                    >
+                      Approve M6
+                    </button>
+                    <button
+                      className="btn-outline"
+                      disabled={!reviewSubmissionId}
+                      onClick={() =>
+                        reviewM6Submission(
+                          selectedAssessmentProject._id,
+                          reviewSubmissionId,
+                          "rejected",
+                        )
+                      }
+                    >
+                      Reject M6
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {(selectedAssessmentSummary?.studentAssessments || []).length === 0 && (
               <p className="text-slate-500">No student peer / ICS submissions yet.</p>
             )}
