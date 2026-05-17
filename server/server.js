@@ -2,6 +2,7 @@ import app from "./app.js";
 import { connectDB } from "./config/db.js";
 import { Server } from "socket.io";
 import { canChatWithEachOther } from "./utils/chatValidation.js";
+import { initCronJobs } from "./cron/evaluatorCron.js";
 
 // DATABASE CONNECTION
 connectDB();
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 4000;
 
 const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    initCronJobs(); // Initialize cron jobs
 });
 
 // INITIALIZE SOCKET.IO
@@ -155,7 +157,6 @@ io.on("connection", (socket) => {
         socket.emit("online-status-response", { userId, isOnline });
     });
 
-    // Disconnect
     // Unsend Message Event
     socket.on("unsend-msg", async (data) => {
         const { messageId, isGroup, projectId, sender, receiver } = data;

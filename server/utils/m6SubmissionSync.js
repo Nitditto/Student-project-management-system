@@ -1,45 +1,34 @@
-export function resolveM6SubmissionTargets(assessment, submissionId) {
-  let studentAssessment = null;
-  let peerSubmission = null;
-  let milestoneSubmission = null;
+import { isSameId } from "./workflowHelpers.js";
 
-  const targetId = submissionId?.toString();
-  if (!targetId) return { studentAssessment, peerSubmission, milestoneSubmission };
+export const resolveM6SubmissionTargets = (assessment, submissionId) => {
+  const m6Milestone = (assessment?.milestones || []).find((item) => item.code === "M6");
+  const milestoneSubmission = (m6Milestone?.assessorSubmissions || []).find((item) =>
+    isSameId(item?._id, submissionId),
+  );
 
-  // 1. Try to find by peerSubmission id first
-  for (const sa of assessment.studentAssessments || []) {
-    if (sa.peerSubmission && sa.peerSubmission._id?.toString() === targetId) {
-      studentAssessment = sa;
-      peerSubmission = sa.peerSubmission;
-      break;
-    }
-  }
+  let studentAssessment = (assessment?.studentAssessments || []).find((item) =>
+    isSameId(item?.peerSubmission?._id, submissionId),
+  );
 
-  // 2. If not found by peer submission, try to find by milestone submission id
-  const m6Milestone = (assessment.milestones || []).find((m) => m.code === "M6");
-  
-  if (!peerSubmission && m6Milestone) {
-    for (const sub of m6Milestone.assessorSubmissions || []) {
-      if (sub._id?.toString() === targetId) {
-        milestoneSubmission = sub;
-        // Associate back to the studentAssessment using the assessor (student id)
-        studentAssessment = (assessment.studentAssessments || []).find(
-          (sa) => sa.student?.toString() === sub.assessor?.toString()
-        );
-        if (studentAssessment) {
-          peerSubmission = studentAssessment.peerSubmission;
-        }
-        break;
-      }
-    }
-  }
-
-  // 3. Ensure we resolve both sides (peerSubmission & milestoneSubmission) if we found one
-  if (peerSubmission && !milestoneSubmission && m6Milestone) {
-    milestoneSubmission = (m6Milestone.assessorSubmissions || []).find(
-      (sub) => sub.assessor?.toString() === studentAssessment.student?.toString()
+  if (!studentAssessment && milestoneSubmission?.assessor) {
+    studentAssessment = (assessment?.studentAssessments || []).find((item) =>
+      isSameId(item?.student, milestoneSubmission.assessor),
     );
   }
 
-  return { studentAssessment, peerSubmission, milestoneSubmission };
-}
+  const peerSubmission = studentAssessment?.peerSubmission || null;
+  const matchedMilestoneSubmission =
+    milestoneSubmission ||
+    (peerSubmission
+      ? (m6Milestone?.assessorSubmissions || []).find((item) =>
+          isSameId(item?.assessor, studentAssessment?.student),
+        )
+      : null);
+
+  return {
+    m6Milestone,
+    milestoneSubmission: matchedMilestoneSubmission || null,
+    studentAssessment: studentAssessment || null,
+    peerSubmission,
+  };
+};

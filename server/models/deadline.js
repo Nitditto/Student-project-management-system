@@ -2,26 +2,36 @@ import mongoose from "mongoose";
 
 const deadlineSchema = new mongoose.Schema(
   {
-
-    name: {
+    title: {
       type: String,
-      required: [true, "Deadline name/title is required"],
+      required: [true, "Deadline title is required"],
       trim: true,
-      maxLength: [100, "Deadline name cannot be more than 100 characters"],
+      maxLength: [200, "Deadline title cannot be more than 200 characters"],
     },
-    dueDate: {
+    description: {
+      type: String,
+      required: [true, "Deadline description is required"],
+      trim: true,
+      maxLength: [2000, "Description cannot be more than 2000 characters"],
+    },
+    startDate: {
       type: Date,
-      required: [true, "Due date is required"],
+      required: [true, "Start date is required"],
+      default: Date.now,
     },
-    createdBy: {
+    endDate: {
+      type: Date,
+      required: [true, "End date is required"],
+    },
+    teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Created by is required"],
+      required: [true, "Teacher ID is required"],
     },
-    Project: {
+    semesterId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
-      required: null,
+      ref: "RegistrationSetting",
+      default: null,
     },
   },
   {
@@ -29,12 +39,9 @@ const deadlineSchema = new mongoose.Schema(
   },
 );
 
-// Indexing for battery query performance
-
-deadlineSchema.index({ dueDate: 1 });
-deadlineSchema.index({ project: 1});
-deadlineSchema.index({ createdBy: 1});
+deadlineSchema.index({ endDate: 1 });
+deadlineSchema.index({ teacherId: 1 });
+deadlineSchema.index({ semesterId: 1 });
 
 export const Deadline =
-  mongoose.models.Deadline ||
-  mongoose.model("Deadline", deadlineSchema);
+  mongoose.models.Deadline || mongoose.model("Deadline", deadlineSchema);
