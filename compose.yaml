@@ -40,7 +40,7 @@ services:
     container_name: ngrok
     command: http client:5173
     environment:
-      NGROK_AUTHTOKEN: 343NCUHm2EHbtJhxrW9UX8mDvtf_3G5dv41j1XF5ooZZwGRpX
+      NGROK_AUTHTOKEN: 3DPMjz7bOsjVehQBlKKhSZn1478_3X1mqWKCKBjqYcCakwXya
     ports:
       - "4040:4040"
     depends_on:
