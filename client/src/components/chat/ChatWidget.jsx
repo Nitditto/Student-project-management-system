@@ -69,19 +69,25 @@ export default function ChatWidget() {
         });
 
         socket.current.on("msg-receive", (data) => {
-            setMessages((prev) => {
-                return [...prev, { 
-                    _id: data.messageId || Date.now().toString(), 
-                    sender: data.sender, 
-                    content: data.content, 
-                    fromSelf: false, 
-                    isUnsent: false, 
-                    fileUrl: data.fileUrl, 
-                    fileType: data.fileType,
-                    replyTo: data.replyTo,
-                    reactions: []
-                }];
-            });
+            const senderId = typeof data.sender === 'object' ? data.sender._id : data.sender;
+            const isCurrentGroup = data.isGroup && selectedPartnerRef.current && selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === data.projectId;
+            const isCurrentPrivate = !data.isGroup && selectedPartnerRef.current && !selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === senderId;
+
+            if (isCurrentGroup || isCurrentPrivate) {
+                setMessages((prev) => {
+                    return [...prev, { 
+                        _id: data.messageId || Date.now().toString(), 
+                        sender: data.sender, 
+                        content: data.content, 
+                        fromSelf: false, 
+                        isUnsent: false, 
+                        fileUrl: data.fileUrl, 
+                        fileType: data.fileType,
+                        replyTo: data.replyTo,
+                        reactions: []
+                    }];
+                });
+            }
 
             // Update unread count and latestMessageAt, then sort
             setPartners((prev) => {
@@ -116,11 +122,23 @@ export default function ChatWidget() {
         });
 
         socket.current.on("typing-receive", (data) => {
-            setIsTyping(true);
+            const senderId = typeof data.sender === 'object' ? data.sender._id : data.sender;
+            const isCurrentGroup = data.isGroup && selectedPartnerRef.current && selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === data.projectId;
+            const isCurrentPrivate = !data.isGroup && selectedPartnerRef.current && !selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === senderId;
+            
+            if (isCurrentGroup || isCurrentPrivate) {
+                setIsTyping(true);
+            }
         });
 
         socket.current.on("stop-typing-receive", (data) => {
-            setIsTyping(false);
+            const senderId = typeof data.sender === 'object' ? data.sender._id : data.sender;
+            const isCurrentGroup = data.isGroup && selectedPartnerRef.current && selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === data.projectId;
+            const isCurrentPrivate = !data.isGroup && selectedPartnerRef.current && !selectedPartnerRef.current.isGroup && selectedPartnerRef.current._id === senderId;
+            
+            if (isCurrentGroup || isCurrentPrivate) {
+                setIsTyping(false);
+            }
         });
 
         return () => {
