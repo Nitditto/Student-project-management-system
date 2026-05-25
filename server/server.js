@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
 
     // Send Message Event
     socket.on("send-msg", async (data) => {
-        const { sender, receiver, content, isGroup, projectId } = data;
+        const { sender, receiver, content, isGroup, projectId, messageId, fileUrl, fileType, replyTo } = data;
         
         try {
             if (isGroup) {
@@ -70,6 +70,10 @@ io.on("connection", (socket) => {
                                 content,
                                 projectId,
                                 isGroup: true,
+                                messageId,
+                                fileUrl,
+                                fileType,
+                                replyTo,
                                 createdAt: new Date()
                             });
                         }
@@ -89,6 +93,10 @@ io.on("connection", (socket) => {
                         sender, 
                         content, 
                         isGroup: false,
+                        messageId,
+                        fileUrl,
+                        fileType,
+                        replyTo,
                         createdAt: new Date() 
                     });
                 }
