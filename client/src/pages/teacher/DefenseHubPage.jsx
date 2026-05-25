@@ -163,6 +163,7 @@ const DefenseHubPage = () => {
   });
   const [attendanceFilters, setAttendanceFilters] = useState({});
   const [editSessionForms, setEditSessionForms] = useState({});
+  const [qrModal, setQrModal] = useState(null); // { qrDataUrl, accessCode, title }
   const [scoreForms, setScoreForms] = useState({});
   const [reviewerForms, setReviewerForms] = useState({});
   const [reviewerAssignments, setReviewerAssignments] = useState({});
@@ -815,7 +816,8 @@ const DefenseHubPage = () => {
   const qrUsesLocalhost = isLocalOnlyHost(PUBLIC_APP_URL);
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">Defense Hub</h1>
         <p className="text-emerald-100">
@@ -1302,14 +1304,30 @@ const DefenseHubPage = () => {
                   </p>
                   {sessionQrCodes[session._id] ? (
                     <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                      <img
-                        src={sessionQrCodes[session._id]}
-                        alt={`Attendance QR for ${session.title}`}
-                        className="w-40 h-40 rounded-lg border border-slate-200 bg-white p-2"
-                      />
+                      <button
+                        type="button"
+                        title="Click to zoom QR code"
+                        className="group relative shrink-0 cursor-zoom-in rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition hover:border-cyan-400 hover:shadow-md"
+                        onClick={() =>
+                          setQrModal({
+                            qrDataUrl: sessionQrCodes[session._id],
+                            accessCode: session.accessCode,
+                            title: session.title,
+                          })
+                        }
+                      >
+                        <img
+                          src={sessionQrCodes[session._id]}
+                          alt={`Attendance QR for ${session.title}`}
+                          className="w-40 h-40 rounded"
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 text-sm font-semibold text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                          Zoom
+                        </span>
+                      </button>
                       <div className="text-sm text-slate-600">
                         <p>Scan target: {buildAttendanceCheckInUrl(session.qrToken, ngrokBaseUrl)}</p>
-                        <p>Fallback 6-digit code: {session.accessCode}</p>
+                        <p>Fallback 6-digit code: <span className="font-mono font-bold tracking-widest">{session.accessCode}</span></p>
                       </div>
                     </div>
                   ) : (
@@ -2094,6 +2112,44 @@ const DefenseHubPage = () => {
         )}
       </div>
     </div>
+      {/* QR Zoom Modal */}
+      {qrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setQrModal(null)}
+        >
+          <div
+            className="relative flex flex-col items-center gap-5 rounded-2xl bg-white p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setQrModal(null)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+              {qrModal.title}
+            </p>
+            <img
+              src={qrModal.qrDataUrl}
+              alt="Attendance QR code (zoomed)"
+              className="h-64 w-64 rounded-xl shadow-md"
+            />
+            {qrModal.accessCode && (
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-xs text-slate-400">Fallback 6-digit code</p>
+                <p className="font-mono text-4xl font-bold tracking-[0.3em] text-slate-800 select-all">
+                  {qrModal.accessCode}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
