@@ -181,7 +181,7 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
   const sessions = await AttendanceSession.find({ teacher: teacherId })
     .populate("project", "title groupName members student")
     .populate("records.student", "name email")
-    .sort({ createdAt: -1 });
+    .sort({ startsAt: -1 });
 
   for (const session of sessions) {
     await syncSessionStatus(session);
@@ -190,109 +190,10 @@ export const getTeacherAttendanceSessions = async (teacherId) => {
   return AttendanceSession.find({ teacher: teacherId })
     .populate("project", "title groupName members student")
     .populate("records.student", "name email")
-    .sort({ createdAt: -1 });
+    .sort({ startsAt: -1 });
 };
 
-export const updateAttendanceSession = async (teacherId, sessionId, payload) => {
-  const session = await AttendanceSession.findById(sessionId)
-    .populate("project", "title groupName supervisor");
-
-  if (!session) {
-    throw new ErrorHandler("Attendance session not found", 404);
-  }
-
-  const project = await projectServices.getProjectById(session.project._id);
-  ensureTeacherOwnsProject(project, teacherId);
-
-  const startsAt = new Date(payload.startsAt);
-  const endsAt = new Date(payload.endsAt);
-  const windowMinutes = Number(payload.windowMinutes || 15);
-  const checkInOpensAt = new Date(startsAt.getTime() - 15 * 60 * 1000);
-  const checkInClosesAt = new Date(startsAt.getTime() + windowMinutes * 60 * 1000);
-
-  if (
-    Number.isNaN(startsAt.getTime()) ||
-    Number.isNaN(endsAt.getTime())
-  ) {
-    throw new ErrorHandler("Invalid session times", 400);
-  }
-
-  if (endsAt <= startsAt) {
-    throw new ErrorHandler("End time must be after start time", 400);
-  }
-
-  session.startsAt = startsAt;
-  session.endsAt = endsAt;
-  session.checkInOpensAt = checkInOpensAt;
-  session.checkInClosesAt = checkInClosesAt;
-  if (payload.title?.trim()) {
-    session.title = payload.title.trim();
-  }
-
-  // Recompute status based on new times
-  const now = new Date();
-  if (now >= checkInOpensAt && now <= checkInClosesAt) {
-    session.status = "active";
-  } else if (now > checkInClosesAt) {
-    session.status = "closed";
-  } else {
-    session.status = "draft";
-  }
-
-  await session.save();
-
-  return AttendanceSession.findById(session._id)
-    .populate("project", "title groupName")
-    .populate("records.student", "name email");
-};
-
-export const deleteAttendanceSession = async (teacherId, sessionId) => {
-  const session = await AttendanceSession.findById(sessionId)
-    .populate("project", "title groupName");
-
-  if (!session) {
-    throw new ErrorHandler("Attendance session not found", 404);
-  }
-
-  if (!isSameId(session.teacher, teacherId)) {
-    throw new ErrorHandler("Teacher is not allowed to delete this attendance session", 403);
-  }
-
-  await AttendanceSession.deleteOne({ _id: sessionId });
-
-  return session;
-};
-
-const finalizeStudentCheckIn = async ({ session, studentId, method }) => {
-  const record = session.records.find((item) => isSameId(item.student, studentId));
-  if (!record) {
-    throw new ErrorHandler("Attendance record not found for this student", 404);
-  }
-
-  if (record.status === "present") {
-    throw new ErrorHandler("Attendance already confirmed", 400);
-  }
-
-  if (record.status === "excused") {
-    throw new ErrorHandler("Attendance was already marked as excused", 400);
-  }
-
-  record.status = "present";
-  record.checkedInAt = new Date();
-  record.checkInMethod = method;
-  record.manualOverride = false;
-  await session.save();
-
-  return AttendanceSession.findById(session._id)
-    .populate("project", "title groupName")
-    .populate("records.student", "name email");
-};
-
-export const studentCheckInWithAccessCode = async ({
-  studentId,
-  sessionId,
-  accessCode,
-}) => {
+export const studentCheckIn = async ({ studentId, sessionId, credential }) => {
   const project = await requireProjectByUser(studentId);
   ensureProjectMember(project, studentId);
 
@@ -310,83 +211,34 @@ export const studentCheckInWithAccessCode = async ({
     throw new ErrorHandler("Attendance session is not active", 400);
   }
 
-  if (!accessCode?.trim() || accessCode.trim() !== session.accessCode) {
-    throw new ErrorHandler("Attendance code is invalid", 400);
+  const record = session.records.find((item) => isSameId(item.student, studentId));
+  if (!record) {
+    throw new ErrorHandler("Attendance record not found for this student", 404);
   }
 
-  return finalizeStudentCheckIn({
-    session,
-    studentId,
-    method: "code",
-  });
-};
-
-export const studentCheckInWithQrToken = async ({ studentId, token }) => {
-  const project = await requireProjectByUser(studentId);
-  ensureProjectMember(project, studentId);
-
-  if (!token?.trim()) {
-    throw new ErrorHandler("Attendance QR token is required", 400);
+  if (record.status === "present") {
+    return session;
   }
 
-  const session = await AttendanceSession.findOne({ qrToken: token.trim() })
-    .populate("project", "title groupName members student")
+  const method =
+    credential === session.accessCode
+      ? "code"
+      : credential === session.qrToken
+        ? "qr"
+        : null;
+
+  if (!method) {
+    throw new ErrorHandler("Check-in code or QR token is invalid", 400);
+  }
+
+  record.status = "present";
+  record.checkedInAt = new Date();
+  record.checkInMethod = method;
+  await session.save();
+
+  return AttendanceSession.findById(session._id)
+    .populate("project", "title groupName")
     .populate("records.student", "name email");
-
-  if (!session || !isSameId(session.project._id, project._id)) {
-    throw new ErrorHandler("Attendance session not found", 404);
-  }
-
-  await syncSessionStatus(session);
-
-  if (session.status !== "active") {
-    throw new ErrorHandler("Attendance QR is expired or not active", 400);
-  }
-
-  return finalizeStudentCheckIn({
-    session,
-    studentId,
-    method: "qr",
-  });
-};
-
-export const studentCheckInWithCodeOnly = async ({ studentId, accessCode }) => {
-  if (!accessCode?.trim()) {
-    throw new ErrorHandler("Attendance code is required", 400);
-  }
-
-  const project = await requireProjectByUser(studentId);
-  ensureProjectMember(project, studentId);
-
-  const sessions = await AttendanceSession.find({
-    project: project._id,
-    accessCode: accessCode.trim(),
-  })
-    .populate("project", "title groupName members student")
-    .populate("records.student", "name email");
-
-  if (!sessions.length) {
-    throw new ErrorHandler("No session found with this code", 404);
-  }
-
-  let targetSession = null;
-  for (const session of sessions) {
-    await syncSessionStatus(session);
-    if (session.status === "active") {
-      targetSession = session;
-      break;
-    }
-  }
-
-  if (!targetSession) {
-    throw new ErrorHandler("No active session found with this code", 400);
-  }
-
-  return finalizeStudentCheckIn({
-    session: targetSession,
-    studentId,
-    method: "code",
-  });
 };
 
 export const requestLeave = async ({

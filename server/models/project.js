@@ -192,48 +192,20 @@ const projectSchema = new mongoose.Schema(
       enum: ["individual", "group"],
       default: "individual",
     },
-    projectTrack: {
-      type: String,
-      enum: ["capstone", "research"],
-      default: "capstone",
-    },
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    files: [
-      {
-        fileType: {
-          type: String,
-          required: true,
-        },
-        fileUrl: {
-          type: String,
-          required: true,
-        },
-        originalName: {
-          type: String,
-          required: true,
-        },
-        uploadedAt: {
-          type: Date,
-          default: Date.now,
-        },
-        fileCategory: {
-          type: String,
-          enum: ["General", "Submission"],
-          default: "General",
-        },
-        deadlineId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Deadline",
-          default: null,
-        },
-      },
-    ],
-    feedback: [feedbackSchema],
+    files: {
+      type: [projectFileSchema],
+      default: [],
+    },
+    feedback: {
+      type: [feedbackSchema],
+      default: [],
+    },
     deadline: {
       type: Date,
       default: null,
@@ -261,11 +233,6 @@ const projectSchema = new mongoose.Schema(
     reviewerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null,
-    },
-    assessmentTemplateId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "AssessmentTemplate",
       default: null,
     },
     archiveLocked: {

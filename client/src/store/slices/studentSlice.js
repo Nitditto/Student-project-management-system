@@ -91,6 +91,11 @@ export const uploadFiles = createAsyncThunk(
       const res = await axiosInstance.post(
         `/student/upload/${projectId}`,
         form,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
       );
       toast.success(res.data.message || "File uploaded successfully");
       return res.data.data.project || res.data;
@@ -112,13 +117,29 @@ export const fetchDashboardStats = createAsyncThunk(
     } catch (error) {
       toast.error(
         error.response.data.message ||
-        "Failed to fetch student dashboard stats",
+          "Failed to fetch student dashboard stats",
       );
       return thunkAPI.rejectWithValue(error.response.data.message);
     }
   },
 );
 
+export const getFeedback = createAsyncThunk(
+  "getFeedback",
+  async ({ projectId }, thunkAPI) => {
+    try {
+      const response = await axiosInstance.get(
+        `/student/feedback/${projectId}`,
+      );
+      return (
+        response.data.data?.feedback || response.data.data || response.data
+      );
+    } catch (error) {
+      toast.error(error.response.data.message || "Failed to fetch feedback");
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
 
 export const downloadFile = createAsyncThunk(
   "downloadFile",
@@ -170,6 +191,9 @@ const studentSlice = createSlice({
         // const newFiles = action.payload?.project?.files || action.payload || [];
         // state.files = [...state.files, ...newFiles];
         state.project = action.payload;
+      })
+      .addCase(getFeedback.fulfilled, (state, action) => {
+        state.feedback = action.payload || [];
       })
       .addCase(fetchDashboardStats.fulfilled, (state, action) => {
         state.dashboardStats = action.payload || [];

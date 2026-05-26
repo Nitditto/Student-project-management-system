@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { getCouncilMembersValidationMessage } from "../utils/councilValidation.js";
 
 const councilMemberSchema = new mongoose.Schema(
   {
@@ -121,16 +120,6 @@ const councilProjectSchema = new mongoose.Schema(
       type: reviewerFormSchema,
       default: () => ({}),
     },
-    projectTrack: {
-      type: String,
-      enum: ["capstone", "research"],
-      default: "capstone",
-    },
-    templateVersion: {
-      type: String,
-      default: "",
-      trim: true,
-    },
     scores: [scoreEntrySchema],
     weightedAverage: {
       type: Number,
@@ -189,14 +178,9 @@ const defenseCouncilSchema = new mongoose.Schema(
       type: [councilMemberSchema],
       validate: {
         validator(value) {
-          return !getCouncilMembersValidationMessage(value);
+          return Array.isArray(value) && value.length > 0;
         },
-        message(props) {
-          return (
-            getCouncilMembersValidationMessage(props.value) ||
-            "Council members are invalid"
-          );
-        },
+        message: "Council must have at least one member",
       },
     },
     projects: [councilProjectSchema],

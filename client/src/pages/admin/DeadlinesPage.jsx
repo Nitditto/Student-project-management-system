@@ -50,29 +50,31 @@ const DeadlinesPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedProject || !formData.deadlineDate) return;
-    if (!selectedProject.supervisor?._id) {
-      console.error("Selected project has no supervisor; cannot create deadline.");
-      return;
-    }
-
-    const deadlineData = {
-      title: `Deadline for ${selectedProject.title}`,
-      description:
-        formData.description?.trim() ||
-        `Admin-created deadline for project ${selectedProject.title}.`,
-      endDate: formData.deadlineDate,
-      teacherId: selectedProject.supervisor._id,
+    
+    const isUpdate = !!selectedProject.deadline;
+    
+    let deadlineData = {
+      //projectId: selectedProject?.student?.name,
+      //dueDate: selectedProject?.deadlineData,
+      // project: selectedProject?._id,
+      name: `Deadline for ${selectedProject.title}`,
+      dueDate: formData.deadlineDate,
     };
 
     try {
-      const createdDeadline = await dispatch(createDeadline(deadlineData)).unwrap();
+      // const updated = await dispatch(
+      const result = await dispatch(
+        createDeadline({ id: selectedProject._id, data: deadlineData, isUpdate }),
+      ).unwrap();
+      // const updatedProject = updated?.project || updated;
+      
+      const updatedDeadline = result.deadline || result;
+      const updatedProject = updatedDeadline.project || updatedDeadline;
 
-      if (createdDeadline?._id) {
+      if (updatedProject?._id) {
         setViewProjects((prev) =>
           prev.map((p) =>
-            p._id === selectedProject._id
-              ? { ...p, deadline: createdDeadline.endDate }
-              : p,
+            p._id === updatedProject._id ? { ...p, ...updatedProject } : p,
           ),
         );
       }
@@ -108,7 +110,7 @@ const DeadlinesPage = () => {
               onClick={() => setShowModal(true)}
               className="btn-primary mt-4 md:mt-0"
             >
-              Create Deadline
+              Create/Update Deadline
             </button>
           </div>
         </div>
@@ -203,7 +205,7 @@ const DeadlinesPage = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  Create Deadline
+                  Create or Update Deadline
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
@@ -243,13 +245,12 @@ const DeadlinesPage = () => {
                             type="button"
                             key={p._id}
                             className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                    onClick={() => {
+                            onClick={() => {
                               setSelectedProject(p);
                               setQuery(p.title);
                               setFormData({
                                 ...formData,
                                 projectTitle: p.title,
-                                description: "",
                                 deadlineDate: p.deadline
                                   ? new Date(p.deadline)
                                       .toISOString()
@@ -271,32 +272,6 @@ const DeadlinesPage = () => {
                     </div>
                   )}
                 </div>
-
-                <div className="">
-                  <label htmlFor="" className="label">
-                    Description
-                  </label>
-                  <textarea
-                    className="input-field w-full"
-                    disabled={!selectedProject}
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="Optional deadline description"
-                  />
-                </div>
-
-                {selectedProject && !selectedProject.supervisor?._id && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                    This project does not have a supervisor yet. A deadline can
-                    only be created after a supervisor is assigned.
-                  </div>
-                )}
 
                 <div className="">
                   <label htmlFor="" className="label">
@@ -340,8 +315,8 @@ const DeadlinesPage = () => {
                       </div>
                       <div className="">
                         <div className="text-xs text-slate-500">Supervisor</div>
-                      <div className="text-sm font-medium text-slate-800">
-                          {selectedProject.supervisor?.name || "No supervisor assigned"}
+                        <div className="text-sm font-medium text-slate-800">
+                          {selectedProject.supervisor?.name || "Unknown"}
                         </div>
                       </div>
                       <div className="md:col-span-2">

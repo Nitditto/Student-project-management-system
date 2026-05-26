@@ -37,7 +37,6 @@ export const addSlotsToSchedule = asyncHandler(async (req, res) => {
 export const runAutoAssign = asyncHandler(async (req, res) => {
   const result = await scheduleServices.runAutoAssignmentForSchedule(
     req.params.scheduleId,
-    { force: true },
   );
   res.status(200).json({
     success: true,

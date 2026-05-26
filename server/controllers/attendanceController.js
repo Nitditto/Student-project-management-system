@@ -1,18 +1,6 @@
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import * as attendanceServices from "../services/attendanceServices.js";
 
-export const getNgrokUrl = asyncHandler(async (req, res) => {
-  try {
-    const response = await fetch("http://ngrok:4040/api/tunnels");
-    const data = await response.json();
-    const tunnel = (data.tunnels || []).find((t) => t.proto === "https") || data.tunnels?.[0];
-    const publicUrl = tunnel?.public_url || null;
-    res.status(200).json({ success: true, data: { publicUrl } });
-  } catch {
-    res.status(200).json({ success: true, data: { publicUrl: null } });
-  }
-});
-
 export const createAttendanceSession = asyncHandler(async (req, res) => {
   const session = await attendanceServices.createAttendanceSession(
     req.user._id,
@@ -64,31 +52,6 @@ export const reviewLeaveRequest = asyncHandler(async (req, res) => {
   });
 });
 
-export const updateAttendanceSession = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.updateAttendanceSession(
-    req.user._id,
-    req.params.sessionId,
-    req.body,
-  );
-  res.status(200).json({
-    success: true,
-    message: "Attendance session updated successfully",
-    data: { session },
-  });
-});
-
-export const deleteAttendanceSession = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.deleteAttendanceSession(
-    req.user._id,
-    req.params.sessionId,
-  );
-  res.status(200).json({
-    success: true,
-    message: "Attendance session deleted successfully",
-    data: { session },
-  });
-});
-
 export const getStudentAttendanceBoard = asyncHandler(async (req, res) => {
   const data = await attendanceServices.getStudentAttendanceBoard(req.user._id);
   res.status(200).json({
@@ -98,38 +61,14 @@ export const getStudentAttendanceBoard = asyncHandler(async (req, res) => {
 });
 
 export const studentCheckIn = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.studentCheckInWithAccessCode({
+  const session = await attendanceServices.studentCheckIn({
     studentId: req.user._id,
     sessionId: req.params.sessionId,
-    accessCode: req.body.accessCode,
+    credential: req.body.credential,
   });
   res.status(200).json({
     success: true,
-    message: "Attendance confirmed successfully",
-    data: { session },
-  });
-});
-
-export const studentQrCheckIn = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.studentCheckInWithQrToken({
-    studentId: req.user._id,
-    token: req.body.token,
-  });
-  res.status(200).json({
-    success: true,
-    message: "Attendance confirmed successfully",
-    data: { session },
-  });
-});
-
-export const studentCodeCheckIn = asyncHandler(async (req, res) => {
-  const session = await attendanceServices.studentCheckInWithCodeOnly({
-    studentId: req.user._id,
-    accessCode: req.body.accessCode,
-  });
-  res.status(200).json({
-    success: true,
-    message: "Attendance confirmed successfully",
+    message: "Check-in successful",
     data: { session },
   });
 });

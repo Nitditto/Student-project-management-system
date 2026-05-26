@@ -19,13 +19,7 @@ import {
   getStudentAttendanceBoard,
   requestLeave,
   studentCheckIn,
-  studentQrCheckIn,
-  studentCodeCheckIn,
 } from "../controllers/attendanceController.js";
-import {
-  getStudentAssessmentBoard,
-  submitStudentPeerEvaluation,
-} from "../controllers/assessmentController.js";
 import {
   downloadReviewerForm,
   getStudentCouncilBoard,
@@ -39,7 +33,7 @@ import {
   respondGroupInvitation,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
-import { upload, handleUploadError, decodeFilenameMiddleware } from "../middleware/upload.js";
+import { upload, handleUploadError } from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -97,7 +91,6 @@ router.post(
   isAuthorized("Student"),
   upload.array("files", 10),
   handleUploadError,
-  decodeFilenameMiddleware,
   uploadFiles,
 );
 
@@ -165,18 +158,6 @@ router.get(
   getStudentAttendanceBoard,
 );
 router.post(
-  "/attendance/check-in",
-  isAuthenticated,
-  isAuthorized("Student"),
-  studentQrCheckIn,
-);
-router.post(
-  "/attendance/check-in-code",
-  isAuthenticated,
-  isAuthorized("Student"),
-  studentCodeCheckIn,
-);
-router.post(
   "/attendance/:sessionId/check-in",
   isAuthenticated,
   isAuthorized("Student"),
@@ -188,7 +169,6 @@ router.post(
   isAuthorized("Student"),
   upload.array("evidence", 3),
   handleUploadError,
-  decodeFilenameMiddleware,
   requestLeave,
 );
 router.get(
@@ -196,27 +176,6 @@ router.get(
   isAuthenticated,
   isAuthorized("Student"),
   getStudentCouncilBoard,
-);
-router.get(
-  "/assessment-board",
-  isAuthenticated,
-  isAuthorized("Student"),
-  getStudentAssessmentBoard,
-);
-router.get(
-  "/projects/:projectId/assessment-board",
-  isAuthenticated,
-  isAuthorized("Student"),
-  getStudentAssessmentBoard,
-);
-router.post(
-  "/projects/:projectId/peer-evaluations",
-  isAuthenticated,
-  isAuthorized("Student"),
-  upload.array("files", 5),
-  handleUploadError,
-  decodeFilenameMiddleware,
-  submitStudentPeerEvaluation,
 );
 router.get(
   "/councils/:councilId/projects/:projectId/reviewer-form/download",

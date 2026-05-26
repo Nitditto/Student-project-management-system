@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 
 // Auth Pages
@@ -14,9 +14,9 @@ import StudentDashboard from "./pages/student/StudentDashboard";
 import SubmitProposal from "./pages/student/SubmitProposal";
 import UploadFiles from "./pages/student/UploadFiles";
 import SupervisorPage from "./pages/student/SupervisorPage";
+import FeedbackPage from "./pages/student/FeedbackPage";
 import NotificationsPage from "./pages/student/NotificationsPage";
 import MyDefensePage from "./pages/student/MyDefensePage";
-import StudentDeadlinesPage from "./pages/student/DeadlinesPage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -25,12 +25,6 @@ import AssignedStudents from "./pages/teacher/AssignedStudents";
 import TeacherFiles from "./pages/teacher/TeacherFiles";
 import DefenseHubPage from "./pages/teacher/DefenseHubPage";
 import TeacherPreselectionPage from "./pages/teacher/TeacherPreselectionPage";
-import TeacherNotificationsPage from "./pages/teacher/NotificationsPage";
-import DeadlineManagement from "./pages/teacher/DeadlineManagement";
-import SubmissionTracking from "./pages/teacher/SubmissionTracking";
-import DeadlineSubmissionsPage from "./pages/teacher/DeadlineSubmissionsPage";
-import GroupProgressOverview from "./pages/teacher/GroupProgressOverview";
-import SubmissionPreviewPage from "./pages/teacher/SubmissionPreviewPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -50,8 +44,6 @@ import { getAllProjects, getAllUsers } from "./store/slices/adminSlice";
 import { fetchDashboardStats } from "./store/slices/studentSlice";
 
 import NotFound from "./pages/NotFound";
-import UserSettings from "./pages/UserSettings";
-
 const App = () => {
   const { authUser, isCheckingAuth } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -68,19 +60,11 @@ const App = () => {
     if (authUser?.role === "Student") {
       dispatch(fetchDashboardStats());
     }
-  }, [authUser, dispatch]);
+  }, [authUser]);
 
   const ProtectedRoute = ({ children, allowedRoles }) => {
-    const location = useLocation();
-
     if (!authUser) {
-      const redirectPath = `${location.pathname}${location.search}`;
-      return (
-        <Navigate
-          to={`/login?redirect=${encodeURIComponent(redirectPath)}`}
-          replace
-        />
-      );
+      return <Navigate to="/login" replace />;
     }
     if (
       allowedRoles?.length &&
@@ -125,7 +109,10 @@ const App = () => {
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<DashboardRedirect />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/login"
+          element={!authUser ? <LoginPage /> : <DashboardRedirect />}
+        />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/dashboard" element={<DashboardRedirect />} />
@@ -147,7 +134,6 @@ const App = () => {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="councils" element={<CouncilsPage />} />
           <Route path="registration-settings" element={<RegistrationSettingsPage />} />
-          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Teacher Routes */}
@@ -165,13 +151,6 @@ const App = () => {
           <Route path="files" element={<TeacherFiles />} />
           <Route path="preselect" element={<TeacherPreselectionPage />} />
           <Route path="defense" element={<DefenseHubPage />} />
-          <Route path="notifications" element={<TeacherNotificationsPage />} />
-          <Route path="deadlines" element={<DeadlineManagement />} />
-          <Route path="deadlines/:deadlineId/submissions" element={<DeadlineSubmissionsPage />} />
-          <Route path="deadlines/submissions/preview" element={<SubmissionPreviewPage />} />
-          <Route path="group-progress" element={<GroupProgressOverview />} />
-          <Route path="submissions" element={<SubmissionTracking />} />
-          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Student Routes */}
@@ -184,17 +163,12 @@ const App = () => {
           }
         >
           <Route index element={<StudentDashboard />} />
-          <Route
-            path="registration"
-            element={<Navigate to="/student/submit-proposal" replace />}
-          />
           <Route path="submit-proposal" element={<SubmitProposal />} />
           <Route path="upload-files" element={<UploadFiles />} />
           <Route path="supervisor" element={<SupervisorPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="defense" element={<MyDefensePage />} />
-          <Route path="deadlines" element={<StudentDeadlinesPage />} />
-          <Route path="settings" element={<UserSettings />} />
         </Route>
 
         {/* Default Redirect */}

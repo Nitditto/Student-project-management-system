@@ -79,17 +79,6 @@ const ensureUsersWithoutProject = async (memberIds) => {
   }
 };
 
-const ensureTeacherCanTakeStudents = ({ teacher, studentIds, message }) => {
-  const futureLoad = new Set([
-    ...((teacher.assignedStudents || []).map(String)),
-    ...(studentIds || []).map(String),
-  ]);
-
-  if (futureLoad.size > teacher.maxStudent) {
-    throw new ErrorHandler(message, 400);
-  }
-};
-
 export const createProjectProposalWithGroup = async ({
   studentId,
   title,
@@ -159,7 +148,7 @@ export const createProjectProposalWithGroup = async ({
           invitee,
           `Ban vua duoc moi vao nhom do an "${project.groupName}".`,
           "general",
-          "/student/submit-proposal",
+          "/student/registration",
           "medium",
         ),
       ),
@@ -243,14 +232,6 @@ export const respondGroupInvitation = async ({
   if (decision === "accepted") {
     const settings = await getRegistrationSettings();
     const project = await Project.findById(invitation.project._id);
-
-    if (["completed", "done"].includes(project.status)) {
-      throw new ErrorHandler(
-        "Cannot join a project that is already completed",
-        400,
-      );
-    }
-
     const currentProject = await Project.findOne({
       $or: [{ student: studentId }, { members: studentId }],
       _id: { $ne: project._id },
@@ -263,23 +244,6 @@ export const respondGroupInvitation = async ({
 
     if ((project.members || []).length >= settings.maxGroupSize) {
       throw new ErrorHandler("This group has reached the maximum size", 400);
-    }
-
-    if (project.supervisor) {
-      const teacher = await User.findById(project.supervisor).select(
-        "role maxStudent assignedStudents",
-      );
-
-      if (!teacher || teacher.role !== "Teacher") {
-        throw new ErrorHandler("Assigned supervisor is invalid", 400);
-      }
-
-      ensureTeacherCanTakeStudents({
-        teacher,
-        studentIds: [studentId],
-        message:
-          "Teacher capacity is not enough to add another student to this supervised group",
-      });
     }
 
     project.projectMode = "group";
@@ -299,17 +263,6 @@ export const respondGroupInvitation = async ({
         $addToSet: { assignedStudents: studentId },
       });
     }
-
-    await TeacherPreselection.updateMany(
-      {
-        student: studentId,
-        status: "pending",
-      },
-      {
-        status: "cancelled",
-        respondedAt: new Date(),
-      },
-    );
   }
 
   invitation.status = decision;
@@ -319,7 +272,7 @@ export const respondGroupInvitation = async ({
     invitation.inviter._id,
     `${invitation.invitee.name} da ${decision === "accepted" ? "chap nhan" : "tu choi"} loi moi vao nhom "${invitation.project.groupName || invitation.project.title}".`,
     "general",
-    "/student/submit-proposal",
+    "/student/registration",
     decision === "accepted" ? "low" : "medium",
   );
 
@@ -371,19 +324,11 @@ export const createTeacherPreselection = async ({
     status: { $ne: "rejected" },
   });
 
-  if (project) {
-    if (["completed", "done"].includes(project.status)) {
-      throw new ErrorHandler(
-        "Cannot preselect for a project that is already completed",
-        400,
-      );
-    }
-    if (!isSameId(project.student, studentId)) {
-      throw new ErrorHandler(
-        "Please preselect the group representative instead of a regular member",
-        400,
-      );
-    }
+  if (project && !isSameId(project.student, studentId)) {
+    throw new ErrorHandler(
+      "Please preselect the group representative instead of a regular member",
+      400,
+    );
   }
 
   const invitation = await TeacherPreselection.create({
@@ -396,7 +341,7 @@ export const createTeacherPreselection = async ({
     studentId,
     `${teacher.name} da chon ban vao danh sach uu tien huong dan. Truong nhom co the chap nhan loi moi nay trong giai doan preselect.`,
     "general",
-    "/student/supervisor",
+    "/student/registration",
     "medium",
   );
 
@@ -412,46 +357,27 @@ export const getTeacherPreselections = async (teacherId) => {
 
 const assignTeacherToProjectMembers = async ({ project, teacherId }) => {
   const teacher = await User.findById(teacherId);
-  if (!teacher || teacher.role !== "Teacher") {
-    throw new ErrorHandler("Selected supervisor is invalid", 400);
-  }
-
-  if (project.supervisor) {
-    throw new ErrorHandler("Project already has a supervisor", 400);
-  }
-
   const memberIds = getProjectMemberIds(project);
-  ensureTeacherCanTakeStudents({
-    teacher,
-    studentIds: memberIds,
-    message: "Teacher capacity is not enough for this whole group",
-  });
+  const futureLoad = new Set([
+    ...(teacher.assignedStudents || []).map(String),
+    ...memberIds.map(String),
+  ]);
 
-  const projectUpdate = {
-    supervisor: teacherId,
-  };
+  if (futureLoad.size > teacher.maxStudent) {
+    throw new ErrorHandler("Teacher capacity is not enough for this whole group", 400);
+  }
+
+  project.supervisor = teacherId;
   if (project.status === "pending") {
-    projectUpdate.status = "approved";
+    project.status = "approved";
   }
-
-  const assignedProject = await Project.findOneAndUpdate(
-    {
-      _id: project._id,
-      supervisor: null,
-    },
-    { $set: projectUpdate },
-    { new: true },
-  );
-
-  if (!assignedProject) {
-    throw new ErrorHandler("Project already has a supervisor", 400);
-  }
+  await project.save();
 
   await User.updateMany(
     { _id: { $in: memberIds } },
     {
       supervisor: teacherId,
-      project: assignedProject._id,
+      project: project._id,
     },
   );
 
@@ -459,19 +385,8 @@ const assignTeacherToProjectMembers = async ({ project, teacherId }) => {
     $addToSet: { assignedStudents: { $each: memberIds } },
   });
 
-  await TeacherPreselection.updateMany(
-    {
-      student: { $in: memberIds },
-      status: "pending",
-    },
-    {
-      status: "cancelled",
-      respondedAt: new Date(),
-    },
-  );
-
-  await syncProjectMembers(assignedProject);
-  return assignedProject;
+  await syncProjectMembers(project);
+  return project;
 };
 
 export const acceptTeacherPreselection = async ({
@@ -517,6 +432,18 @@ export const acceptTeacherPreselection = async ({
   invitation.status = "accepted";
   invitation.respondedAt = new Date();
   await invitation.save();
+
+  await TeacherPreselection.updateMany(
+    {
+      student: studentId,
+      _id: { $ne: invitation._id },
+      status: "pending",
+    },
+    {
+      status: "cancelled",
+      respondedAt: new Date(),
+    },
+  );
 
   await Promise.all(
     getProjectMemberIds(project).map((memberId) =>

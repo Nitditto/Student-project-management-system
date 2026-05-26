@@ -7,7 +7,6 @@ import * as requestServices from "../services/requestServices.js";
 import * as notificationServices from "../services/notificationServices.js";
 import { Project } from "../models/project.js";
 import { Notification } from "../models/notification.js";
-import { Deadline } from "../models/deadline.js";
 import * as fileServices from "../services/fileServices.js";
 import { ensureProjectEditable } from "../services/workflowProjectServices.js";
 import { isProjectMember } from "../utils/workflowHelpers.js";
@@ -214,27 +213,14 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
     .lean();
 
   const now = new Date();
-  const supervisorId = project?.supervisor?._id || project?.supervisor || null;
-  const upcomingDeadlines = supervisorId
-    ? await Deadline.find({
-        teacherId: supervisorId,
-        endDate: { $gte: now },
-        $or: project?._id
-          ? [
-              { assignedGroups: { $exists: false } },
-              { assignedGroups: { $size: 0 } },
-              { assignedGroups: project._id },
-            ]
-          : [
-              { assignedGroups: { $exists: false } },
-              { assignedGroups: { $size: 0 } },
-            ],
-      })
-        .select("title description startDate endDate")
-        .sort({ endDate: 1 })
-        .limit(3)
-        .lean()
-    : [];
+  const upcomingDeadlines = await Project.find({
+    $or: [{ student: studentId }, { members: studentId }],
+    deadline: { $gte: now },
+  })
+    .select("title description deadline")
+    .sort({ deadline: 1 })
+    .limit(3)
+    .lean();
 
   const notifications = await Notification.find({
     user: studentId,

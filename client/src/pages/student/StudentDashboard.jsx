@@ -16,11 +16,6 @@ const StudentDashboard = () => {
   const project = dashboardStats?.project || {};
   const supervisorName = dashboardStats?.supervisorName || "N/A";
   const upcomingDeadlines = dashboardStats?.upcomingDeadlines || [];
-  const nextDeadline =
-    upcomingDeadlines[0]?.endDate ||
-    upcomingDeadlines[0]?.deadline ||
-    project?.deadline ||
-    null;
 
   const topNotifications = dashboardStats?.notifications || [];
   const feedbackList = dashboardStats?.feedbackNotification || [];
@@ -95,7 +90,7 @@ const StudentDashboard = () => {
                   Next Deadline
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {formatDate(nextDeadline)}
+                  {formatDate(project?.deadline)}
                 </p>
               </div>
             </div>
@@ -158,7 +153,7 @@ const StudentDashboard = () => {
                   Submission Deadline
                 </label>
                 <p className="text-slate-800">
-                  {formatDate(nextDeadline)}
+                  {formatDate(project?.deadline)}
                 </p>
               </div>
             </div>
@@ -236,7 +231,7 @@ const StudentDashboard = () => {
                         {deadline.title}
                       </p>
                       <p className="text-sm text-slate-600">
-                        {formatDate(deadline.endDate || deadline.deadline)}
+                        {formatDate(deadline.deadline)}
                       </p>
                     </div>
                     <div className={`badge badge-pending capitalize font-bold`}>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { login, registerUser } from "../../store/slices/authSlice";
-import { BookOpen, Loader } from "lucide-react";
+import { BookOpen, ChartNoAxesColumn, Loader } from "lucide-react";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -20,7 +20,6 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -94,27 +93,21 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (authUser) {
-      const redirectPath = searchParams.get("redirect");
-      if (redirectPath?.startsWith("/")) {
-        navigate(redirectPath, { replace: true });
-        return;
-      }
-
       switch (authUser.role) {
         case "Student":
-          navigate("/student", { replace: true });
+          navigate("/student");
           break;
         case "Teacher":
-          navigate("/teacher", { replace: true });
+          navigate("/teacher");
           break;
         case "Admin":
-          navigate("/admin", { replace: true });
+          navigate("/admin");
           break;
         default:
-          navigate("/login", { replace: true });
+          navigate("/login");
       }
     }
-  }, [authUser, navigate, searchParams]);
+  }, [authUser]);
 
   return (
     <>
