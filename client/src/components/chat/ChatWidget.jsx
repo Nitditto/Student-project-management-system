@@ -514,102 +514,108 @@ export default function ChatWidget() {
                             <div className="flex-1 flex flex-col h-full relative overflow-hidden">
                                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
                                     {messages.map((msg, idx) => (
-                                        <div key={idx} className={`flex flex-col ${msg.fromSelf ? "items-end" : "items-start"} relative group`}>
-                                            {!msg.fromSelf && selectedPartner?.isGroup && (
-                                                <span className="text-[10px] text-gray-400 ml-1 mb-1">
-                                                    {msg.senderName || msg.sender?.name || "Member"}
-                                                </span>
+                                        <div key={idx} className={`flex w-full mb-2 ${msg.fromSelf ? "justify-end" : "justify-start"} group`}>
+                                            {!msg.fromSelf && (
+                                                <div className="flex flex-col justify-end mr-2 pb-1">
+                                                    <div className="w-7 h-7 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
+                                                        {(msg.senderName || msg.sender?.name || "M").charAt(0).toUpperCase()}
+                                                    </div>
+                                                </div>
                                             )}
-                                            <div className="flex items-center gap-2 relative">
-                                                {msg.fromSelf && !msg.isUnsent && (
-                                                    <button onClick={() => setActiveMessageId(activeMessageId === msg._id ? null : msg._id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                                                    </button>
+
+                                            <div className={`flex flex-col ${msg.fromSelf ? "items-end" : "items-start"} max-w-[75%]`}>
+                                                {!msg.fromSelf && selectedPartner?.isGroup && (
+                                                    <span className="text-[11px] text-gray-500 ml-1 mb-1">
+                                                        {msg.senderName || msg.sender?.name || "Member"}
+                                                    </span>
                                                 )}
-                                                
-                                                <div
-                                                    className={`max-w-[75%] px-4 py-2 text-sm shadow-sm break-words ${
-                                                        msg.isUnsent ? "bg-transparent border border-gray-200 text-gray-400 italic rounded-2xl" :
-                                                        msg.fromSelf
-                                                            ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm"
-                                                            : "bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-tl-sm"
-                                                    }`}
-                                                >
-                                                    {msg.isUnsent ? "Tin nhắn đã bị thu hồi" : (
-                                                        <div className="flex flex-col gap-2">
-                                                            {msg.replyTo && (
-                                                                <div className={`p-2 rounded-lg text-xs mb-1 border-l-2 ${msg.fromSelf ? 'bg-blue-700/30 border-blue-200' : 'bg-gray-100 border-gray-300'}`}>
-                                                                    <div className="font-semibold opacity-70 truncate">{msg.replyTo.sender?.name || 'Ai đó'}</div>
-                                                                    <div className="opacity-90 truncate">{msg.replyTo.content || (msg.replyTo.fileUrl ? 'Tệp đính kèm' : '...')}</div>
-                                                                </div>
-                                                            )}
-                                                            {msg.fileUrl && msg.fileType === 'image' && (
-                                                                <img src={msg.fileUrl} alt="attachment" className="max-w-full rounded-md mt-1 mb-1 max-h-48 object-contain bg-black/5" />
-                                                            )}
-                                                            {msg.fileUrl && msg.fileType === 'document' && (
-                                                                <a href={msg.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/10 p-2 rounded-lg text-xs hover:bg-black/20 transition">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                                                    Xem tài liệu đính kèm
-                                                                </a>
-                                                            )}
-                                                            {msg.content}
+
+                                                <div className={`flex items-center gap-2 relative w-full ${msg.fromSelf ? "flex-row-reverse" : "flex-row"}`}>
+                                                    
+                                                    <div
+                                                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                                                        className={`px-3.5 py-2 text-[15px] shadow-sm leading-relaxed relative ${
+                                                            msg.isUnsent ? "bg-transparent border border-gray-300 text-gray-500 italic rounded-2xl" :
+                                                            msg.fromSelf
+                                                                ? "bg-[#0084ff] text-white rounded-[20px] rounded-br-[4px]"
+                                                                : "bg-[#e4e6eb] text-black rounded-[20px] rounded-bl-[4px]"
+                                                        }`}
+                                                    >
+                                                        {showReactionsFor === msg._id && !msg.isUnsent && (
+                                                            <div className={`absolute bottom-[calc(100%+5px)] ${msg.fromSelf ? "right-0" : "left-0"} z-50 bg-[#242526] rounded-[30px] shadow-xl p-1.5 flex items-center gap-1 min-w-max border border-gray-700`}>
+                                                                {['❤️', '😆', '😮', '😢', '😡', '👍'].map(emoji => (
+                                                                    <button key={emoji} onClick={(e) => { e.stopPropagation(); handleReaction(msg._id, emoji); setShowReactionsFor(null); }} className="hover:bg-white/10 p-1 rounded-full transition text-[26px] leading-none transform hover:scale-125 origin-bottom duration-200">
+                                                                        {emoji}
+                                                                    </button>
+                                                                ))}
+                                                                <button onClick={(e) => { e.stopPropagation(); setShowReactionsFor(null); }} className="w-[34px] h-[34px] flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition text-gray-300 ml-1">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {msg.isUnsent ? "Tin nhắn đã bị thu hồi" : (
+                                                            <div className="flex flex-col gap-1.5">
+                                                                {msg.replyTo && (
+                                                                    <div className={`p-2 rounded-xl text-xs border-l-2 ${msg.fromSelf ? 'bg-black/10 border-white/50 text-white' : 'bg-white border-gray-400 text-gray-700'}`}>
+                                                                        <div className="font-semibold opacity-90 truncate">{msg.replyTo.sender?.name || msg.replyTo.senderName || 'Ai đó'}</div>
+                                                                        <div className="opacity-80 truncate">{msg.replyTo.content || (msg.replyTo.fileUrl ? 'Tệp đính kèm' : '...')}</div>
+                                                                    </div>
+                                                                )}
+                                                                {msg.fileUrl && msg.fileType === 'image' && (
+                                                                    <img src={msg.fileUrl} alt="attachment" className="max-w-full rounded-lg mt-1 mb-1 max-h-48 object-contain bg-black/5" />
+                                                                )}
+                                                                {msg.fileUrl && msg.fileType === 'document' && (
+                                                                    <a href={msg.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/10 p-2 rounded-lg text-xs hover:bg-black/20 transition">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                                                        Xem tài liệu đính kèm
+                                                                    </a>
+                                                                )}
+                                                                <span>{msg.content}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {msg.reactions && msg.reactions.length > 0 && !msg.isUnsent && (
+                                                            <div className={`absolute -bottom-3 ${msg.fromSelf ? 'left-2' : 'right-2'} bg-white shadow-md border border-gray-100 rounded-full px-1.5 py-0.5 text-[11px] flex items-center gap-1 z-10 whitespace-nowrap text-black`}>
+                                                                {Array.from(new Set(msg.reactions.map(r => r.emoji))).map(emoji => (
+                                                                    <span key={emoji}>{emoji}</span>
+                                                                ))}
+                                                                {msg.reactions.length > 1 && <span className="text-gray-500 font-medium ml-0.5">{msg.reactions.length}</span>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {!msg.isUnsent && (
+                                                        <div className={`opacity-0 group-hover:opacity-100 flex items-center gap-1 transition ${msg.fromSelf ? 'mr-1' : 'ml-1'}`}>
+                                                            <button onClick={() => setShowReactionsFor(showReactionsFor === msg._id ? null : msg._id)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition" title="Thả cảm xúc">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                                                            </button>
+                                                            <button onClick={() => setActiveMessageId(activeMessageId === msg._id ? null : msg._id)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                                            </button>
                                                         </div>
                                                     )}
 
-                                                    {/* Reactions Display */}
-                                                    {msg.reactions && msg.reactions.length > 0 && !msg.isUnsent && (
-                                                        <div className={`absolute -bottom-3 ${msg.fromSelf ? 'right-2' : 'left-2'} bg-white shadow-md border border-gray-100 rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 z-10 whitespace-nowrap`}>
-                                                            {Array.from(new Set(msg.reactions.map(r => r.emoji))).map(emoji => (
-                                                                <span key={emoji}>{emoji}</span>
-                                                            ))}
-                                                            {msg.reactions.length > 1 && <span className="text-gray-500">{msg.reactions.length}</span>}
+                                                    {activeMessageId === msg._id && !msg.isUnsent && (
+                                                        <div className={`absolute top-8 ${msg.fromSelf ? "right-12" : "left-12"} z-20 w-36 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden`}>
+                                                            <button onClick={() => { setReplyingTo(msg); setActiveMessageId(null); }} className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Trả lời</button>
+                                                            {msg.fromSelf && (
+                                                                <button onClick={() => handleUnsend(msg._id)} className="w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition">Thu hồi</button>
+                                                            )}
+                                                            <button onClick={() => handleDelete(msg._id)} className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Xóa ở phía tôi</button>
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {!msg.fromSelf && !msg.isUnsent && (
-                                                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
-                                                        <button onClick={() => setShowReactionsFor(showReactionsFor === msg._id ? null : msg._id)} className="p-1 text-gray-400 hover:text-gray-600 transition" title="Thả cảm xúc">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                                                        </button>
-                                                        <button onClick={() => setActiveMessageId(activeMessageId === msg._id ? null : msg._id)} className="p-1 text-gray-400 hover:text-gray-600 transition">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                {/* Reaction Menu */}
-                                                {showReactionsFor === msg._id && !msg.isUnsent && (
-                                                    <div className={`absolute top-8 ${msg.fromSelf ? "right-12" : "left-12"} z-20 bg-white rounded-full shadow-xl border border-gray-100 p-1 flex items-center gap-1`}>
-                                                        {['❤️', '😆', '👍', '😢', '😡'].map(emoji => (
-                                                            <button key={emoji} onClick={() => handleReaction(msg._id, emoji)} className="hover:bg-gray-100 p-1.5 rounded-full transition text-base">
-                                                                {emoji}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {/* Context Menu */}
-                                                {activeMessageId === msg._id && !msg.isUnsent && (
-                                                    <div className={`absolute top-8 ${msg.fromSelf ? "right-6" : "left-12"} z-20 w-32 bg-white rounded-lg shadow-xl border border-gray-100 py-1`}>
-                                                        <button onClick={() => { setReplyingTo(msg); setActiveMessageId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Trả lời</button>
-                                                        {msg.fromSelf && (
-                                                            <button onClick={() => handleUnsend(msg._id)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Thu hồi</button>
-                                                        )}
-                                                        <button onClick={() => handleDelete(msg._id)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Xóa ở phía tôi</button>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     ))}
                                     
                                     {/* Typing Indicator */}
                                     {isTyping && (
-                                        <div className="flex justify-start">
-                                            <div className="bg-white border border-gray-100 text-gray-500 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1 shadow-sm w-16">
-                                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                                        <div className="flex w-full mb-2 justify-start">
+                                            <div className="px-4 py-3 bg-[#e4e6eb] rounded-[20px] rounded-bl-[4px] flex items-center gap-1.5 shadow-sm ml-9">
+                                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                                                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
                                             </div>
                                         </div>
                                     )}

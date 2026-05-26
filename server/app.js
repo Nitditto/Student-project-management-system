@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import { config } from "dotenv";
 import cookieParser from "cookie-parser";
-import fileUpload from "express-fileupload";
 import { errorMiddleware } from "./middleware/error.js";
 import authRouter from "./router/userRoutes.js";
 import adminRouter from "./router/adminRoutes.js";
@@ -100,7 +99,6 @@ if (!fs.existsSync(tempDir)) {
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
 
 // Serve static files from uploads directory
 app.use("/uploads", express.static(uploadsDir));

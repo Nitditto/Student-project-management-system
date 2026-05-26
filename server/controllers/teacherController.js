@@ -94,17 +94,36 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
   }
 
   const studentProject = request.project
-    ? await Project.findById(request.project)
+    ? await Project.findById(request.project._id || request.project)
     : await Project.findOne({ student: request.student._id });
 
   if (!studentProject) {
     throw new ErrorHandler("Project not found for this request", 404);
   }
 
+  if (studentProject.supervisor) {
+    throw new ErrorHandler("Project already has a supervisor", 400);
+  }
+
   await registrationServices.assignSupervisorToProjectByAdmin({
     project: studentProject,
     supervisorId: teacherId,
   });
+
+  request.status = "accepted";
+  await request.save();
+
+  const cancelFilter = request.project
+    ? { project: studentProject._id }
+    : { student: request.student._id };
+  await SupervisorRequest.updateMany(
+    {
+      ...cancelFilter,
+      _id: { $ne: request._id },
+      status: "pending",
+    },
+    { status: "rejected" },
+  );
 
   await Promise.all(
     getProjectMemberIds(studentProject).map((memberId) =>

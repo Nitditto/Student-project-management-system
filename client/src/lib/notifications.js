@@ -4,15 +4,25 @@ export const DESTINATION_META = {
     description: "View defense schedule, council details, reviewer form, and result updates.",
     action: "Open Defense Page",
   },
-  "/student/registration": {
+  "/student/submit-proposal": {
     label: "Registration Setup",
     description: "Review group invitations, preselection, and registration progress.",
+    action: "Open Registration Page",
+  },
+  "/student/registration": {
+    label: "Registration Setup",
+    description: "Legacy registration link. Opens the current project registration page.",
     action: "Open Registration Page",
   },
   "/student/supervisor": {
     label: "Supervisor Flow",
     description: "Check supervisor assignment and project approval flow.",
     action: "Open Supervisor Page",
+  },
+  "/student/deadlines": {
+    label: "My Deadlines",
+    description: "Review new or updated submission deadlines from your supervisor.",
+    action: "Open Deadlines Page",
   },
   "/teacher/defense": {
     label: "Defense Hub",
@@ -211,7 +221,10 @@ export const buildNotificationPresentation = (notification) => {
     title = "Leave Request Updated";
   } else if (notification.link === "/student/supervisor") {
     title = "Supervisor Assignment";
-  } else if (notification.link === "/student/registration") {
+  } else if (
+    notification.link === "/student/registration" ||
+    notification.link === "/student/submit-proposal"
+  ) {
     title = "Registration Update";
   } else if (notification.link === "/teacher/defense") {
     title = "Defense Workflow Update";

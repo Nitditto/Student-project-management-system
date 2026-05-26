@@ -1,9 +1,19 @@
-import cron from "node-cron";
 import { Project } from "../models/project.js";
 import { Deadline } from "../models/deadline.js";
 import { Submission } from "../models/submission.js";
 
-export const initCronJobs = () => {
+export const initCronJobs = async () => {
+  let cron;
+  try {
+    const cronModule = await import("node-cron");
+    cron = cronModule.default;
+  } catch (error) {
+    console.warn(
+      "node-cron is not installed. Evaluator cron job is disabled until dependencies are reinstalled.",
+    );
+    return;
+  }
+
   // Run daily at 2:00 AM
   cron.schedule("0 2 * * *", async () => {
     try {

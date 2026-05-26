@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "cleanup:db:legacy": "node scripts/cleanupLegacyMongo.js",
+    "cleanup:db:legacy:apply": "node scripts/cleanupLegacyMongo.js --apply"
   },
   "author": "",
   "license": "ISC",

@@ -3,13 +3,6 @@ import { Message } from '../models/message.js';
 import { Project } from '../models/project.js';
 import { User } from '../models/user.js';
 import ErrorHandler from '../middleware/error.js';
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDir = path.join(__dirname, "../uploads");
 
 export const getChatHistory = async (req, res, next) => {
     try {
@@ -76,15 +69,9 @@ export const saveMessage = async (req, res, next) => {
         let fileUrl = null;
         let fileType = null;
 
-        if (req.files && req.files.file) {
-            const file = req.files.file;
-            const ext = path.extname(file.name);
-            const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-            const uploadPath = path.join(uploadsDir, filename);
-            
-            await file.mv(uploadPath);
-            fileUrl = `/uploads/${filename}`;
-            fileType = file.mimetype.startsWith('image/') ? 'image' : 'document';
+        if (req.file) {
+            fileUrl = `/uploads/temp/${req.file.filename}`;
+            fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'document';
         }
 
         let newMessage;

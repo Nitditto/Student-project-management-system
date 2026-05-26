@@ -92,13 +92,20 @@ const notifyTeam = async (project, message, type = "defense") => {
   );
 };
 
-export const runAutoAssignmentForSchedule = async (scheduleId) => {
+export const runAutoAssignmentForSchedule = async (
+  scheduleId,
+  { force = false } = {},
+) => {
   const schedule = await TeacherSchedule.findById(scheduleId);
   if (!schedule) {
     throw new ErrorHandler("Schedule not found", 404);
   }
 
   const now = new Date();
+  if (!force && !schedule.autoAssignEnabled) {
+    return { schedule, assignedProjects: [], redFlags: [] };
+  }
+
   if (schedule.pickDeadline > now || schedule.deadlineProcessedAt) {
     return { schedule, assignedProjects: [], redFlags: [] };
   }

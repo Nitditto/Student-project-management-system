@@ -3,21 +3,52 @@ import ErrorHandler from "../middleware/error.js";
 import { Deadline } from "../models/deadline.js";
 import { Submission } from "../models/submission.js";
 import { Project } from "../models/project.js";
-import mongoose from "mongoose";
+import { User } from "../models/user.js";
+import * as notificationServices from "../services/notificationServices.js";
+
+const findStudentProject = (studentId) =>
+  Project.findOne({
+    $or: [{ student: studentId }, { members: studentId }],
+    status: { $ne: "rejected" },
+  }).sort({ createdAt: -1 });
+
+const resolveStudentDeadlineContext = async (studentId) => {
+  const [project, student] = await Promise.all([
+    findStudentProject(studentId),
+    User.findById(studentId).select("supervisor"),
+  ]);
+
+  return {
+    project,
+    supervisorId: project?.supervisor || student?.supervisor || null,
+  };
+};
 
 // Create a new deadline (Teacher)
 export const createDeadline = asyncHandler(async (req, res, next) => {
-  const { title, description, endDate, startDate } = req.body;
+  const { title, description, endDate, startDate, teacherId } = req.body;
 
   if (!title || !description || !endDate) {
     return next(new ErrorHandler("Title, description, and end date are required", 400));
+  }
+
+  const ownerTeacherId =
+    req.user.role === "Admin" ? teacherId || null : req.user._id;
+
+  if (!ownerTeacherId) {
+    return next(new ErrorHandler("Teacher ID is required when admin creates a deadline", 400));
+  }
+
+  const deadlineOwner = await User.findById(ownerTeacherId).select("role");
+  if (!deadlineOwner || deadlineOwner.role !== "Teacher") {
+    return next(new ErrorHandler("Deadline owner must be a valid teacher", 400));
   }
 
   const deadlineData = {
     title,
     description,
     endDate: new Date(endDate),
-    teacherId: req.user._id,
+    teacherId: ownerTeacherId,
   };
 
   if (startDate) {
@@ -25,6 +56,25 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
   }
 
   const deadline = await Deadline.create(deadlineData);
+
+  const supervisedStudents = await User.find({
+    role: "Student",
+    supervisor: ownerTeacherId,
+  })
+    .select("_id")
+    .lean();
+
+  await Promise.all(
+    supervisedStudents.map((student) =>
+      notificationServices.notifyUser(
+        student._id,
+        `New deadline "${deadline.title}" has been created and is due on ${new Date(deadline.endDate).toLocaleString()}.`,
+        "deadline",
+        "/student/deadlines",
+        "high",
+      ),
+    ),
+  );
 
   res.status(201).json({
     success: true,
@@ -102,7 +152,11 @@ export const deleteDeadline = asyncHandler(async (req, res, next) => {
 
 // Get deadlines for a teacher
 export const getTeacherDeadlines = asyncHandler(async (req, res, next) => {
-  const deadlines = await Deadline.find({ teacherId: req.user._id }).sort({ endDate: 1 });
+  const teacherId =
+    req.user.role === "Admin" && req.query.teacherId
+      ? req.query.teacherId
+      : req.user._id;
+  const deadlines = await Deadline.find({ teacherId }).sort({ endDate: 1 });
 
   res.status(200).json({
     success: true,
@@ -112,22 +166,25 @@ export const getTeacherDeadlines = asyncHandler(async (req, res, next) => {
 
 // Get deadlines for a student
 export const getStudentDeadlines = asyncHandler(async (req, res, next) => {
-  const project = await Project.findOne({
-    $or: [{ student: req.user._id }, { members: req.user._id }],
-    status: "approved"
-  });
+  const { project, supervisorId } = await resolveStudentDeadlineContext(
+    req.user._id,
+  );
 
-  if (!project || !project.supervisor) {
+  if (!supervisorId) {
     return res.status(200).json({
       success: true,
-      data: { deadlines: [] },
+      data: { deadlines: [], project: project || null },
     });
   }
 
-  const deadlines = await Deadline.find({ teacherId: project.supervisor }).sort({ endDate: 1 });
+  const deadlines = await Deadline.find({ teacherId: supervisorId }).sort({
+    endDate: 1,
+  });
   
   // Find submissions for this project
-  const submissions = await Submission.find({ groupId: project._id });
+  const submissions = project?._id
+    ? await Submission.find({ groupId: project._id })
+    : [];
   const submissionMap = submissions.reduce((acc, sub) => {
     acc[sub.deadlineId.toString()] = sub;
     return acc;
@@ -171,13 +228,21 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Đã quá hạn nộp bài", 400));
   }
 
-  const project = await Project.findOne({
-    $or: [{ student: req.user._id }, { members: req.user._id }],
-    status: "approved"
-  });
+  const { project, supervisorId } = await resolveStudentDeadlineContext(
+    req.user._id,
+  );
 
   if (!project) {
-    return next(new ErrorHandler("You are not part of an approved project group", 400));
+    return next(new ErrorHandler("You are not part of a project group", 400));
+  }
+
+  if (
+    !supervisorId ||
+    deadline.teacherId.toString() !== supervisorId.toString()
+  ) {
+    return next(
+      new ErrorHandler("This deadline does not belong to your supervisor", 403),
+    );
   }
 
   if (!req.file) {
@@ -226,13 +291,21 @@ export const unsubmitDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Đã quá hạn nộp bài, không thể hủy", 400));
   }
 
-  const project = await Project.findOne({
-    $or: [{ student: req.user._id }, { members: req.user._id }],
-    status: "approved"
-  });
+  const { project, supervisorId } = await resolveStudentDeadlineContext(
+    req.user._id,
+  );
 
   if (!project) {
     return next(new ErrorHandler("Project not found", 400));
+  }
+
+  if (
+    !supervisorId ||
+    deadline.teacherId.toString() !== supervisorId.toString()
+  ) {
+    return next(
+      new ErrorHandler("This deadline does not belong to your supervisor", 403),
+    );
   }
 
   let submission = await Submission.findOne({ deadlineId, groupId: project._id });

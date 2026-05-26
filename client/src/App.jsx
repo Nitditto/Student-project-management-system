@@ -179,6 +179,10 @@ const App = () => {
           }
         >
           <Route index element={<StudentDashboard />} />
+          <Route
+            path="registration"
+            element={<Navigate to="/student/submit-proposal" replace />}
+          />
           <Route path="submit-proposal" element={<SubmitProposal />} />
           <Route path="upload-files" element={<UploadFiles />} />
           <Route path="supervisor" element={<SupervisorPage />} />
