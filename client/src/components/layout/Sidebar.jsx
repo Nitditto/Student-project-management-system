@@ -28,7 +28,6 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             path: "/student/supervisor",
             icon: "user",
           },
-          { name: "Feedback", path: "/student/feedback", icon: "chat" },
           {
             name: "Defense & Attendance",
             path: "/student/defense",

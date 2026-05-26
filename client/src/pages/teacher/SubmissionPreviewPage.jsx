@@ -24,8 +24,9 @@ import { toast } from "react-toastify";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import mammoth from "mammoth";
 
-// Configure PDF.js worker (bundled with react-pdf v10)
+// Configure PDF.js w orker (bundled with react-pdf v10)
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
@@ -34,18 +35,18 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const SubmissionPreviewPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const deadlineId = searchParams.get("deadlineId");
   const initialGroupId = searchParams.get("groupId");
   const initialFileUrl = searchParams.get("fileUrl");
 
   const [loading, setLoading] = useState(true);
   const [submissionsData, setSubmissionsData] = useState(null);
-  
+
   // Active states
   const [activeGroupId, setActiveGroupId] = useState(initialGroupId);
   const [activeFile, setActiveFile] = useState(null);
-  
+
   // Preview states
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewTextContent, setPreviewTextContent] = useState("");
@@ -58,7 +59,10 @@ const SubmissionPreviewPage = () => {
   const pdfContainerRef = useCallback((node) => {
     if (node) setPdfContainerWidth(node.getBoundingClientRect().width);
   }, []);
-  
+
+  // Docx viewer state
+  const [docxHtml, setDocxHtml] = useState("");
+
   // Feedback states
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackFile, setFeedbackFile] = useState(null);
@@ -73,7 +77,7 @@ const SubmissionPreviewPage = () => {
       const res = await axiosInstance.get(`/deadline/${deadlineId}/submissions`);
       const data = res.data.data;
       setSubmissionsData(data);
-      
+
       const targetGroupId = groupIdToSet || activeGroupId || data.records[0]?.project?._id;
       if (targetGroupId) {
         setActiveGroupId(targetGroupId);
@@ -81,7 +85,7 @@ const SubmissionPreviewPage = () => {
         if (record) {
           // Resolve submitted files
           const files = getSubmittedFiles(record);
-          
+
           // Set active file: either specified in query, first file, or null
           if (initialFileUrl) {
             const foundFile = files.find(f => f.fileUrl === initialFileUrl);
@@ -89,7 +93,7 @@ const SubmissionPreviewPage = () => {
           } else {
             setActiveFile(files[0] || null);
           }
-          
+
           // Populate existing feedback
           setFeedbackText(record.submission?.feedback?.message || "");
           setFeedbackFileName(record.submission?.feedback?.fileName || "");
@@ -145,14 +149,16 @@ const SubmissionPreviewPage = () => {
   const activeRecord = submissionsData?.records?.find(r => r.project._id === activeGroupId) || null;
   const submittedFilesList = activeRecord ? getSubmittedFiles(activeRecord) : [];
 
-  // Handle active file changing to fetch contents if code/text file
+  // Handle active file changing to fetch contents if code/text or docx file
   useEffect(() => {
     if (!activeFile) {
       setPreviewTextContent("");
+      setDocxHtml("");
       return;
     }
-    
+
     const fileType = getFileType(activeFile.fileName);
+
     if (fileType === "text") {
       const loadTextContent = async () => {
         setPreviewLoading(true);
@@ -170,6 +176,25 @@ const SubmissionPreviewPage = () => {
       };
       loadTextContent();
     }
+
+    if (fileType === "docx") {
+      const loadDocx = async () => {
+        setPreviewLoading(true);
+        setDocxHtml("");
+        try {
+          const fullUrl = `${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`;
+          const response = await fetch(fullUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          const result = await mammoth.convertToHtml({ arrayBuffer });
+          setDocxHtml(result.value);
+        } catch (err) {
+          setDocxHtml(`<p style="color:red">Could not render DOCX. Please download the file to view it.</p>`);
+        } finally {
+          setPreviewLoading(false);
+        }
+      };
+      loadDocx();
+    }
   }, [activeFile]);
 
   // Sequencer helper functions
@@ -183,15 +208,15 @@ const SubmissionPreviewPage = () => {
     const nextRecord = submissionsData.records[nextIdx];
     if (nextRecord) {
       setActiveGroupId(nextRecord.project._id);
-      
+
       const files = getSubmittedFiles(nextRecord);
       setActiveFile(files[0] || null);
-      
+
       // Populate feedback
       setFeedbackText(nextRecord.submission?.feedback?.message || "");
       setFeedbackFileName(nextRecord.submission?.feedback?.fileName || "");
       setFeedbackFile(null);
-      
+
       // Update query parameters silently
       navigate(`/teacher/deadlines/submissions/preview?deadlineId=${deadlineId}&groupId=${nextRecord.project._id}`, { replace: true });
     }
@@ -202,7 +227,8 @@ const SubmissionPreviewPage = () => {
     if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext)) return "image";
     if (["pdf"].includes(ext)) return "pdf";
     if (["txt", "html", "css", "js", "jsx", "ts", "tsx", "json", "py", "java", "cpp", "c", "cs", "md", "xml", "yaml", "sh", "sql"].includes(ext)) return "text";
-    if (["docx", "doc", "pptx", "ppt", "xlsx", "xls"].includes(ext)) return "office";
+    if (["docx", "doc"].includes(ext)) return "docx";
+    if (["pptx", "ppt", "xlsx", "xls"].includes(ext)) return "office";
     return "other";
   };
 
@@ -430,62 +456,75 @@ const SubmissionPreviewPage = () => {
       );
     }
 
-    if (fileType === "office") {
-      const isLocal = fullUrl.includes("localhost") || fullUrl.includes("127.0.0.1");
-      if (isLocal) {
+    if (fileType === "docx") {
+      if (previewLoading) {
         return (
-          <div className="flex items-center justify-center h-full bg-slate-50 rounded-2xl border border-slate-200 p-6">
-            <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md text-center space-y-4 shadow-sm">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <FileText className="w-8 h-8" />
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-lg font-bold text-slate-800">Office Document Preview</h4>
-                <p className="text-sm text-slate-500">
-                  Microsoft Office documents require a public absolute URL to be previewed online.
-                </p>
-                <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-xl text-left text-xs text-yellow-800">
-                  <strong>Local Server Notice:</strong> External viewer engines like Microsoft Online Viewer cannot fetch local localhost assets.
-                </div>
-              </div>
-              <div className="pt-2 flex justify-center space-x-3">
-                <a
-                  href={fullUrl}
-                  download={activeFile.fileName}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download File</span>
-                </a>
-                <a
-                  href={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fullUrl)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors"
-                >
-                  <span>Force Microsoft Viewer</span>
-                </a>
-              </div>
-            </div>
+          <div className="flex flex-col justify-center items-center h-full space-y-3 bg-white rounded-2xl border border-slate-200">
+            <Loader className="w-10 h-10 animate-spin text-blue-500" />
+            <p className="text-blue-500/80 text-sm font-medium animate-pulse">Rendering document...</p>
           </div>
         );
       }
-
       return (
-        <div className="w-full h-full rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
-          <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`}
-            title={activeFile.fileName}
-            className="w-full h-full border-0"
+        <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-full flex flex-col bg-white">
+          <div className="bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-600 border-b border-blue-100 flex justify-between items-center">
+            <span>{activeFile.fileName}</span>
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">DOCX VIEWER</span>
+          </div>
+          <div
+            className="flex-grow overflow-auto p-6 prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: docxHtml }}
           />
         </div>
       );
     }
 
+    if (fileType === "office") {
+      const isLocal = fullUrl.includes("localhost") || fullUrl.includes("127.0.0.1");
+      return (
+        <div className="flex items-center justify-center h-full bg-slate-50 rounded-2xl border border-slate-200 p-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md text-center space-y-4 shadow-sm">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+              <FileText className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-lg font-bold text-slate-800">Office File</h4>
+              <p className="text-sm text-slate-500">
+                {isLocal
+                  ? "Preview requires a public URL. Download to view locally."
+                  : "Click below to view in Microsoft Online Viewer."}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <a
+                href={fullUrl}
+                download={activeFile.fileName}
+                className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download File</span>
+              </a>
+              {!isLocal && (
+                <a
+                  href={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <span>Open in Office Viewer</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback for unknown types
     return (
       <div className="flex items-center justify-center h-full bg-slate-50 rounded-2xl border border-slate-200 p-6">
         <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md text-center space-y-4 shadow-sm">
-          <div className="w-16 h-16 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+          <div className="w-16 h-16 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto">
             <HelpCircle className="w-8 h-8" />
           </div>
           <div className="space-y-2">
@@ -494,254 +533,251 @@ const SubmissionPreviewPage = () => {
               This file type ({activeFile.fileName.split(".").pop().toUpperCase()}) cannot be previewed online.
             </p>
           </div>
-          <div className="pt-2 flex justify-center">
-            <a
-              href={fullUrl}
-              download={activeFile.fileName}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download to View</span>
-            </a>
-          </div>
+          <a
+            href={fullUrl}
+            download={activeFile.fileName}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download to View</span>
+          </a>
         </div>
       </div>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen space-y-4 bg-slate-50">
-        <Loader className="w-12 h-12 animate-spin text-blue-600" />
-        <p className="text-slate-500 font-bold animate-pulse">Launching Online Reader Workspace...</p>
-      </div>
-    );
-  }
+if (loading) {
+  return (
+    <div className="flex flex-col justify-center items-center h-screen space-y-4 bg-slate-50">
+      <Loader className="w-12 h-12 animate-spin text-blue-600" />
+      <p className="text-slate-500 font-bold animate-pulse">Launching Online Reader Workspace...</p>
+    </div>
+  );
+}
 
-  if (!submissionsData || !activeRecord) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen space-y-4">
-        <AlertTriangle className="w-12 h-12 text-red-500" />
-        <p className="text-slate-600 font-medium">Failed to load assignment details.</p>
-        <button onClick={() => navigate(-1)} className="btn btn-primary">
-          Go Back
+if (!submissionsData || !activeRecord) {
+  return (
+    <div className="flex flex-col justify-center items-center h-screen space-y-4">
+      <AlertTriangle className="w-12 h-12 text-red-500" />
+      <p className="text-slate-600 font-medium">Failed to load assignment details.</p>
+      <button onClick={() => navigate(-1)} className="btn btn-primary">
+        Go Back
+      </button>
+    </div>
+  );
+}
+
+return (
+  <div className="h-screen flex flex-col bg-slate-100 overflow-hidden font-sans">
+    {/* Top Workspace Header */}
+    <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800 flex-shrink-0 shadow-lg">
+      <div className="flex items-center space-x-4 min-w-0">
+        <button
+          onClick={() => navigate(`/teacher/deadlines/${deadlineId}/submissions`)}
+          className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer text-slate-300 hover:text-white"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
+        <div className="min-w-0">
+          <div className="flex items-center space-x-2.5">
+            <h2 className="text-base font-extrabold truncate max-w-[240px]">
+              {submissionsData.deadline.title}
+            </h2>
+            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold border border-blue-400/20">
+              Grading Workspace
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 truncate mt-0.5">
+            Group: <strong className="text-slate-200">{activeRecord.project.groupName || "Unnamed"}</strong> — {activeRecord.project.student?.name || "Representative"}
+          </p>
+        </div>
+      </div>
+
+      {/* Sequencer controls */}
+      <div className="flex items-center space-x-3 bg-slate-800 p-1 rounded-xl border border-slate-700">
+        <button
+          onClick={() => navigateSequencer("prev")}
+          disabled={!hasPrev}
+          className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+          title="Previous group submission"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-xs font-bold font-mono text-slate-300 px-1 select-none">
+          {activeRecordIndex + 1} / {submissionsData.records.length} Groups
+        </span>
+        <button
+          onClick={() => navigateSequencer("next")}
+          disabled={!hasNext}
+          className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+          title="Next group submission"
+        >
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
-    );
-  }
+    </div>
 
-  return (
-    <div className="h-screen flex flex-col bg-slate-100 overflow-hidden font-sans">
-      {/* Top Workspace Header */}
-      <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800 flex-shrink-0 shadow-lg">
-        <div className="flex items-center space-x-4 min-w-0">
-          <button 
-            onClick={() => navigate(`/teacher/deadlines/${deadlineId}/submissions`)}
-            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer text-slate-300 hover:text-white"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="min-w-0">
-            <div className="flex items-center space-x-2.5">
-              <h2 className="text-base font-extrabold truncate max-w-[240px]">
-                {submissionsData.deadline.title}
-              </h2>
-              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold border border-blue-400/20">
-                Grading Workspace
+    {/* Main Split Panels */}
+    <div className="flex flex-1 overflow-hidden min-h-0">
+
+      {/* Left Document Reader Workspace (70% width) */}
+      <div className="w-[70%] h-full p-6 flex flex-col justify-center bg-slate-900/10 min-w-0">
+        <div className="flex-grow min-h-0">
+          {renderDocumentViewer()}
+        </div>
+
+        {activeFile && (
+          <div className="mt-3 flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              {getFileIcon(activeFile.fileName, "w-4 h-4 flex-shrink-0")}
+              <span className="text-xs font-bold text-slate-700 truncate" title={activeFile.fileName}>
+                {activeFile.fileName}
               </span>
             </div>
-            <p className="text-xs text-slate-400 truncate mt-0.5">
-              Group: <strong className="text-slate-200">{activeRecord.project.groupName || "Unnamed"}</strong> — {activeRecord.project.student?.name || "Representative"}
-            </p>
+            <a
+              href={`${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`}
+              download={activeFile.fileName}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download File</span>
+            </a>
           </div>
-        </div>
-
-        {/* Sequencer controls */}
-        <div className="flex items-center space-x-3 bg-slate-800 p-1 rounded-xl border border-slate-700">
-          <button
-            onClick={() => navigateSequencer("prev")}
-            disabled={!hasPrev}
-            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            title="Previous group submission"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-xs font-bold font-mono text-slate-300 px-1 select-none">
-            {activeRecordIndex + 1} / {submissionsData.records.length} Groups
-          </span>
-          <button
-            onClick={() => navigateSequencer("next")}
-            disabled={!hasNext}
-            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            title="Next group submission"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Main Split Panels */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        
-        {/* Left Document Reader Workspace (70% width) */}
-        <div className="w-[70%] h-full p-6 flex flex-col justify-center bg-slate-900/10 min-w-0">
-          <div className="flex-grow min-h-0">
-            {renderDocumentViewer()}
-          </div>
-          
-          {activeFile && (
-            <div className="mt-3 flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
-              <div className="flex items-center space-x-2.5 min-w-0">
-                {getFileIcon(activeFile.fileName, "w-4 h-4 flex-shrink-0")}
-                <span className="text-xs font-bold text-slate-700 truncate" title={activeFile.fileName}>
-                  {activeFile.fileName}
-                </span>
-              </div>
-              <a
-                href={`${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`}
-                download={activeFile.fileName}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1.5 px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download File</span>
-              </a>
+      {/* Right Nav, Files Switcher, & Grading Panel (30% width) */}
+      <div className="w-[30%] h-full bg-white border-l border-slate-200 flex flex-col min-w-[320px] shadow-2xl overflow-y-auto">
+
+        {/* File Switcher List */}
+        <div className="p-5 border-b border-slate-100">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Submitted Attachments ({submittedFilesList.length})</h4>
+          {submittedFilesList.length === 0 ? (
+            <p className="text-xs italic text-slate-400">No files submitted.</p>
+          ) : (
+            <div className="space-y-2">
+              {submittedFilesList.map((file, idx) => {
+                const isActive = activeFile?.fileUrl === file.fileUrl;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setActiveFile(file)}
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${isActive
+                      ? "bg-blue-50/80 border-blue-300 shadow-sm ring-1 ring-blue-400/20"
+                      : "bg-slate-50/40 border-slate-200/60 hover:bg-slate-50 hover:border-slate-300"
+                      }`}
+                  >
+                    <div className="flex items-center space-x-2.5 overflow-hidden mr-2">
+                      {getFileIcon(file.fileName, "w-4 h-4 flex-shrink-0")}
+                      <span className={`text-xs font-bold truncate ${isActive ? "text-blue-900" : "text-slate-700"}`}>
+                        {file.fileName}
+                      </span>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-blue-500" : "text-slate-400"}`} />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Right Nav, Files Switcher, & Grading Panel (30% width) */}
-        <div className="w-[30%] h-full bg-white border-l border-slate-200 flex flex-col min-w-[320px] shadow-2xl overflow-y-auto">
-          
-          {/* File Switcher List */}
-          <div className="p-5 border-b border-slate-100">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Submitted Attachments ({submittedFilesList.length})</h4>
-            {submittedFilesList.length === 0 ? (
-              <p className="text-xs italic text-slate-400">No files submitted.</p>
-            ) : (
-              <div className="space-y-2">
-                {submittedFilesList.map((file, idx) => {
-                  const isActive = activeFile?.fileUrl === file.fileUrl;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => setActiveFile(file)}
-                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                        isActive
-                          ? "bg-blue-50/80 border-blue-300 shadow-sm ring-1 ring-blue-400/20"
-                          : "bg-slate-50/40 border-slate-200/60 hover:bg-slate-50 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2.5 overflow-hidden mr-2">
-                        {getFileIcon(file.fileName, "w-4 h-4 flex-shrink-0")}
-                        <span className={`text-xs font-bold truncate ${isActive ? "text-blue-900" : "text-slate-700"}`}>
-                          {file.fileName}
-                        </span>
-                      </div>
-                      <ChevronRight className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-blue-500" : "text-slate-400"}`} />
-                    </div>
-                  );
-                })}
+        {/* Grading & Feedback form */}
+        <div className="p-5 flex-grow flex flex-col">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Grading & Feedback</h4>
+
+          <form onSubmit={handleSubmitFeedback} className="space-y-5 flex flex-col h-full flex-grow">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                Teacher Comments (Nhận xét giảng viên)
+              </label>
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={6}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm placeholder:text-slate-400 leading-relaxed font-sans"
+                placeholder="Provide constructive feedback for the submission..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
+                Attachment File (Tệp phản hồi)
+              </label>
+
+              {feedbackFileName ? (
+                <div className="flex items-center justify-between p-3 border border-purple-200 bg-purple-50/40 rounded-xl">
+                  <div className="flex items-center space-x-2 text-xs text-purple-900 font-bold overflow-hidden mr-2">
+                    <CheckCircle className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                    <span className="truncate">{feedbackFileName}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFeedbackFile(null);
+                      setFeedbackFileName("");
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-bold flex-shrink-0 cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-slate-50/50 transition-all text-center">
+                  <Upload className="w-7 h-7 text-slate-400 mb-2" />
+                  <span className="text-xs font-bold text-slate-600">Click to upload file</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">PDF, Zip, Doc up to 10MB</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </label>
+              )}
+            </div>
+
+            {activeRecord.submission?.feedback?.fileUrl && !feedbackFile && (
+              <div className="flex items-center justify-between p-3 border border-slate-200 bg-slate-50 rounded-xl">
+                <div className="flex items-center space-x-2 text-xs text-slate-600 overflow-hidden mr-2">
+                  <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">Existing: {activeRecord.submission.feedback.fileName}</span>
+                </div>
+                <a
+                  href={`${import.meta.env.VITE_API_URL || ""}${activeRecord.submission.feedback.fileUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold flex-shrink-0"
+                >
+                  Download
+                </a>
               </div>
             )}
-          </div>
 
-          {/* Grading & Feedback form */}
-          <div className="p-5 flex-grow flex flex-col">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Grading & Feedback</h4>
-            
-            <form onSubmit={handleSubmitFeedback} className="space-y-5 flex flex-col h-full flex-grow">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
-                  Teacher Comments (Nhận xét giảng viên)
-                </label>
-                <textarea
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  rows={6}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm placeholder:text-slate-400 leading-relaxed font-sans"
-                  placeholder="Provide constructive feedback for the submission..."
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
-                  Attachment File (Tệp phản hồi)
-                </label>
-
-                {feedbackFileName ? (
-                  <div className="flex items-center justify-between p-3 border border-purple-200 bg-purple-50/40 rounded-xl">
-                    <div className="flex items-center space-x-2 text-xs text-purple-900 font-bold overflow-hidden mr-2">
-                      <CheckCircle className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                      <span className="truncate">{feedbackFileName}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFeedbackFile(null);
-                        setFeedbackFileName("");
-                      }}
-                      className="text-xs text-red-500 hover:text-red-700 font-bold flex-shrink-0 cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
+            <div className="pt-2 flex-grow flex items-end">
+              <button
+                type="submit"
+                disabled={submittingFeedback}
+                className="w-full inline-flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-all disabled:bg-blue-400 cursor-pointer transform active:scale-95"
+              >
+                {submittingFeedback ? (
+                  <span className="flex items-center space-x-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></span>
+                    <span>Saving feedback...</span>
+                  </span>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-slate-50/50 transition-all text-center">
-                    <Upload className="w-7 h-7 text-slate-400 mb-2" />
-                    <span className="text-xs font-bold text-slate-600">Click to upload file</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">PDF, Zip, Doc up to 10MB</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </label>
+                  <span>Save feedback</span>
                 )}
-              </div>
-
-              {activeRecord.submission?.feedback?.fileUrl && !feedbackFile && (
-                <div className="flex items-center justify-between p-3 border border-slate-200 bg-slate-50 rounded-xl">
-                  <div className="flex items-center space-x-2 text-xs text-slate-600 overflow-hidden mr-2">
-                    <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                    <span className="truncate">Existing: {activeRecord.submission.feedback.fileName}</span>
-                  </div>
-                  <a 
-                    href={`${import.meta.env.VITE_API_URL || ""}${activeRecord.submission.feedback.fileUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex-shrink-0"
-                  >
-                    Download
-                  </a>
-                </div>
-              )}
-
-              <div className="pt-2 flex-grow flex items-end">
-                <button
-                  type="submit"
-                  disabled={submittingFeedback}
-                  className="w-full inline-flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-all disabled:bg-blue-400 cursor-pointer transform active:scale-95"
-                >
-                  {submittingFeedback ? (
-                    <span className="flex items-center space-x-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></span>
-                      <span>Saving grade...</span>
-                    </span>
-                  ) : (
-                    <span>Save Feedback & Grade</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default SubmissionPreviewPage;

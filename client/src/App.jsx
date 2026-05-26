@@ -14,7 +14,6 @@ import StudentDashboard from "./pages/student/StudentDashboard";
 import SubmitProposal from "./pages/student/SubmitProposal";
 import UploadFiles from "./pages/student/UploadFiles";
 import SupervisorPage from "./pages/student/SupervisorPage";
-import FeedbackPage from "./pages/student/FeedbackPage";
 import NotificationsPage from "./pages/student/NotificationsPage";
 import MyDefensePage from "./pages/student/MyDefensePage";
 import StudentDeadlinesPage from "./pages/student/DeadlinesPage";
@@ -192,7 +191,6 @@ const App = () => {
           <Route path="submit-proposal" element={<SubmitProposal />} />
           <Route path="upload-files" element={<UploadFiles />} />
           <Route path="supervisor" element={<SupervisorPage />} />
-          <Route path="feedback" element={<FeedbackPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="defense" element={<MyDefensePage />} />
           <Route path="deadlines" element={<StudentDeadlinesPage />} />

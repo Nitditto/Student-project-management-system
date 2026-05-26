@@ -256,8 +256,8 @@ const DefenseHubPage = () => {
             const qrDataUrl = await QRCode.toDataURL(
               buildAttendanceCheckInUrl(session.qrToken, ngrokBaseUrl),
               {
-              width: 180,
-              margin: 1,
+                width: 180,
+                margin: 1,
               },
             );
             return [session._id, qrDataUrl];
@@ -344,27 +344,14 @@ const DefenseHubPage = () => {
       return;
     }
 
-    const toIso = (v) => v ? new Date(v).toISOString() : v;
-
     try {
-      const payload = {
-        ...scheduleForm,
-        pickDeadline: toIso(scheduleForm.pickDeadline),
-        slots: scheduleForm.slots.map(slot => ({
-          ...slot,
-          startAt: toIso(slot.startAt),
-          endAt: toIso(slot.endAt),
-        }))
-      };
-
-      await axiosInstance.post("/teacher/schedules", payload);
+      await axiosInstance.post("/teacher/schedules", scheduleForm);
       toast.success("Defense schedule window created");
       setScheduleForm({
         title: "",
         description: "",
         pickDeadline: "",
         rescheduleWindowHours: 24,
-        autoAssignEnabled: true,
         slots: [createSlot()],
       });
       await loadData();
@@ -676,8 +663,8 @@ const DefenseHubPage = () => {
       milestone
         ? assessorId
           ? milestone.assessorSubmissions?.find(
-              (item) => toEntityId(item.assessor) === toEntityId(assessorId),
-            )
+            (item) => toEntityId(item.assessor) === toEntityId(assessorId),
+          )
           : milestone.assessorSubmissions?.[0]
         : null;
 
@@ -822,8 +809,8 @@ const DefenseHubPage = () => {
     : null;
   const attendanceCheckInClose = attendancePreviewStart
     ? new Date(
-        attendancePreviewStart.getTime() + attendanceWindowMinutes * 60 * 1000,
-      )
+      attendancePreviewStart.getTime() + attendanceWindowMinutes * 60 * 1000,
+    )
     : null;
   const qrUsesLocalhost = isLocalOnlyHost(PUBLIC_APP_URL);
 
@@ -1359,73 +1346,73 @@ const DefenseHubPage = () => {
                 </div>
                 <div className="space-y-2">
                   {visibleRecords.map((record) => (
-                  <div
-                    key={record.student?._id}
-                    className="rounded-lg bg-slate-50 p-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
-                  >
-                    <div>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                        <p className="font-medium text-slate-800">{record.student?.name}</p>
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${attendanceStatusClassMap[record.status] || attendanceStatusClassMap.pending}`}
-                        >
-                          {record.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-500">
-                        {record.checkedInAt
-                          ? `Confirmed at ${formatDateTime(record.checkedInAt)}`
-                          : "No check-in confirmation yet"}
-                        {record.checkInMethod
-                          ? ` via ${checkInMethodLabelMap[record.checkInMethod] || record.checkInMethod}`
-                          : ""}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        Manual override allowed if student has technical problems or late confirmation from teacher.
-                      </p>
-                      {record.leaveRequest?.status === "pending" && (
-                        <p className="text-sm text-amber-700">
-                          Pending leave request: {record.leaveRequest.reason}
+                    <div
+                      key={record.student?._id}
+                      className="rounded-lg bg-slate-50 p-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+                    >
+                      <div>
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                          <p className="font-medium text-slate-800">{record.student?.name}</p>
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${attendanceStatusClassMap[record.status] || attendanceStatusClassMap.pending}`}
+                          >
+                            {record.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500">
+                          {record.checkedInAt
+                            ? `Confirmed at ${formatDateTime(record.checkedInAt)}`
+                            : "No check-in confirmation yet"}
+                          {record.checkInMethod
+                            ? ` via ${checkInMethodLabelMap[record.checkInMethod] || record.checkInMethod}`
+                            : ""}
                         </p>
-                      )}
+                        <p className="text-sm text-slate-500">
+                          Manual override allowed if student has technical problems or late confirmation from teacher.
+                        </p>
+                        {record.leaveRequest?.status === "pending" && (
+                          <p className="text-sm text-amber-700">
+                            Pending leave request: {record.leaveRequest.reason}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="btn-outline"
+                          onClick={() => manualAttendance(session._id, record.student?._id, "present")}
+                        >
+                          Mark Present
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => manualAttendance(session._id, record.student?._id, "excused")}
+                        >
+                          Mark Excused
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => manualAttendance(session._id, record.student?._id, "absent")}
+                        >
+                          Mark Absent
+                        </button>
+                        {record.leaveRequest?.status === "pending" && (
+                          <>
+                            <button
+                              className="btn-primary"
+                              onClick={() => reviewLeave(session._id, record.student?._id, "approved")}
+                            >
+                              Approve Leave
+                            </button>
+                            <button
+                              className="btn-outline"
+                              onClick={() => reviewLeave(session._id, record.student?._id, "rejected")}
+                            >
+                              Reject Leave
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        className="btn-outline"
-                        onClick={() => manualAttendance(session._id, record.student?._id, "present")}
-                      >
-                        Mark Present
-                      </button>
-                      <button
-                        className="btn-outline"
-                        onClick={() => manualAttendance(session._id, record.student?._id, "excused")}
-                      >
-                        Mark Excused
-                      </button>
-                      <button
-                        className="btn-outline"
-                        onClick={() => manualAttendance(session._id, record.student?._id, "absent")}
-                      >
-                        Mark Absent
-                      </button>
-                      {record.leaveRequest?.status === "pending" && (
-                        <>
-                          <button
-                            className="btn-primary"
-                            onClick={() => reviewLeave(session._id, record.student?._id, "approved")}
-                          >
-                            Approve Leave
-                          </button>
-                          <button
-                            className="btn-outline"
-                            onClick={() => reviewLeave(session._id, record.student?._id, "rejected")}
-                          >
-                            Reject Leave
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
                   ))}
                   {visibleRecords.length === 0 && (
                     <div className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">

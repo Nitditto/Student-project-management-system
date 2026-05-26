@@ -7,11 +7,11 @@ import {
   uploadFiles,
 } from "../../store/slices/studentSlice";
 import { fetchStudentDeadlines } from "../../store/slices/deadlineSlice";
-import { 
-  Archive, 
-  File, 
-  FileText, 
-  FileCode, 
+import {
+  Archive,
+  File,
+  FileText,
+  FileCode,
   FilePlus,
   FolderOpen,
   Calendar,
@@ -30,10 +30,10 @@ const UploadFiles = () => {
 
   const { project, files } = useSelector((state) => state.student);
   const { deadlines } = useSelector((state) => state.deadline);
-  
+
   const [activeTab, setActiveTab] = useState("general"); // "general" or "submissions"
   const [selectedFiles, setSelectedFiles] = useState([]);
-  
+
   const reportRef = useRef(null);
   const presRef = useRef(null);
   const codeRef = useRef(null);
@@ -48,7 +48,7 @@ const UploadFiles = () => {
     setSelectedFiles((prev) => [...prev, ...list]);
     e.target.value = "";
   };
-  
+
   const handleUpload = (e) => {
     if (selectedFiles.length === 0) return;
     dispatch(uploadFiles({ projectId: project?._id, files: selectedFiles }));
@@ -94,7 +94,7 @@ const UploadFiles = () => {
   const generalFiles = (project?.files || []).filter(
     (f) => f.fileCategory === "General" || !f.fileCategory
   );
-  
+
   return (
     <>
       <div className="space-y-6">
@@ -102,22 +102,20 @@ const UploadFiles = () => {
         <div className="flex border-b border-slate-200 bg-white px-6 pt-4 rounded-t-2xl shadow-sm">
           <button
             onClick={() => setActiveTab("general")}
-            className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${
-              activeTab === "general"
+            className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${activeTab === "general"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+              }`}
           >
             <FolderOpen className="w-4 h-4" />
             Tài liệu chung (General Files)
           </button>
           <button
             onClick={() => setActiveTab("submissions")}
-            className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${
-              activeTab === "submissions"
+            className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${activeTab === "submissions"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+              }`}
           >
             <Calendar className="w-4 h-4" />
             Bài nộp (Deadline Submissions)
@@ -316,7 +314,37 @@ const UploadFiles = () => {
                 <h2 className="card-title">Deadline Submissions Tracker</h2>
                 <p className="card-subtitle">Verify your submitted files and check supervisor feedback</p>
               </div>
-              
+
+              {/* General Project Feedback Section */}
+              {project?.feedback && project.feedback.length > 0 && (
+                <div className="mb-6 mx-4 p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100">
+                  <h3 className="text-sm font-extrabold text-purple-900 flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-purple-600" />
+                    Past General Feedback
+                  </h3>
+                  <div className="space-y-3">
+                    {project.feedback.map((fb, idx) => (
+                      <div key={idx} className="bg-white/80 p-3 rounded-xl border border-purple-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            fb.type === 'positive' ? 'bg-emerald-100 text-emerald-700' :
+                            fb.type === 'negative' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {fb.type === 'positive' ? 'Positive' : fb.type === 'negative' ? 'Needs Revision' : 'General'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(fb.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-800 font-bold mb-0.5">{fb.title}</p>
+                        <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-line">{fb.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {deadlines.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-100/50">
                   <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -327,7 +355,7 @@ const UploadFiles = () => {
                   {deadlines.map((dl) => {
                     const submission = dl.submission;
                     const hasFeedback = submission?.feedback?.message || submission?.feedback?.fileName;
-                    
+
                     return (
                       <div key={dl._id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all hover:shadow-md">
                         {/* Deadline Header */}
@@ -336,10 +364,10 @@ const UploadFiles = () => {
                             <h3 className="font-bold text-slate-800 text-base">{dl.title}</h3>
                             <p className="text-xs text-slate-500">{dl.description}</p>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2 text-xs font-semibold">
                             <span className="text-slate-500">Due: {new Date(dl.endDate).toLocaleDateString()}</span>
-                            
+
                             {dl.submissionStatus === "SUBMITTED" && (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-0.5">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Submitted
@@ -376,12 +404,12 @@ const UploadFiles = () => {
                                   </p>
                                 </div>
                               </div>
-                              
+
                               {(() => {
                                 const matchedFile = (project?.files || []).find(
                                   f => f.fileCategory === "Submission" && f.deadlineId?.toString() === dl._id.toString()
                                 );
-                                
+
                                 if (matchedFile) {
                                   return (
                                     <button
@@ -393,7 +421,7 @@ const UploadFiles = () => {
                                     </button>
                                   );
                                 }
-                                
+
                                 return (
                                   <a
                                     href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
@@ -421,11 +449,11 @@ const UploadFiles = () => {
                                 <MessageSquare className="w-4 h-4 text-purple-700" />
                                 <span>Teacher's Feedback Review</span>
                               </div>
-                              
+
                               {submission.feedback.message && (
                                 <p className="text-slate-700 text-sm leading-relaxed">{submission.feedback.message}</p>
                               )}
-                              
+
                               {submission.feedback.fileUrl && (
                                 <div className="flex items-center justify-between p-2.5 bg-white border border-purple-200 rounded-lg">
                                   <div className="flex items-center space-x-2 text-xs font-semibold text-purple-950">

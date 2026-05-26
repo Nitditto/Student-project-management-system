@@ -521,6 +521,7 @@ export const getDeadlineSubmissions = asyncHandler(async (req, res, next) => {
         groupName: project.groupName,
         members: project.members,
         student: project.student,
+        feedback: project.feedback || [],
       },
       status,
       submission: sub || null,

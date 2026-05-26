@@ -182,7 +182,6 @@ const DeadlineSubmissionsPage = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [data, setData] = useState(null);
 
   // Tab state: "instructions" | "student-work"
@@ -192,12 +191,6 @@ const DeadlineSubmissionsPage = () => {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [sidebarSearch, setSidebarSearch] = useState("");
 
-  // Feedback Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeRecord, setActiveRecord] = useState(null);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackFile, setFeedbackFile] = useState(null);
-  const [feedbackFileName, setFeedbackFileName] = useState("");
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -222,47 +215,6 @@ const DeadlineSubmissionsPage = () => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deadlineId]);
-
-  // ── Feedback Modal ────────────────────────────────────────────────────────
-
-  const openFeedbackModal = (record) => {
-    setActiveRecord(record);
-    setFeedbackText(record.submission?.feedback?.message || "");
-    setFeedbackFileName(record.submission?.feedback?.fileName || "");
-    setFeedbackFile(null);
-    setIsModalOpen(true);
-  };
-
-  const closeFeedbackModal = () => {
-    setIsModalOpen(false);
-    setActiveRecord(null);
-    setFeedbackText("");
-    setFeedbackFile(null);
-    setFeedbackFileName("");
-  };
-
-  const handleSubmitFeedback = async (e) => {
-    e.preventDefault();
-    if (!activeRecord) return;
-    setSubmittingFeedback(true);
-    const form = new FormData();
-    form.append("message", feedbackText);
-    if (feedbackFile) form.append("file", feedbackFile);
-    try {
-      await axiosInstance.post(
-        `/deadline/${deadlineId}/submissions/${activeRecord.project._id}/feedback`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      toast.success("Feedback saved successfully");
-      fetchData();
-      closeFeedbackModal();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save feedback");
-    } finally {
-      setSubmittingFeedback(false);
-    }
-  };
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -327,11 +279,10 @@ const DeadlineSubmissionsPage = () => {
     return (
       <button
         onClick={() => setSelectedGroupId(record.project._id)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 group ${
-          isActive
-            ? "bg-blue-50 border border-blue-200/60"
-            : "hover:bg-slate-50 border border-transparent"
-        }`}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 group ${isActive
+          ? "bg-blue-50 border border-blue-200/60"
+          : "hover:bg-slate-50 border border-transparent"
+          }`}
       >
         {/* Avatar */}
         <div
@@ -407,11 +358,10 @@ const DeadlineSubmissionsPage = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-extrabold text-slate-900">{deadline.title}</h1>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${
-                  isClosed
-                    ? "bg-red-100 text-red-700"
-                    : "bg-emerald-100 text-emerald-700 animate-pulse"
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${isClosed
+                  ? "bg-red-100 text-red-700"
+                  : "bg-emerald-100 text-emerald-700 animate-pulse"
+                  }`}
               >
                 {isClosed ? (
                   <><XCircle className="w-3 h-3" /> Closed</>
@@ -442,11 +392,10 @@ const DeadlineSubmissionsPage = () => {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === id
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
-              }`}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === id
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                }`}
             >
               <Icon className="w-4 h-4" />
               {label}
@@ -598,28 +547,17 @@ const DeadlineSubmissionsPage = () => {
                         <HelpCircle className="w-3.5 h-3.5" /> Pending
                       </span>
                     )}
-
-                    {/* Reader button */}
+                    {/* Feedback button */}
                     <button
                       onClick={() =>
                         navigate(
                           `/teacher/deadlines/submissions/preview?deadlineId=${deadlineId}&groupId=${selectedRecord.project._id}`
                         )
                       }
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow transition-colors cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Open Reader & Grade
-                    </button>
-
-                    {/* Feedback button */}
-                    <button
-                      onClick={() => openFeedbackModal(selectedRecord)}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                        hasFeedback
-                          ? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                          : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                      }`}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${hasFeedback
+                        ? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                        : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       {hasFeedback ? "View Feedback" : "Add Feedback"}
@@ -685,116 +623,6 @@ const DeadlineSubmissionsPage = () => {
                 )}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Feedback Modal ───────────────────────────────────────────────── */}
-      {isModalOpen && activeRecord && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-scaleUp">
-            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-extrabold text-slate-800">Add Feedback & Grade</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  For {activeRecord.project.groupName || "Group"}
-                </p>
-              </div>
-              <button
-                onClick={closeFeedbackModal}
-                className="text-slate-400 hover:text-slate-700 p-1.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitFeedback} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Teacher's Comments
-                </label>
-                <textarea
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  rows={5}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm placeholder:text-slate-400 leading-relaxed"
-                  placeholder="Write your feedback here…"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Attachment File (optional)
-                </label>
-                {feedbackFileName ? (
-                  <div className="flex items-center justify-between p-3 border border-purple-200 bg-purple-50/40 rounded-xl">
-                    <div className="flex items-center gap-2 text-xs text-purple-900 font-bold truncate">
-                      <CheckCircle className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                      <span className="truncate">{feedbackFileName}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setFeedbackFile(null); setFeedbackFileName(""); }}
-                      className="text-xs text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-slate-50/50 transition-all text-center">
-                    <Upload className="w-7 h-7 text-slate-400 mb-2" />
-                    <span className="text-xs font-bold text-slate-600">Click to upload feedback file</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">PDF, ZIP, DOC up to 10 MB</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          setFeedbackFile(e.target.files[0]);
-                          setFeedbackFileName(e.target.files[0].name);
-                        }
-                      }}
-                    />
-                  </label>
-                )}
-              </div>
-
-              {activeRecord.submission?.feedback?.fileUrl && !feedbackFile && (
-                <div className="flex items-center justify-between p-3 border border-slate-200 bg-slate-50 rounded-xl">
-                  <div className="flex items-center gap-2 text-xs text-slate-600 truncate">
-                    <Eye className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                    <span className="truncate">Existing: {activeRecord.submission.feedback.fileName}</span>
-                  </div>
-                  <a
-                    href={`${import.meta.env.VITE_API_URL || ""}${activeRecord.submission.feedback.fileUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 font-bold ml-2"
-                  >
-                    Download
-                  </a>
-                </div>
-              )}
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeFeedbackModal}
-                  disabled={submittingFeedback}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 text-sm font-bold cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingFeedback}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors disabled:bg-blue-400 cursor-pointer"
-                >
-                  {submittingFeedback ? "Saving…" : "Save Feedback"}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
