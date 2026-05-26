@@ -88,6 +88,8 @@ const notificationSlice = createSlice({
         ...notification,
         isRead: true,
       }));
+      state.readCount = state.list.length;
+      state.unreadCount = 0;
     });
     builder.addCase(deleteNotification.fulfilled, (state, action) => {
       const removed = state.list.find(

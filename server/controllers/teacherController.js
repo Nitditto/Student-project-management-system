@@ -82,41 +82,60 @@ export const getRequest = asyncHandler(async (req, res) => {
       total,
     },
   });
-  }
+}
 );
 
 export const acceptRequest = asyncHandler(async (req, res, next) => {
   const { requestId } = req.params;
   const teacherId = req.user._id;
   const request = await requestServices.acceptRequest(requestId, teacherId);
-  if (!request) return next(new ErrorHandler("Request not found", 404));
 
-  // 1. Cập nhật học sinh
-  await User.findByIdAndUpdate(request.student._id, {
-    supervisor: teacherId,
-  });
-
-  // 2. Cập nhật giáo viên
-  await User.findByIdAndUpdate(teacherId, {
-    $addToSet: { assignedStudents: request.student._id },
-  });
-
-  // 3. Cập nhật Project của học sinh
-  const studentProject = await Project.findOne({ student: request.student._id });
-  if (studentProject) {
-    studentProject.supervisor = teacherId;
-    if (studentProject.status === "pending") {
-      studentProject.status = "approved"; 
-    }
-    await studentProject.save();
+  if (!request) {
+    throw new ErrorHandler("Request not found", 404);
   }
 
-  await notificationServices.notifyUser(
-    request.student._id,
-    `Your supervisor request has been accepted by ${req.user.name}`,
-    "approval",
-    "/student/status",
-    "low",
+  const studentProject = request.project
+    ? await Project.findById(request.project._id || request.project)
+    : await Project.findOne({ student: request.student._id });
+
+  if (!studentProject) {
+    throw new ErrorHandler("Project not found for this request", 404);
+  }
+
+  if (studentProject.supervisor) {
+    throw new ErrorHandler("Project already has a supervisor", 400);
+  }
+
+  await registrationServices.assignSupervisorToProjectByAdmin({
+    project: studentProject,
+    supervisorId: teacherId,
+  });
+
+  request.status = "accepted";
+  await request.save();
+
+  const cancelFilter = request.project
+    ? { project: studentProject._id }
+    : { student: request.student._id };
+  await SupervisorRequest.updateMany(
+    {
+      ...cancelFilter,
+      _id: { $ne: request._id },
+      status: "pending",
+    },
+    { status: "rejected" },
+  );
+
+  await Promise.all(
+    getProjectMemberIds(studentProject).map((memberId) =>
+      notificationServices.notifyUser(
+        memberId,
+        `Your supervisor request has been accepted by ${req.user.name}`,
+        "approval",
+        "/student/supervisor",
+        "low",
+      ),
+    ),
   );
 
   const student = await User.findById(request.student._id);
@@ -320,15 +339,15 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
 });
 
 export const getDefenseSchedules = asyncHandler(async (req, res, next) => {
-    const teacherId = req.user._id;
+  const teacherId = req.user._id;
 
-    const councils = await Council.find({
-      "members.teacherId": teacherId,
-    }).populate("projects.projectId", "title description status finalScore");
+  const councils = await Council.find({
+    "members.teacherId": teacherId,
+  }).populate("projects.projectId", "title description status finalScore");
 
-    res.status(200).json({
-      success: true,
-      count: councils.length,
-      councils,
-    });
+  res.status(200).json({
+    success: true,
+    count: councils.length,
+    councils,
+  });
 });

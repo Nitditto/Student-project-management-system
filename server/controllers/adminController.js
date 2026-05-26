@@ -169,7 +169,7 @@ export const assignSupervisor = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Project not found", 404));
   }
 
-  if (project.SupervisorRequest) {
+  if (project.supervisor) {
     return next(new ErrorHandler("Supervisor already assigned", 400));
   }
 

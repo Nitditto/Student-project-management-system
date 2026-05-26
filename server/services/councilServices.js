@@ -16,12 +16,60 @@ import {
   toIdString,
 } from "../utils/workflowHelpers.js";
 import { createSimplePdf } from "../utils/simplePdf.js";
+import * as projectAssessmentService from "./projectAssessmentService.js";
+import { getCouncilMembersValidationMessage } from "../utils/councilValidation.js";
 
 const DEFAULT_ROLE_WEIGHTS = {
   chairman: 1.5,
   secretary: 1,
   member: 1,
 };
+
+const buildCouncilMembers = (members = []) =>
+  members.map((member) => {
+    const defaultWeight = DEFAULT_ROLE_WEIGHTS[member.role] ?? 1;
+    const weight =
+      member.weight === "" || member.weight === null || typeof member.weight === "undefined"
+        ? defaultWeight
+        : Number(member.weight);
+
+    return {
+      teacher: member.teacher?._id || member.teacher,
+      role: member.role,
+      weight,
+    };
+  });
+
+const serializeCouncilMembers = (members = []) =>
+  members
+    .map((member) => ({
+      teacher: toIdString(member.teacher),
+      role: member.role,
+      weight: Number(member.weight),
+    }))
+    .sort((left, right) => {
+      if (left.teacher !== right.teacher) {
+        return left.teacher.localeCompare(right.teacher);
+      }
+      if (left.role !== right.role) {
+        return left.role.localeCompare(right.role);
+      }
+
+      return left.weight - right.weight;
+    });
+
+const areCouncilMembersEqual = (currentMembers = [], nextMembers = []) =>
+  JSON.stringify(serializeCouncilMembers(currentMembers)) ===
+  JSON.stringify(serializeCouncilMembers(nextMembers));
+
+const hasCouncilScoringStarted = (council) =>
+  (council.projects || []).some(
+    (projectItem) =>
+      projectItem.status !== "assigned" ||
+      (projectItem.scores || []).length > 0 ||
+      projectItem.finalizedAt ||
+      projectItem.reviewerForm?.pdfUrl,
+  );
 
 const getCouncilProjectItem = (council, projectId) => {
   const projectItem = council.projects.find((item) =>
@@ -89,18 +137,43 @@ const computeWeightedAverage = (council, projectItem) => {
   return roundScore(weightedTotal / totalWeight, 2);
 };
 
-const ensureCouncilMembersValid = async (members) => {
-  if (!Array.isArray(members) || members.length === 0) {
-    throw new ErrorHandler("Council members are required", 400);
-  }
+const attachAssessmentSummaries = async (councils = []) => {
+  return Promise.all(
+    (councils || []).map(async (council) => {
+      const councilObj =
+        typeof council.toObject === "function" ? council.toObject() : { ...council };
 
-  const chairmanCount = members.filter((member) => member.role === "chairman").length;
-  const secretaryCount = members.filter((member) => member.role === "secretary").length;
-  if (chairmanCount !== 1) {
-    throw new ErrorHandler("Council must have exactly one chairman", 400);
-  }
-  if (secretaryCount !== 1) {
-    throw new ErrorHandler("Council must have exactly one secretary", 400);
+      councilObj.projects = await Promise.all(
+        (councilObj.projects || []).map(async (projectItem) => {
+          const projectId = projectItem.project?._id || projectItem.project;
+          if (!projectId) {
+            return projectItem;
+          }
+
+          const assessmentSummary = await projectAssessmentService.getProjectAssessmentSummary({
+            projectId,
+          }).catch(() => null);
+
+          return {
+            ...projectItem,
+            assessmentSummary,
+            weightedAverage:
+              assessmentSummary?.teamFinalScore100 ??
+              projectItem.weightedAverage ??
+              null,
+          };
+        }),
+      );
+
+      return councilObj;
+    }),
+  );
+};
+
+const ensureCouncilMembersValid = async (members) => {
+  const validationMessage = getCouncilMembersValidationMessage(members);
+  if (validationMessage) {
+    throw new ErrorHandler(validationMessage, 400);
   }
 
   const uniqueTeacherIds = new Set(members.map((member) => toIdString(member.teacher)));
@@ -119,11 +192,7 @@ const ensureCouncilMembersValid = async (members) => {
 };
 
 export const createCouncil = async (payload) => {
-  const members = (payload.members || []).map((member) => ({
-    teacher: member.teacher,
-    role: member.role,
-    weight: Number(member.weight || DEFAULT_ROLE_WEIGHTS[member.role] || 1),
-  }));
+  const members = buildCouncilMembers(payload.members);
 
   await ensureCouncilMembersValid(members);
 
@@ -137,12 +206,57 @@ export const createCouncil = async (payload) => {
   });
 };
 
+export const updateCouncil = async (councilId, payload) => {
+  const council = await DefenseCouncil.findById(councilId).populate({
+    path: "projects.project",
+    select: "title groupName supervisor",
+  });
+
+  if (!council) {
+    throw new ErrorHandler("Council not found", 404);
+  }
+
+  const members = buildCouncilMembers(payload.members);
+  await ensureCouncilMembersValid(members);
+
+  const membersChanged = !areCouncilMembersEqual(council.members, members);
+  if (membersChanged && hasCouncilScoringStarted(council)) {
+    throw new ErrorHandler(
+      "Cannot change council members after scoring has started or results were finalized",
+      400,
+    );
+  }
+
+  if (membersChanged && (council.projects || []).length > 0) {
+    const memberTeacherIds = new Set(members.map((member) => toIdString(member.teacher)));
+    const supervisorConflict = council.projects.find((projectItem) =>
+      memberTeacherIds.has(toIdString(projectItem.project?.supervisor)),
+    );
+
+    if (supervisorConflict?.project) {
+      throw new ErrorHandler(
+        `Supervisor of project "${supervisorConflict.project.groupName || supervisorConflict.project.title}" cannot be a council member`,
+        400,
+      );
+    }
+  }
+
+  council.name = payload.name;
+  council.description = payload.description || "";
+  council.defenseDate = payload.defenseDate || null;
+  council.room = payload.room || "";
+  council.members = members;
+  await council.save();
+
+  return council;
+};
+
 export const getAdminCouncils = async () => {
-  return DefenseCouncil.find()
+  const councils = await DefenseCouncil.find()
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName supervisor defenseFinalScore",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -150,6 +264,8 @@ export const getAdminCouncils = async () => {
     })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
+
+  return attachAssessmentSummaries(councils);
 };
 
 export const deleteCouncil = async (councilId) => {
@@ -208,6 +324,8 @@ export const deleteCouncil = async (councilId) => {
 export const assignProjectToCouncil = async ({
   councilId,
   projectId,
+  projectTrack = "capstone",
+  templateId = null,
 }) => {
   const council = await DefenseCouncil.findById(councilId)
     .populate("members.teacher", "name email");
@@ -241,6 +359,8 @@ export const assignProjectToCouncil = async ({
     project: project._id,
     reviewer: null,
     reviewerWeight: 1.5,
+    projectTrack,
+    templateVersion: "",
     status: "assigned",
   });
   council.status = "active";
@@ -248,8 +368,25 @@ export const assignProjectToCouncil = async ({
 
   project.councilId = council._id;
   project.reviewerId = null;
+  project.projectTrack = projectTrack || project.projectTrack || "capstone";
+  if (templateId) {
+    project.assessmentTemplateId = templateId;
+  }
   project.defenseStatus = project.selectedSchedule?.slotId ? "scheduled" : "in_progress";
   await project.save();
+
+  const assessment = await projectAssessmentService.ensureProjectAssessment({
+    projectId: project._id,
+    councilId: council._id,
+    projectTrack: project.projectTrack,
+    templateId,
+  });
+
+  const councilProject = council.projects.find((item) => isSameId(item.project, project._id));
+  if (councilProject) {
+    councilProject.templateVersion = assessment.templateVersion;
+    await council.save();
+  }
 
   await Promise.all(
     getProjectMemberIds(project).map((memberId) =>
@@ -263,7 +400,19 @@ export const assignProjectToCouncil = async ({
     ),
   );
 
-  return council;
+  const refreshed = await DefenseCouncil.findById(councilId)
+    .populate("members.teacher", "name email department")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
+    .populate("projects.reviewer", "name email");
+
+  return (await attachAssessmentSummaries([refreshed]))[0];
 };
 
 export const assignReviewerByChairman = async ({
@@ -313,7 +462,7 @@ export const assignReviewerByChairman = async ({
 };
 
 export const getTeacherCouncils = async (teacherId) => {
-  return DefenseCouncil.find({
+  const councils = await DefenseCouncil.find({
     $or: [
       { "members.teacher": teacherId },
       { "projects.reviewer": teacherId },
@@ -322,7 +471,7 @@ export const getTeacherCouncils = async (teacherId) => {
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName supervisor defenseFinalScore",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -330,6 +479,8 @@ export const getTeacherCouncils = async (teacherId) => {
     })
     .populate("projects.reviewer", "name email")
     .sort({ createdAt: -1 });
+
+  return attachAssessmentSummaries(councils);
 };
 
 export const getStudentCouncilBoard = async (studentId) => {
@@ -343,7 +494,7 @@ export const getStudentCouncilBoard = async (studentId) => {
     .populate("members.teacher", "name email department")
     .populate({
       path: "projects.project",
-      select: "title status groupName defenseFinalScore supervisor",
+      select: "title status groupName defenseFinalScore supervisor projectTrack assessmentTemplateId",
       populate: {
         path: "supervisor",
         select: "name email",
@@ -351,7 +502,9 @@ export const getStudentCouncilBoard = async (studentId) => {
     })
     .populate("projects.reviewer", "name email");
 
-  return { project, council };
+  const [withAssessment] = await attachAssessmentSummaries([council]);
+
+  return { project, council: withAssessment };
 };
 
 export const submitCouncilScore = async ({

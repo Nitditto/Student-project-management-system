@@ -29,7 +29,8 @@ export const getAllRequest = async (filters) => {
 export const acceptRequest = async (requestId, supervisorId) => {
   const request = await SupervisorRequest.findById(requestId)
     .populate("student", "name email supervisor project")
-    .populate("supervisor", "name email assignedStudents maxStudents");
+    .populate("supervisor", "name email assignedStudents maxStudent")
+    .populate("project", "student members supervisor status archiveLocked");
   if (!request) {
     throw new Error("Request not found");
   }
@@ -39,8 +40,6 @@ export const acceptRequest = async (requestId, supervisorId) => {
   if (request.status !== "pending") {
     throw new Error("Request has already been processed");
   }
-  request.status = "accepted";
-  await request.save();
 
   return request;
 };
