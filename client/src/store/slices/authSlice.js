@@ -82,6 +82,34 @@ export const logout = createAsyncThunk(
   },
 );
 
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (data, thunkAPI) => {
+    try {
+      const res = await axiosInstance.put("/auth/profile/update", data);
+      toast.success(res.data.message || "Profile updated successfully");
+      return res.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update profile");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
+    }
+  },
+);
+
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async (data, thunkAPI) => {
+    try {
+      const res = await axiosInstance.put("/auth/password/change", data);
+      toast.success(res.data.message || "Password changed successfully");
+      return null;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to change password");
+      return thunkAPI.rejectWithValue(error.response?.data?.message);
+    }
+  },
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState: {
@@ -156,6 +184,27 @@ const authSlice = createSlice({
     builder.addCase(resetPassword.rejected, (state) => {
       state.isUpdatingPassword = false
       
+    });
+
+    builder.addCase(updateProfile.pending, (state) => {
+      state.isUpdatingProfile = true;
+    });
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      state.isUpdatingProfile = false;
+      state.authUser = action.payload;
+    });
+    builder.addCase(updateProfile.rejected, (state) => {
+      state.isUpdatingProfile = false;
+    });
+
+    builder.addCase(changePassword.pending, (state) => {
+      state.isUpdatingPassword = true;
+    });
+    builder.addCase(changePassword.fulfilled, (state) => {
+      state.isUpdatingPassword = false;
+    });
+    builder.addCase(changePassword.rejected, (state) => {
+      state.isUpdatingPassword = false;
     });
   },
 });

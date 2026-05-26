@@ -19,9 +19,12 @@ import {
 } from "../controllers/scheduleController.js";
 import {
   createAttendanceSession,
+  deleteAttendanceSession,
   getTeacherAttendanceSessions,
   manualMarkAttendance,
   reviewLeaveRequest,
+  updateAttendanceSession,
+  getNgrokUrl,
 } from "../controllers/attendanceController.js";
 import {
   createTeacherPreselection,
@@ -37,6 +40,14 @@ import {
   submitCouncilScore,
   submitReviewerForm,
 } from "../controllers/councilController.js";
+import {
+  finalizeCloAssessment,
+  getTeacherProjectAssessmentSummary,
+  submitTeacherAssessmentSubmission,
+  submitTeacherM5Submission,
+  updateTeacherAssessmentSubmission,
+} from "../controllers/assessmentController.js";
+import { upload, handleUploadError } from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -146,6 +157,12 @@ router.post(
   runAutoAssign,
 );
 router.get(
+  "/ngrok-url",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  getNgrokUrl,
+);
+router.get(
   "/attendance-sessions",
   isAuthenticated,
   isAuthorized("Teacher"),
@@ -156,6 +173,18 @@ router.post(
   isAuthenticated,
   isAuthorized("Teacher"),
   createAttendanceSession,
+);
+router.put(
+  "/attendance-sessions/:sessionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  updateAttendanceSession,
+);
+router.delete(
+  "/attendance-sessions/:sessionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  deleteAttendanceSession,
 );
 router.put(
   "/attendance-sessions/:sessionId/students/:studentId/manual",
@@ -182,6 +211,36 @@ router.post(
   assignReviewerByChairman,
 );
 router.post(
+  "/projects/:projectId/assessments/:milestoneCode/submissions",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  upload.array("files", 5),
+  handleUploadError,
+  submitTeacherAssessmentSubmission,
+);
+router.put(
+  "/projects/:projectId/assessments/:milestoneCode/submissions/:submissionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  upload.array("files", 5),
+  handleUploadError,
+  updateTeacherAssessmentSubmission,
+);
+router.post(
+  "/councils/:councilId/projects/:projectId/m5-submissions",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  upload.array("files", 5),
+  handleUploadError,
+  submitTeacherM5Submission,
+);
+router.get(
+  "/projects/:projectId/assessment-summary",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  getTeacherProjectAssessmentSummary,
+);
+router.post(
   "/councils/:councilId/projects/:projectId/score",
   isAuthenticated,
   isAuthorized("Teacher"),
@@ -198,6 +257,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Teacher"),
   finalizeCouncilProject,
+);
+router.post(
+  "/councils/:councilId/projects/:projectId/finalize-clo",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  finalizeCloAssessment,
 );
 router.get(
   "/councils/:councilId/projects/:projectId/reviewer-form/download",

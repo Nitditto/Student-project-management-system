@@ -82,7 +82,7 @@ export const getRequest = asyncHandler(async (req, res) => {
       total,
     },
   });
-  }
+}
 );
 
 export const acceptRequest = asyncHandler(async (req, res, next) => {
@@ -106,7 +106,7 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
   if (studentProject) {
     studentProject.supervisor = teacherId;
     if (studentProject.status === "pending") {
-      studentProject.status = "approved"; 
+      studentProject.status = "approved";
     }
     await studentProject.save();
   }
@@ -320,15 +320,15 @@ export const downloadFile = asyncHandler(async (req, res, next) => {
 });
 
 export const getDefenseSchedules = asyncHandler(async (req, res, next) => {
-    const teacherId = req.user._id;
+  const teacherId = req.user._id;
 
-    const councils = await Council.find({
-      "members.teacherId": teacherId,
-    }).populate("projects.projectId", "title description status finalScore");
+  const councils = await Council.find({
+    "members.teacherId": teacherId,
+  }).populate("projects.projectId", "title description status finalScore");
 
-    res.status(200).json({
-      success: true,
-      count: councils.length,
-      councils,
-    });
+  res.status(200).json({
+    success: true,
+    count: councils.length,
+    councils,
+  });
 });

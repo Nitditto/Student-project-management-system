@@ -91,11 +91,6 @@ export const uploadFiles = createAsyncThunk(
       const res = await axiosInstance.post(
         `/student/upload/${projectId}`,
         form,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
       );
       toast.success(res.data.message || "File uploaded successfully");
       return res.data.data.project || res.data;

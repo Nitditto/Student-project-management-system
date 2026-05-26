@@ -10,6 +10,7 @@ import notificationRouter from "./router/notificationRoutes.js";
 import projectRouter from "./router/projectRoutes.js";
 import deadlineRouter from "./router/deadlineRoutes.js";
 import teacherRouter from "./router/teacherRoutes.js";
+import messageRouter from "./router/messageRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -21,9 +22,65 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URLS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+].filter(Boolean);
+
+const isPrivateNetworkOrigin = (origin) => {
+  if (!origin) return true;
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (!["http:", "https:"].includes(protocol)) {
+      return false;
+    }
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return true;
+    }
+
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    // Allow any ngrok tunnel domain automatically
+    if (/\.ngrok-free\.app$/.test(hostname) || /\.ngrok-free\.dev$/.test(hostname) || /\.ngrok\.io$/.test(hostname)) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL],
+    origin(origin, callback) {
+      if (
+        !origin ||
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin) ||
+        isPrivateNetworkOrigin(origin)
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
@@ -43,6 +100,18 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory with inline content-disposition so PDFs
+// can be rendered directly inside iframes without triggering a download prompt.
+app.use("/uploads", (req, res, next) => {
+  // Allow the browser to render files inline (critical for PDF iframe viewer)
+  res.setHeader("Content-Disposition", "inline");
+  // Remove X-Frame-Options so the iframe on the same origin can embed the file
+  res.removeHeader("X-Frame-Options");
+  // Allow the frontend origin to embed these assets inside iframes
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  next();
+}, express.static(uploadsDir));
+
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/student", studentRouter);
@@ -50,6 +119,7 @@ app.use("/api/v1/notification", notificationRouter);
 app.use("/api/v1/project", projectRouter);
 app.use("/api/v1/deadline", deadlineRouter);
 app.use("/api/v1/teacher", teacherRouter);
+app.use("/api/v1/message", messageRouter);
 app.use(errorMiddleware);
 
 export default app;

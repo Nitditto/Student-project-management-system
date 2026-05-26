@@ -18,13 +18,19 @@ import {
   createCouncil,
   deleteCouncil,
   getAdminCouncils,
+  updateCouncil,
 } from "../controllers/councilController.js";
+import {
+  createAssessmentTemplate,
+  getAdminQaDashboard,
+  getAssessmentTemplate,
+  listAssessmentTemplates,
+} from "../controllers/assessmentController.js";
 import {
   getRegistrationSettings,
   updateRegistrationSettings,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
-import multer from "multer";
 
 const router = express.Router();
 
@@ -102,6 +108,12 @@ router.post(
   isAuthorized("Admin"),
   createCouncil,
 );
+router.put(
+  "/councils/:councilId",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  updateCouncil,
+);
 router.delete(
   "/councils/:councilId",
   isAuthenticated,
@@ -113,6 +125,30 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin"),
   assignProjectToCouncil,
+);
+router.get(
+  "/assessment-templates",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  listAssessmentTemplates,
+);
+router.post(
+  "/assessment-templates",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  createAssessmentTemplate,
+);
+router.get(
+  "/assessment-templates/:templateId",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAssessmentTemplate,
+);
+router.get(
+  "/qa/clo-dashboard",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  getAdminQaDashboard,
 );
 router.get(
   "/registration-settings",
