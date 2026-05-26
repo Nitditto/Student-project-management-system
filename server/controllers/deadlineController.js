@@ -26,7 +26,7 @@ const resolveStudentDeadlineContext = async (studentId) => {
 
 // Create a new deadline (Teacher)
 export const createDeadline = asyncHandler(async (req, res, next) => {
-  const { title, description, endDate, startDate, teacherId } = req.body;
+  const { title, description, endDate, startDate, teacherId, assignedGroups } = req.body;
 
   if (!title || !description || !endDate) {
     return next(new ErrorHandler("Title, description, and end date are required", 400));
@@ -49,6 +49,7 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
     description,
     endDate: new Date(endDate),
     teacherId: ownerTeacherId,
+    assignedGroups: Array.isArray(assignedGroups) ? assignedGroups : [],
   };
 
   if (startDate) {
@@ -57,17 +58,31 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
 
   const deadline = await Deadline.create(deadlineData);
 
-  const supervisedStudents = await User.find({
-    role: "Student",
-    supervisor: ownerTeacherId,
-  })
-    .select("_id")
-    .lean();
+  let studentIdsToNotify = [];
+  if (deadlineData.assignedGroups && deadlineData.assignedGroups.length > 0) {
+    const projects = await Project.find({ _id: { $in: deadlineData.assignedGroups } }).select("student members");
+    const studentIdsSet = new Set();
+    projects.forEach((p) => {
+      if (p.student) studentIdsSet.add(p.student.toString());
+      if (p.members) {
+        p.members.forEach((m) => studentIdsSet.add(m.toString()));
+      }
+    });
+    studentIdsToNotify = Array.from(studentIdsSet);
+  } else {
+    const supervisedStudents = await User.find({
+      role: "Student",
+      supervisor: ownerTeacherId,
+    })
+      .select("_id")
+      .lean();
+    studentIdsToNotify = supervisedStudents.map((student) => student._id.toString());
+  }
 
   await Promise.all(
-    supervisedStudents.map((student) =>
+    studentIdsToNotify.map((studentId) =>
       notificationServices.notifyUser(
-        student._id,
+        studentId,
         `New deadline "${deadline.title}" has been created and is due on ${new Date(deadline.endDate).toLocaleString()}.`,
         "deadline",
         "/student/deadlines",
@@ -87,7 +102,7 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
 export const updateDeadline = asyncHandler(async (req, res, next) => {
   console.log("UPDATE DEADLINE CALLED", req.params, req.body, req.user);
   const { deadlineId } = req.params;
-  const { title, description, endDate, startDate } = req.body;
+  const { title, description, endDate, startDate, assignedGroups } = req.body;
 
   let deadline = await Deadline.findById(deadlineId);
 
@@ -104,6 +119,7 @@ export const updateDeadline = asyncHandler(async (req, res, next) => {
   const updateData = { title, description };
   if (endDate) updateData.endDate = new Date(endDate);
   if (startDate) updateData.startDate = new Date(startDate);
+  if (assignedGroups) updateData.assignedGroups = Array.isArray(assignedGroups) ? assignedGroups : [];
 
   try {
     deadline = await Deadline.findByIdAndUpdate(deadlineId, updateData, {
@@ -177,7 +193,21 @@ export const getStudentDeadlines = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const deadlines = await Deadline.find({ teacherId: supervisorId }).sort({
+  const query = { teacherId: supervisorId };
+  if (project?._id) {
+    query.$or = [
+      { assignedGroups: { $exists: false } },
+      { assignedGroups: { $size: 0 } },
+      { assignedGroups: project._id },
+    ];
+  } else {
+    query.$or = [
+      { assignedGroups: { $exists: false } },
+      { assignedGroups: { $size: 0 } },
+    ];
+  }
+
+  const deadlines = await Deadline.find(query).sort({
     endDate: 1,
   });
   
@@ -245,16 +275,31 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (!req.file) {
-    return next(new ErrorHandler("Please upload a file", 400));
+  if (!req.files || req.files.length === 0) {
+    return next(new ErrorHandler("Please upload at least one file", 400));
   }
+
+  // Decode Vietnamese accents in originalnames from latin1 to utf8
+  const filesList = req.files.map((file) => {
+    const originalNameDecoded = Buffer.from(file.originalname, "latin1").toString("utf8");
+    return {
+      fileUrl: `/uploads/temp/${file.filename}`,
+      fileName: originalNameDecoded,
+      uploadedAt: new Date(),
+    };
+  });
 
   // Find existing submission or create new
   let submission = await Submission.findOne({ deadlineId, groupId: project._id });
 
+  // For backward compatibility, store first file details in legacy single-file fields
+  const firstFileUrl = filesList[0].fileUrl;
+  const firstFileName = filesList[0].fileName;
+
   if (submission) {
-    submission.fileUrl = `/uploads/temp/${req.file.filename}`; // Or adjust based on your path
-    submission.fileName = req.file.originalname;
+    submission.fileUrl = firstFileUrl;
+    submission.fileName = firstFileName;
+    submission.files = filesList;
     submission.status = "SUBMITTED";
     submission.submittedBy = req.user._id;
     submission.submittedAt = new Date();
@@ -264,12 +309,31 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
       deadlineId,
       groupId: project._id,
       submittedBy: req.user._id,
-      fileUrl: `/uploads/temp/${req.file.filename}`,
-      fileName: req.file.originalname,
+      fileUrl: firstFileUrl,
+      fileName: firstFileName,
+      files: filesList,
       status: "SUBMITTED",
       submittedAt: new Date(),
     });
   }
+
+  // Sync with project.files - remove existing for this deadline submission and add all new ones
+  project.files = (project.files || []).filter(
+    (f) => !(f.fileCategory === "Submission" && f.deadlineId?.toString() === deadlineId.toString())
+  );
+
+  req.files.forEach((file, index) => {
+    project.files.push({
+      fileType: file.mimetype,
+      fileUrl: filesList[index].fileUrl,
+      originalName: filesList[index].fileName,
+      uploadedAt: new Date(),
+      fileCategory: "Submission",
+      deadlineId: deadlineId,
+    });
+  });
+
+  await project.save();
 
   res.status(200).json({
     success: true,
@@ -314,11 +378,18 @@ export const unsubmitDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("No submission found", 404));
   }
 
-  // Actually we should delete or mark as PENDING
+  // Clear submission files info
   submission.status = "PENDING";
   submission.fileUrl = null;
   submission.fileName = null;
+  submission.files = [];
   await submission.save();
+
+  // Sync with project.files
+  project.files = (project.files || []).filter(
+    (f) => !(f.fileCategory === "Submission" && f.deadlineId?.toString() === deadlineId.toString())
+  );
+  await project.save();
 
   res.status(200).json({
     success: true,
@@ -379,5 +450,244 @@ export const getTeacherMatrix = asyncHandler(async (req, res, next) => {
       deadlines,
       matrix,
     },
+  });
+});
+
+// Get Submissions for a specific Deadline (Teacher)
+export const getDeadlineSubmissions = asyncHandler(async (req, res, next) => {
+  const { deadlineId } = req.params;
+  const teacherId = req.user._id;
+
+  const deadline = await Deadline.findById(deadlineId);
+  if (!deadline) {
+    return next(new ErrorHandler("Deadline not found", 404));
+  }
+
+  // Find all groups assigned to this deadline
+  let projectQuery = { supervisor: teacherId, status: "approved" };
+  if (deadline.assignedGroups && deadline.assignedGroups.length > 0) {
+    projectQuery._id = { $in: deadline.assignedGroups };
+  }
+
+  const projects = await Project.find(projectQuery)
+    .populate("student members", "name email");
+
+  // Get submissions
+  const projectIds = projects.map(p => p._id);
+  const submissions = await Submission.find({ deadlineId, groupId: { $in: projectIds } })
+    .populate("submittedBy", "name email");
+
+  // Stats calculation
+  let totalGroups = projects.length;
+  let submittedCount = 0;
+  let lateCount = 0;
+  let missingCount = 0;
+  let pendingCount = 0;
+
+  const records = projects.map(project => {
+    const sub = submissions.find(s => s.groupId.toString() === project._id.toString());
+    const isOverdue = new Date() > new Date(deadline.endDate);
+    
+    let status = "PENDING";
+    if (sub) {
+      if (sub.status === "SUBMITTED") {
+        const isLate = new Date(sub.submittedAt || sub.createdAt) > new Date(deadline.endDate);
+        if (isLate) {
+          status = "LATE";
+          lateCount++;
+        } else {
+          status = "SUBMITTED";
+          submittedCount++;
+        }
+      } else if (sub.status === "LATE") {
+        status = "LATE";
+        lateCount++;
+      } else {
+        status = sub.status;
+        if (status === "MISSED") missingCount++;
+        else pendingCount++;
+      }
+    } else if (isOverdue) {
+      status = "MISSED";
+      missingCount++;
+    } else {
+      pendingCount++;
+    }
+
+    return {
+      project: {
+        _id: project._id,
+        title: project.title,
+        groupName: project.groupName,
+        members: project.members,
+        student: project.student,
+      },
+      status,
+      submission: sub || null,
+      projectFiles: (project.files || [])
+        .filter(
+          (f) =>
+            f.fileCategory === "Submission" &&
+            f.deadlineId?.toString() === deadlineId.toString()
+        )
+        .map((f) => ({
+          fileUrl: f.fileUrl,
+          fileName: f.originalName,
+          uploadedAt: f.uploadedAt,
+        })),
+    };
+  });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      deadline,
+      stats: {
+        totalGroups,
+        submitted: submittedCount,
+        late: lateCount,
+        missing: missingCount,
+        pending: pendingCount,
+      },
+      records,
+    },
+  });
+});
+
+// Submit Feedback for a Submission (Teacher)
+export const submitSubmissionFeedback = asyncHandler(async (req, res, next) => {
+  const { deadlineId, groupId } = req.params;
+  const teacherId = req.user._id;
+  const { message } = req.body;
+
+  const deadline = await Deadline.findById(deadlineId);
+  if (!deadline) {
+    return next(new ErrorHandler("Deadline not found", 404));
+  }
+
+  const project = await Project.findById(groupId);
+  if (!project) {
+    return next(new ErrorHandler("Project not found", 404));
+  }
+
+  let submission = await Submission.findOne({ deadlineId, groupId });
+  
+  // If no submission exists, create a placeholder
+  if (!submission) {
+    const isOverdue = new Date() > new Date(deadline.endDate);
+    submission = await Submission.create({
+      deadlineId,
+      groupId,
+      submittedBy: project.student,
+      status: isOverdue ? "MISSED" : "PENDING",
+    });
+  }
+
+  const feedbackData = {
+    message: message || "",
+    commentedAt: new Date(),
+    commentedBy: teacherId,
+  };
+
+  if (req.file) {
+    feedbackData.fileUrl = `/uploads/temp/${req.file.filename}`;
+    feedbackData.fileName = req.file.originalname;
+  }
+
+  submission.feedback = feedbackData;
+  await submission.save();
+
+  // Notify student
+  await notificationServices.notifyUser(
+    project.student,
+    `Your supervisor has added feedback for deadline "${deadline.title}"`,
+    "feedback",
+    "/student/deadlines",
+    "medium"
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Feedback submitted successfully",
+    data: { submission },
+  });
+});
+
+// Get Group Progress Across All Deadlines (Teacher/Student)
+export const getGroupProgress = asyncHandler(async (req, res, next) => {
+  const { projectId } = req.params;
+
+  const project = await Project.findById(projectId).populate("student supervisor members", "name email");
+  if (!project) {
+    return next(new ErrorHandler("Project not found", 404));
+  }
+
+  const supervisorId = project.supervisor?._id || project.supervisor;
+  if (!supervisorId) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        progress: {
+          percentage: 0,
+          completed: [],
+          missed: [],
+          upcoming: [],
+        }
+      }
+    });
+  }
+
+  // Find all deadlines applicable to this group
+  const query = {
+    teacherId: supervisorId,
+    $or: [
+      { assignedGroups: { $exists: false } },
+      { assignedGroups: { $size: 0 } },
+      { assignedGroups: project._id },
+    ]
+  };
+
+  const deadlines = await Deadline.find(query).sort({ endDate: 1 });
+  const submissions = await Submission.find({ groupId: project._id });
+
+  const completed = [];
+  const missed = [];
+  const upcoming = [];
+
+  deadlines.forEach(dl => {
+    const sub = submissions.find(s => s.deadlineId.toString() === dl._id.toString());
+    const isOverdue = new Date() > new Date(dl.endDate);
+
+    if (sub && (sub.status === "SUBMITTED" || sub.status === "LATE")) {
+      completed.push({
+        deadline: dl,
+        submission: sub,
+      });
+    } else if (isOverdue) {
+      missed.push({
+        deadline: dl,
+        submission: sub || null,
+      });
+    } else {
+      upcoming.push({
+        deadline: dl,
+        submission: sub || null,
+      });
+    }
+  });
+
+  const total = deadlines.length;
+  const percentage = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      progress: {
+        percentage,
+        completed,
+        missed,
+        upcoming,
+      }
+    }
   });
 });

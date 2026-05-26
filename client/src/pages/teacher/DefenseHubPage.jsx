@@ -344,14 +344,27 @@ const DefenseHubPage = () => {
       return;
     }
 
+    const toIso = (v) => v ? new Date(v).toISOString() : v;
+
     try {
-      await axiosInstance.post("/teacher/schedules", scheduleForm);
+      const payload = {
+        ...scheduleForm,
+        pickDeadline: toIso(scheduleForm.pickDeadline),
+        slots: scheduleForm.slots.map(slot => ({
+          ...slot,
+          startAt: toIso(slot.startAt),
+          endAt: toIso(slot.endAt),
+        }))
+      };
+
+      await axiosInstance.post("/teacher/schedules", payload);
       toast.success("Defense schedule window created");
       setScheduleForm({
         title: "",
         description: "",
         pickDeadline: "",
         rescheduleWindowHours: 24,
+        autoAssignEnabled: true,
         slots: [createSlot()],
       });
       await loadData();

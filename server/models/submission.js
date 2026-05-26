@@ -25,6 +25,22 @@ const submissionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    files: [
+      {
+        fileUrl: {
+          type: String,
+          required: true,
+        },
+        fileName: {
+          type: String,
+          required: true,
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     status: {
       type: String,
       enum: ["PENDING", "SUBMITTED", "MISSED", "LATE"],
@@ -33,6 +49,29 @@ const submissionSchema = new mongoose.Schema(
     submittedAt: {
       type: Date,
       default: null,
+    },
+    feedback: {
+      message: {
+        type: String,
+        default: null,
+      },
+      fileUrl: {
+        type: String,
+        default: null,
+      },
+      fileName: {
+        type: String,
+        default: null,
+      },
+      commentedAt: {
+        type: Date,
+        default: null,
+      },
+      commentedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
     },
   },
   { timestamps: true }

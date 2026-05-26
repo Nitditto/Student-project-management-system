@@ -33,6 +33,12 @@ const deadlineSchema = new mongoose.Schema(
       ref: "RegistrationSetting",
       default: null,
     },
+    assignedGroups: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Project",
+      },
+    ],
   },
   {
     timestamps: true,

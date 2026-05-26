@@ -29,6 +29,9 @@ import TeacherPreselectionPage from "./pages/teacher/TeacherPreselectionPage";
 import TeacherNotificationsPage from "./pages/teacher/NotificationsPage";
 import DeadlineManagement from "./pages/teacher/DeadlineManagement";
 import SubmissionTracking from "./pages/teacher/SubmissionTracking";
+import DeadlineSubmissionsPage from "./pages/teacher/DeadlineSubmissionsPage";
+import GroupProgressOverview from "./pages/teacher/GroupProgressOverview";
+import SubmissionPreviewPage from "./pages/teacher/SubmissionPreviewPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -165,6 +168,9 @@ const App = () => {
           <Route path="defense" element={<DefenseHubPage />} />
           <Route path="notifications" element={<TeacherNotificationsPage />} />
           <Route path="deadlines" element={<DeadlineManagement />} />
+          <Route path="deadlines/:deadlineId/submissions" element={<DeadlineSubmissionsPage />} />
+          <Route path="deadlines/submissions/preview" element={<SubmissionPreviewPage />} />
+          <Route path="group-progress" element={<GroupProgressOverview />} />
           <Route path="submissions" element={<SubmissionTracking />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>

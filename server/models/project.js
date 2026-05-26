@@ -143,6 +143,16 @@ const projectSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        fileCategory: {
+          type: String,
+          enum: ["General", "Submission"],
+          default: "General",
+        },
+        deadlineId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Deadline",
+          default: null,
+        },
       },
     ],
     feedback: [feedbackSchema],

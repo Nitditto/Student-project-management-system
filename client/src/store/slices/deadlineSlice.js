@@ -91,10 +91,12 @@ export const fetchTeacherMatrix = createAsyncThunk(
 
 export const submitDeadline = createAsyncThunk(
   "deadline/submit",
-  async ({ deadlineId, file }, thunkAPI) => {
+  async ({ deadlineId, files }, thunkAPI) => {
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
       
       const res = await axiosInstance.post(`/deadline/${deadlineId}/submit`, formData, {
         headers: {

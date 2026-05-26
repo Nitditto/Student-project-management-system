@@ -219,6 +219,16 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
     ? await Deadline.find({
         teacherId: supervisorId,
         endDate: { $gte: now },
+        $or: project?._id
+          ? [
+              { assignedGroups: { $exists: false } },
+              { assignedGroups: { $size: 0 } },
+              { assignedGroups: project._id },
+            ]
+          : [
+              { assignedGroups: { $exists: false } },
+              { assignedGroups: { $size: 0 } },
+            ],
       })
         .select("title description startDate endDate")
         .sort({ endDate: 1 })

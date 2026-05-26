@@ -1,22 +1,29 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   fetchTeacherDeadlines,
   createDeadline,
   updateDeadline,
   deleteDeadline,
+  fetchTeacherMatrix,
 } from "../../store/slices/deadlineSlice";
-import { Plus, Edit, Trash2, Calendar, X, FileText, AlignLeft } from "lucide-react";
+import { Plus, Edit, Trash2, Calendar, X, FileText, AlignLeft, Users, FileSpreadsheet, Layers } from "lucide-react";
 import { toast } from "react-toastify";
 
 const DeadlineManagement = () => {
   const dispatch = useDispatch();
-  const { deadlines, loading } = useSelector((state) => state.deadline);
+  const navigate = useNavigate();
+  const { deadlines, matrix, loading } = useSelector((state) => state.deadline);
+  const teacherProjects = matrix?.matrix?.map(row => row.project) || [];
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentDeadline, setCurrentDeadline] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [targetType, setTargetType] = useState("all"); // "all" or "specific"
+  const [selectedGroups, setSelectedGroups] = useState([]); // array of group IDs
   
   const [formData, setFormData] = useState({
     title: "",
@@ -27,6 +34,7 @@ const DeadlineManagement = () => {
 
   useEffect(() => {
     dispatch(fetchTeacherDeadlines());
+    dispatch(fetchTeacherMatrix());
   }, [dispatch]);
 
   const handleOpenModal = (deadline = null) => {
@@ -45,6 +53,14 @@ const DeadlineManagement = () => {
         startDate: formatLocal(deadline.startDate),
         endDate: formatLocal(deadline.endDate),
       });
+
+      if (deadline.assignedGroups && deadline.assignedGroups.length > 0) {
+        setTargetType("specific");
+        setSelectedGroups(deadline.assignedGroups.map(g => g._id || g));
+      } else {
+        setTargetType("all");
+        setSelectedGroups([]);
+      }
     } else {
       setIsEditMode(false);
       setCurrentDeadline(null);
@@ -54,6 +70,8 @@ const DeadlineManagement = () => {
         startDate: "",
         endDate: "",
       });
+      setTargetType("all");
+      setSelectedGroups([]);
     }
     setIsModalOpen(true);
   };
@@ -76,16 +94,23 @@ const DeadlineManagement = () => {
     }
     
     setIsSaving(true);
+    const payload = {
+      ...formData,
+      startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+      endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+      assignedGroups: targetType === "all" ? [] : selectedGroups,
+    };
+
     try {
       if (isEditMode) {
         await dispatch(
           updateDeadline({
             deadlineId: currentDeadline._id,
-            data: formData,
+            data: payload,
           })
         ).unwrap();
       } else {
-        await dispatch(createDeadline(formData)).unwrap();
+        await dispatch(createDeadline(payload)).unwrap();
       }
       handleCloseModal();
     } catch (error) {
@@ -111,13 +136,22 @@ const DeadlineManagement = () => {
               Create and manage project submission deadlines for your groups
             </p>
           </div>
-          <button
-            className="btn btn-primary flex items-center space-x-2 mt-4 md:mt-0"
-            onClick={() => handleOpenModal()}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Create Deadline</span>
-          </button>
+          <div className="flex space-x-2 mt-4 md:mt-0">
+            <button
+              className="btn btn-outline flex items-center space-x-2 bg-white border border-slate-300 px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+              onClick={() => navigate("/teacher/group-progress")}
+            >
+              <Users className="w-5 h-5" />
+              <span>Group Progress Overview</span>
+            </button>
+            <button
+              className="btn btn-primary flex items-center space-x-2"
+              onClick={() => handleOpenModal()}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Create Deadline</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -133,6 +167,9 @@ const DeadlineManagement = () => {
                   Title & Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Applies To
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Start Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -146,13 +183,13 @@ const DeadlineManagement = () => {
             <tbody className="bg-white divide-y divide-slate-200">
               {loading && deadlines.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="text-center py-8 text-slate-500">
+                  <td colSpan="5" className="text-center py-8 text-slate-500">
                     Loading deadlines...
                   </td>
                 </tr>
               ) : deadlines.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="text-center py-8 text-slate-500">
+                  <td colSpan="5" className="text-center py-8 text-slate-500">
                     No deadlines found. Create one to get started.
                   </td>
                 </tr>
@@ -166,6 +203,26 @@ const DeadlineManagement = () => {
                       <div className="text-sm text-slate-500 max-w-md truncate">
                         {deadline.description}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {deadline.assignedGroups && deadline.assignedGroups.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {deadline.assignedGroups.map((group) => {
+                            // Find the project details from state if needed, or use populated values
+                            const matchedProject = teacherProjects.find(p => p._id === (group._id || group));
+                            const gName = matchedProject?.groupName || group.groupName || matchedProject?.title || group.title || "Group";
+                            return (
+                              <span key={group._id || group} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                                {gName}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800">
+                          All Groups
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-slate-900 flex items-center">
@@ -185,6 +242,13 @@ const DeadlineManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
+                        <button
+                          onClick={() => navigate(`/teacher/deadlines/${deadline._id}/submissions`)}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="View Submissions"
+                        >
+                          <FileSpreadsheet className="w-5 h-5" />
+                        </button>
                         <button
                           onClick={() => handleOpenModal(deadline)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -292,6 +356,66 @@ const DeadlineManagement = () => {
                     required
                   />
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Target Assignees (Đối tượng áp dụng)
+                </label>
+                <div className="flex items-center space-x-4 mb-3">
+                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="targetType"
+                      value="all"
+                      checked={targetType === "all"}
+                      onChange={() => setTargetType("all")}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>All assigned groups</span>
+                  </label>
+                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="targetType"
+                      value="specific"
+                      checked={targetType === "specific"}
+                      onChange={() => setTargetType("specific")}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Specific groups</span>
+                  </label>
+                </div>
+
+                {targetType === "specific" && (
+                  <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 max-h-40 overflow-y-auto space-y-2">
+                    {teacherProjects.length === 0 ? (
+                      <p className="text-xs text-slate-500 text-center py-2">No supervised groups found</p>
+                    ) : (
+                      teacherProjects.map((project) => {
+                        const label = project.groupName || project.title || "Unnamed Group";
+                        const isChecked = selectedGroups.includes(project._id);
+                        return (
+                          <label key={project._id} className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-100 p-1 rounded">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedGroups(prev => prev.filter(id => id !== project._id));
+                                } else {
+                                  setSelectedGroups(prev => [...prev, project._id]);
+                                }
+                              }}
+                              className="rounded text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="truncate">{label}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="pt-4 flex justify-end space-x-3">

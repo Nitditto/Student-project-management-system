@@ -8,6 +8,9 @@ import {
   getTeacherMatrix,
   updateDeadline,
   deleteDeadline,
+  getDeadlineSubmissions,
+  submitSubmissionFeedback,
+  getGroupProgress,
 } from "../controllers/deadlineController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import { upload, handleUploadError } from "../middleware/upload.js";
@@ -53,7 +56,7 @@ router.post(
   "/:deadlineId/submit",
   isAuthenticated,
   isAuthorized("Student"),
-  upload.single("file"),
+  upload.array("files", 10),
   handleUploadError,
   submitDeadline,
 );
@@ -70,6 +73,28 @@ router.get(
   isAuthenticated,
   isAuthorized("Admin", "Teacher"),
   getTeacherMatrix,
+);
+
+router.get(
+  "/:deadlineId/submissions",
+  isAuthenticated,
+  isAuthorized("Admin", "Teacher"),
+  getDeadlineSubmissions,
+);
+
+router.post(
+  "/:deadlineId/submissions/:groupId/feedback",
+  isAuthenticated,
+  isAuthorized("Admin", "Teacher"),
+  upload.single("file"),
+  handleUploadError,
+  submitSubmissionFeedback,
+);
+
+router.get(
+  "/projects/:projectId/progress",
+  isAuthenticated,
+  getGroupProgress,
 );
 
 export default router;
