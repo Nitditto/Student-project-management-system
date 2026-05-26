@@ -39,7 +39,7 @@ import {
   respondGroupInvitation,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
-import { upload, handleUploadError } from "../middleware/upload.js";
+import { upload, handleUploadError, decodeFilenameMiddleware } from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -97,6 +97,7 @@ router.post(
   isAuthorized("Student"),
   upload.array("files", 10),
   handleUploadError,
+  decodeFilenameMiddleware,
   uploadFiles,
 );
 
@@ -187,6 +188,7 @@ router.post(
   isAuthorized("Student"),
   upload.array("evidence", 3),
   handleUploadError,
+  decodeFilenameMiddleware,
   requestLeave,
 );
 router.get(
@@ -213,6 +215,7 @@ router.post(
   isAuthorized("Student"),
   upload.array("files", 5),
   handleUploadError,
+  decodeFilenameMiddleware,
   submitStudentPeerEvaluation,
 );
 router.get(

@@ -44,10 +44,11 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
+    const decodedName = Buffer.from(file.originalname, "latin1").toString("utf-8");
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(decodedName);
     const baseName = path
-      .basename(file.originalname, ext)
+      .basename(decodedName, ext)
       .replace(/[^a-zA-Z0-9-_]/g, "_");
     cb(null, `${baseName}-${uniqueSuffix}${ext}`);
   },
@@ -147,4 +148,32 @@ const handleUploadError = (err, req, res, next) => {
   next(err);
 };
 
-export { upload, handleUploadError };
+const decodeFilenameMiddleware = (req, res, next) => {
+  if (req.file) {
+    try {
+      req.file.originalname = Buffer.from(req.file.originalname, "latin1").toString("utf-8");
+    } catch (e) {
+      console.warn("Filename decoding failed", e);
+    }
+  }
+  if (req.files) {
+    try {
+      if (Array.isArray(req.files)) {
+        req.files.forEach(f => {
+          f.originalname = Buffer.from(f.originalname, "latin1").toString("utf-8");
+        });
+      } else {
+        Object.keys(req.files).forEach(key => {
+          req.files[key].forEach(f => {
+            f.originalname = Buffer.from(f.originalname, "latin1").toString("utf-8");
+          });
+        });
+      }
+    } catch (e) {
+      console.warn("Files decoding failed", e);
+    }
+  }
+  next();
+};
+
+export { upload, handleUploadError, decodeFilenameMiddleware };

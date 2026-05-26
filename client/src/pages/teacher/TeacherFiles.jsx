@@ -10,7 +10,6 @@ import {
   List,
   Users,
   ChevronLeft,
-  UserCircle
 } from "lucide-react";
 import { downloadTeacherFile, getFiles } from "../../store/slices/teacherSlice";
 
@@ -18,7 +17,7 @@ const TeacherFiles = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [filterType, setFilterType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState(null); // Thêm state quản lý học sinh đang chọn
+  const [selectedGroup, setSelectedGroup] = useState(null); // Quản lý nhóm đang chọn
 
   const dispatch = useDispatch();
   const filesFormStore = useSelector((state) => state.teacher.files) || [];
@@ -68,6 +67,8 @@ const TeacherFiles = () => {
       category,
       projectId: f.projectId || f.project?._id,
       fileId: f._id,
+      groupName: f.groupName || null,
+      projectTitle: f.projectTitle || null,
     };
   };
 
@@ -75,38 +76,48 @@ const TeacherFiles = () => {
     return (filesFormStore || []).map(normalizeFile);
   }, [filesFormStore]);
 
-  // Nhóm files theo từng học sinh
-  const filesByStudent = useMemo(() => {
+  // Nhóm files theo từng Nhóm dự án (Group) / Đề tài
+  const filesByGroup = useMemo(() => {
     const grouped = {};
     files.forEach((file) => {
-      if (!grouped[file.student]) {
-        grouped[file.student] = [];
+      const groupKey = file.projectId || file.groupName || `Student: ${file.student}`;
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
       }
-      grouped[file.student].push(file);
+      grouped[groupKey].push(file);
     });
     return grouped;
   }, [files]);
 
-  // Lấy danh sách học sinh từ object đã nhóm
-  const studentList = useMemo(() => {
-    return Object.keys(filesByStudent).map((studentName) => ({
-      name: studentName,
-      files: filesByStudent[studentName],
-      fileCount: filesByStudent[studentName].length,
-    }));
-  }, [filesByStudent]);
+  // Lấy danh sách nhóm từ object đã nhóm
+  const groupList = useMemo(() => {
+    return Object.keys(filesByGroup).map((groupKey) => {
+      const groupFiles = filesByGroup[groupKey];
+      const firstFile = groupFiles[0];
+      return {
+        key: groupKey,
+        name: firstFile.groupName || "Individual Project",
+        projectTitle: firstFile.projectTitle || "Untitled Project",
+        studentName: firstFile.student || "Unknown Student",
+        files: groupFiles,
+        fileCount: groupFiles.length,
+      };
+    });
+  }, [filesByGroup]);
 
-  // Lọc học sinh (khi ở màn hình danh sách học sinh)
-  const filteredStudents = studentList.filter((s) =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Lọc các nhóm khi tìm kiếm ở màn hình chính
+  const filteredGroups = groupList.filter((g) =>
+    (g.name + " " + g.projectTitle + " " + g.studentName)
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
-  // Lọc files (khi đã chọn 1 học sinh cụ thể)
-  const currentStudentFiles = selectedStudent
-    ? filesByStudent[selectedStudent] || []
+  // Lọc files khi đã chọn một nhóm cụ thể
+  const currentGroupFiles = selectedGroup
+    ? filesByGroup[selectedGroup] || []
     : [];
 
-  const filteredFiles = currentStudentFiles.filter((file) => {
+  const filteredFiles = currentGroupFiles.filter((file) => {
     const matchesType = filterType === "all" ? true : file.category === filterType;
     const matchesSearch = file.name
       ?.toLowerCase()
@@ -134,14 +145,14 @@ const TeacherFiles = () => {
   };
 
   const handleDownloadFile = async (file) => {
-    const res = await dispatch(
+    await dispatch(
       downloadTeacherFile({ projectId: file.projectId, fileId: file.fileId })
     ).then((res) => {
       const { blob } = res.payload;
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", file.originalName || "download");
+      link.setAttribute("download", file.name || "download");
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -150,7 +161,7 @@ const TeacherFiles = () => {
   };
 
   // Tính toán Stats dựa trên màn hình hiện tại đang xem
-  const filesToStat = selectedStudent ? currentStudentFiles : files;
+  const filesToStat = selectedGroup ? currentGroupFiles : files;
   const fileStats = [
     {
       label: "Total Files",
@@ -190,14 +201,18 @@ const TeacherFiles = () => {
   ];
 
   const filesTableHeadData = ["File Name", "Type", "Upload Date", "Actions"];
-  const studentsTableHeadData = ["Student Name", "Total Files", "Actions"];
+  const groupsTableHeadData = ["Group / Student", "Project Title", "Total Files", "Actions"];
 
-  // Handle back to student list
-  const handleBackToStudents = () => {
-    setSelectedStudent(null);
+  // Handle back to group list
+  const handleBackToGroups = () => {
+    setSelectedGroup(null);
     setFilterType("all");
     setSearchTerm("");
   };
+
+  const currentSelectedGroupName = selectedGroup
+    ? groupList.find((g) => g.key === selectedGroup)?.name || "Group Files"
+    : "";
 
   return (
     <>
@@ -207,23 +222,23 @@ const TeacherFiles = () => {
           <div className="card-header">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {selectedStudent && (
+                {selectedGroup && (
                   <button
-                    onClick={handleBackToStudents}
+                    onClick={handleBackToGroups}
                     className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
-                    title="Back to students list"
+                    title="Back to groups list"
                   >
                     <ChevronLeft size={24} />
                   </button>
                 )}
                 <div>
                   <h1 className="card-title">
-                    {selectedStudent ? `${selectedStudent}'s Files` : "Students Directory"}
+                    {selectedGroup ? `${currentSelectedGroupName}'s Files` : "Groups Directory"}
                   </h1>
                   <p className="card-subtitle">
-                    {selectedStudent
-                      ? "Manage files uploaded by this student"
-                      : "Select a student to view their files"}
+                    {selectedGroup
+                      ? "Manage files uploaded by this student group"
+                      : "Select a group to view their uploaded files"}
                   </p>
                 </div>
               </div>
@@ -234,7 +249,7 @@ const TeacherFiles = () => {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
             <div className="flex items-center gap-4 w-full sm:w-auto">
               {/* Chỉ hiện dropdown phân loại file khi đang xem chi tiết học sinh */}
-              {selectedStudent && (
+              {selectedGroup && (
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
@@ -252,7 +267,7 @@ const TeacherFiles = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={selectedStudent ? "Search files..." : "Search students..."}
+                placeholder={selectedGroup ? "Search files..." : "Search groups..."}
                 className="input w-full sm:w-64"
               />
             </div>
@@ -283,12 +298,12 @@ const TeacherFiles = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-            {/* Nếu đang xem danh sách HS, thay vì total files ta có thể hiện Total Students */}
-            {!selectedStudent && (
+            {/* Nếu đang xem danh sách Nhóm, hiện Total Groups */}
+            {!selectedGroup && (
               <div className="bg-indigo-50 p-4 rounded-lg">
-                <p className="text-sm text-indigo-600">Total Students</p>
+                <p className="text-sm text-indigo-600">Total Groups</p>
                 <p className="text-2xl font-bold text-indigo-700">
-                  {studentList.length}
+                  {groupList.length}
                 </p>
               </div>
             )}
@@ -305,23 +320,31 @@ const TeacherFiles = () => {
 
         {/* =============== XỬ LÝ RENDER THEO MÀN HÌNH =============== */}
         
-        {/* MÀN HÌNH 1: DANH SÁCH HỌC SINH */}
-        {!selectedStudent && (
+        {/* MÀN HÌNH 1: DANH SÁCH NHÓM */}
+        {!selectedGroup && (
           <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "card overflow-x-auto"}>
             {viewMode === "grid" ? (
-              filteredStudents.map((student) => (
-                <div key={student.name} className="card hover:shadow-md transition-shadow cursor-pointer border border-transparent hover:border-blue-200" onClick={() => setSelectedStudent(student.name)}>
+              filteredGroups.map((group) => (
+                <div key={group.key} className="card hover:shadow-md transition-all duration-200 cursor-pointer border border-transparent hover:border-blue-200 flex flex-col justify-between" onClick={() => setSelectedGroup(group.key)}>
                   <div className="flex flex-col items-center text-center">
                     <div className="mb-3">
-                      <UserCircle className="w-12 h-12 text-slate-400" />
+                      <Users className="w-12 h-12 text-blue-500 bg-blue-50 p-2.5 rounded-2xl" />
                     </div>
-                    <h3 className="font-medium text-slate-800 truncate w-full mb-1">
-                      {student.name}
+                    <h3 className="font-bold text-slate-800 truncate w-full mb-1 text-base">
+                      {group.name === "Individual Project" ? group.studentName : group.name}
                     </h3>
-                    <p className="text-sm text-slate-500 mb-4 bg-slate-100 px-3 py-1 rounded-full">
-                      {student.fileCount} uploaded file(s)
+                    <p className="text-xs text-slate-500 truncate w-full mb-2 px-2" title={group.projectTitle}>
+                      {group.projectTitle}
                     </p>
-                    <button className="text-blue-600 font-medium w-full flex items-center justify-center py-2 gap-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                    <p className="text-[11px] text-slate-400 mb-3 truncate w-full">
+                      Student: {group.studentName}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center w-full">
+                    <span className="text-xs font-semibold mb-4 bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                      {group.fileCount} uploaded file(s)
+                    </span>
+                    <button className="text-blue-600 font-bold w-full flex items-center justify-center py-2 gap-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-xs">
                       <File className="w-4 h-4" />
                       View Files
                     </button>
@@ -332,7 +355,7 @@ const TeacherFiles = () => {
               <table className="min-w-full border border-slate-200">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
-                    {studentsTableHeadData.map((t) => (
+                    {groupsTableHeadData.map((t) => (
                       <th key={t} className="py-3 px-4 text-left font-semibold">
                         {t}
                       </th>
@@ -340,21 +363,34 @@ const TeacherFiles = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr key={student.name} className="border-t hover:bg-slate-50">
-                      <td className="py-3 px-4 flex items-center gap-3">
-                        <UserCircle className="w-6 h-6 text-slate-400" />
-                        <span className="font-medium">{student.name}</span>
+                  {filteredGroups.map((group) => (
+                    <tr key={group.key} className="border-t hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedGroup(group.key)}>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <Users className="w-6 h-6 text-slate-400 flex-shrink-0" />
+                          <div>
+                            <span className="font-semibold text-slate-800 text-sm block">
+                              {group.name === "Individual Project" ? group.studentName : group.name}
+                            </span>
+                            <span className="text-xs text-slate-500">{group.studentName}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 text-sm max-w-xs truncate" title={group.projectTitle}>
+                        {group.projectTitle}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="bg-slate-100 px-2 py-1 rounded-md text-sm text-slate-600">
-                          {student.fileCount} files
+                        <span className="bg-slate-100 px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600">
+                          {group.fileCount} files
                         </span>
                       </td>
                       <td className="py-3 px-4">
                         <button
-                          onClick={() => setSelectedStudent(student.name)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedGroup(group.key);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-bold bg-blue-50 px-2.5 py-1.5 rounded-lg"
                         >
                           View Files
                         </button>
@@ -364,37 +400,37 @@ const TeacherFiles = () => {
                 </tbody>
               </table>
             )}
-            {filteredStudents.length === 0 && (
+            {filteredGroups.length === 0 && (
               <div className="col-span-full text-center py-10 text-slate-500">
-                No students found.
+                No groups found.
               </div>
             )}
           </div>
         )}
 
-        {/* MÀN HÌNH 2: CHI TIẾT FILES CỦA HỌC SINH ĐƯỢC CHỌN */}
-        {selectedStudent && (
+        {/* MÀN HÌNH 2: CHI TIẾT FILES CỦA NHÓM ĐƯỢC CHỌN */}
+        {selectedGroup && (
           <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "card overflow-x-auto"}>
             {viewMode === "grid" ? (
               filteredFiles.map((file) => (
-                <div key={file.id} className="card">
+                <div key={file.id} className="card flex flex-col justify-between h-full">
                   <div className="flex flex-col items-center text-center">
                     <div className="mb-3">{getFileIcon(file.type)}</div>
-                    <h3 className="font-medium text-slate-800 truncate w-full" title={file.name}>
+                    <h3 className="font-medium text-slate-800 truncate w-full text-sm" title={file.name}>
                       {file.name}
                     </h3>
                     <p className="text-xs text-slate-500 mb-1 mt-1">{file.size}</p>
                     <p className="text-xs text-slate-500 mb-4">
                       {new Date(file.uploadedDate).toLocaleDateString()}
                     </p>
-                    <button
-                      onClick={() => handleDownloadFile(file)}
-                      className="rounded-lg text-white text-base font-medium w-full flex items-center justify-center py-2.5 gap-2 bg-blue-600 hover:bg-blue-700 transition-colors"
-                    >
-                      <ArrowDownToLine size={20} />
-                      Download
-                    </button>
                   </div>
+                  <button
+                    onClick={() => handleDownloadFile(file)}
+                    className="rounded-lg text-white text-sm font-medium w-full flex items-center justify-center py-2 gap-2 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  >
+                    <ArrowDownToLine size={16} />
+                    Download
+                  </button>
                 </div>
               ))
             ) : (
@@ -413,18 +449,18 @@ const TeacherFiles = () => {
                     <tr key={file.id} className="border-t hover:bg-slate-50">
                       <td className="py-3 px-4 flex items-center gap-3">
                         {getFileIcon(file.type)}
-                        <span className="font-medium truncate max-w-xs" title={file.name}>
+                        <span className="font-medium truncate max-w-xs text-sm" title={file.name}>
                           {file.name}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-medium text-slate-600">{file.type}</td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 font-medium text-slate-600 text-sm">{file.type}</td>
+                      <td className="py-3 px-4 text-slate-600 text-sm">
                         {new Date(file.uploadedDate).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4">
                         <button
                           onClick={() => handleDownloadFile(file)}
-                          className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-lg font-medium transition-colors"
+                          className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-lg font-medium transition-colors text-xs"
                         >
                           Download
                         </button>

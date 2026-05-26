@@ -13,7 +13,7 @@ import {
   getGroupProgress,
 } from "../controllers/deadlineController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
-import { upload, handleUploadError } from "../middleware/upload.js";
+import { upload, handleUploadError, decodeFilenameMiddleware } from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -88,6 +88,7 @@ router.post(
   isAuthorized("Admin", "Teacher"),
   upload.single("file"),
   handleUploadError,
+  decodeFilenameMiddleware,
   submitSubmissionFeedback,
 );
 
