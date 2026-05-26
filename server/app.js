@@ -100,8 +100,17 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from uploads directory
-app.use("/uploads", express.static(uploadsDir));
+// Serve static files from uploads directory with inline content-disposition so PDFs
+// can be rendered directly inside iframes without triggering a download prompt.
+app.use("/uploads", (req, res, next) => {
+  // Allow the browser to render files inline (critical for PDF iframe viewer)
+  res.setHeader("Content-Disposition", "inline");
+  // Remove X-Frame-Options so the iframe on the same origin can embed the file
+  res.removeHeader("X-Frame-Options");
+  // Allow the frontend origin to embed these assets inside iframes
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  next();
+}, express.static(uploadsDir));
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/admin", adminRouter);

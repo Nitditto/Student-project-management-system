@@ -1,23 +1,35 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { axiosInstance } from "../../lib/axios";
-import { 
-  ArrowLeft, 
-  ChevronLeft, 
-  ChevronRight, 
-  FileText, 
-  FileImage, 
-  FileCode, 
-  Download, 
-  Loader, 
-  MessageSquare, 
-  Upload, 
-  CheckCircle, 
-  X, 
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  FileImage,
+  FileCode,
+  Download,
+  Loader,
+  MessageSquare,
+  Upload,
+  CheckCircle,
+  X,
   AlertTriangle,
-  HelpCircle
+  HelpCircle,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+// Configure PDF.js worker (bundled with react-pdf v10)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 const SubmissionPreviewPage = () => {
   const [searchParams] = useSearchParams();
@@ -37,6 +49,15 @@ const SubmissionPreviewPage = () => {
   // Preview states
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewTextContent, setPreviewTextContent] = useState("");
+
+  // PDF viewer states
+  const [pdfNumPages, setPdfNumPages] = useState(null);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfScale, setPdfScale] = useState(1.2);
+  const [pdfContainerWidth, setPdfContainerWidth] = useState(0);
+  const pdfContainerRef = useCallback((node) => {
+    if (node) setPdfContainerWidth(node.getBoundingClientRect().width);
+  }, []);
   
   // Feedback states
   const [feedbackText, setFeedbackText] = useState("");
@@ -137,7 +158,7 @@ const SubmissionPreviewPage = () => {
         setPreviewLoading(true);
         setPreviewTextContent("");
         try {
-          const fullUrl = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeFile.fileUrl}`;
+          const fullUrl = `${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`;
           const res = await fetch(fullUrl);
           const text = await res.text();
           setPreviewTextContent(text);
@@ -251,7 +272,7 @@ const SubmissionPreviewPage = () => {
     }
 
     const fileType = getFileType(activeFile.fileName);
-    const fullUrl = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeFile.fileUrl}`;
+    const fullUrl = `${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`;
 
     if (fileType === "image") {
       return (
@@ -267,12 +288,122 @@ const SubmissionPreviewPage = () => {
 
     if (fileType === "pdf") {
       return (
-        <div className="w-full h-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
-          <iframe
-            src={`${fullUrl}#toolbar=0`}
-            title={activeFile.fileName}
-            className="w-full h-full border-0"
-          />
+        <div ref={pdfContainerRef} className="w-full h-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-800 shadow-inner flex flex-col">
+          {/* PDF Toolbar */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white flex-shrink-0 border-b border-slate-700">
+            <span className="text-xs font-semibold text-slate-300 truncate max-w-[200px]">
+              {activeFile.fileName}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {/* Zoom out */}
+              <button
+                onClick={() => setPdfScale((s) => Math.max(0.5, +(s - 0.25).toFixed(2)))}
+                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors"
+                title="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-[11px] font-mono text-slate-400 w-10 text-center">
+                {Math.round(pdfScale * 100)}%
+              </span>
+              {/* Zoom in */}
+              <button
+                onClick={() => setPdfScale((s) => Math.min(3, +(s + 0.25).toFixed(2)))}
+                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors"
+                title="Zoom in"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              {/* Reset zoom */}
+              <button
+                onClick={() => setPdfScale(1.2)}
+                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors ml-1"
+                title="Reset zoom"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-4 bg-slate-700 mx-1" />
+              {/* Open in new tab */}
+              <a
+                href={fullUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors px-2 py-1 hover:bg-slate-700 rounded-lg"
+              >
+                Open ↗
+              </a>
+            </div>
+          </div>
+
+          {/* PDF Canvas area */}
+          <div className="flex-grow overflow-auto flex flex-col items-center py-4 px-2 bg-slate-700">
+            <Document
+              file={fullUrl}
+              onLoadSuccess={({ numPages }) => {
+                setPdfNumPages(numPages);
+                setPdfPage(1);
+              }}
+              onLoadError={() => toast.error("Could not load PDF. Please try downloading it.")}
+              loading={
+                <div className="flex flex-col items-center justify-center h-60 gap-3">
+                  <Loader className="w-8 h-8 animate-spin text-blue-400" />
+                  <p className="text-sm text-slate-300 animate-pulse">Loading PDF…</p>
+                </div>
+              }
+              error={
+                <div className="flex flex-col items-center justify-center h-60 gap-4 text-center p-6">
+                  <div className="w-14 h-14 bg-red-900/40 text-red-400 rounded-full flex items-center justify-center">
+                    <FileText className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-200">Cannot render PDF</p>
+                    <p className="text-xs text-slate-400 mt-1">The file may be corrupted or the server is unreachable.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <a href={fullUrl} target="_blank" rel="noreferrer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors">
+                      Open in New Tab ↗
+                    </a>
+                    <a href={fullUrl} download={activeFile.fileName}
+                      className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
+                      <Download className="w-3.5 h-3.5" /> Download
+                    </a>
+                  </div>
+                </div>
+              }
+            >
+              <Page
+                pageNumber={pdfPage}
+                scale={pdfScale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className="shadow-2xl"
+              />
+            </Document>
+          </div>
+
+          {/* Page navigation */}
+          {pdfNumPages && pdfNumPages > 1 && (
+            <div className="flex items-center justify-center gap-3 px-4 py-2.5 bg-slate-900 border-t border-slate-700 flex-shrink-0">
+              <button
+                onClick={() => setPdfPage((p) => Math.max(1, p - 1))}
+                disabled={pdfPage <= 1}
+                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono text-slate-300">
+                Page <strong className="text-white">{pdfPage}</strong> of <strong className="text-white">{pdfNumPages}</strong>
+              </span>
+              <button
+                onClick={() => setPdfPage((p) => Math.min(pdfNumPages, p + 1))}
+                disabled={pdfPage >= pdfNumPages}
+                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -468,7 +599,7 @@ const SubmissionPreviewPage = () => {
                 </span>
               </div>
               <a
-                href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeFile.fileUrl}`}
+                href={`${import.meta.env.VITE_API_URL || ""}${activeFile.fileUrl}`}
                 download={activeFile.fileName}
                 target="_blank"
                 rel="noreferrer"
@@ -579,7 +710,7 @@ const SubmissionPreviewPage = () => {
                     <span className="truncate">Existing: {activeRecord.submission.feedback.fileName}</span>
                   </div>
                   <a 
-                    href={`${import.meta.env.VITE_API_URL}${activeRecord.submission.feedback.fileUrl}`}
+                    href={`${import.meta.env.VITE_API_URL || ""}${activeRecord.submission.feedback.fileUrl}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-xs text-blue-600 hover:text-blue-800 font-bold flex-shrink-0"

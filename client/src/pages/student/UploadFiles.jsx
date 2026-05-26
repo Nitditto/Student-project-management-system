@@ -396,7 +396,7 @@ const UploadFiles = () => {
                                 
                                 return (
                                   <a
-                                    href={`${import.meta.env.VITE_API_URL}${submission.fileUrl}`}
+                                    href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="btn-outline btn-small flex items-center space-x-1"
@@ -433,7 +433,7 @@ const UploadFiles = () => {
                                     <span className="max-w-[250px] truncate">{submission.feedback.fileName}</span>
                                   </div>
                                   <a
-                                    href={`${import.meta.env.VITE_API_URL}${submission.feedback.fileUrl}`}
+                                    href={`${import.meta.env.VITE_API_URL || ""}${submission.feedback.fileUrl}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center space-x-1 text-xs font-bold text-purple-700 hover:text-purple-900"

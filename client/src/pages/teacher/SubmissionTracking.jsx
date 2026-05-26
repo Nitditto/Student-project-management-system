@@ -32,7 +32,7 @@ const SubmissionTracking = () => {
 
         if (subData.status === "SUBMITTED") {
           return (
-            <a href={`${import.meta.env.VITE_API_URL}${subData.submission.fileUrl}`} target="_blank" rel="noreferrer">
+            <a href={`${import.meta.env.VITE_API_URL || ""}${subData.submission.fileUrl}`} target="_blank" rel="noreferrer">
               <Tag icon={<CheckCircleOutlined />} color="success">
                 Submitted
               </Tag>

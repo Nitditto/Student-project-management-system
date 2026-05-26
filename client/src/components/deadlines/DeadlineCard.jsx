@@ -222,7 +222,7 @@ const DeadlineCard = ({ deadline }) => {
                       </span>
                     </div>
                     <a 
-                      href={`${import.meta.env.VITE_API_URL}${f.fileUrl}`} 
+                      href={`${import.meta.env.VITE_API_URL || ""}${f.fileUrl}`} 
                       target="_blank" 
                       rel="noreferrer" 
                       className="p-1 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors flex-shrink-0"
@@ -269,7 +269,7 @@ const DeadlineCard = ({ deadline }) => {
                       </span>
                     </div>
                     <a 
-                      href={`${import.meta.env.VITE_API_URL}${f.fileUrl}`} 
+                      href={`${import.meta.env.VITE_API_URL || ""}${f.fileUrl}`} 
                       target="_blank" 
                       rel="noreferrer" 
                       className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-colors flex-shrink-0"

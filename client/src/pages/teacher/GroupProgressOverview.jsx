@@ -259,7 +259,7 @@ const GroupProgressOverview = () => {
                             
                             {submission.fileUrl && (
                               <a 
-                                href={`${import.meta.env.VITE_API_URL}${submission.fileUrl}`}
+                                href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/20 text-xs text-emerald-800 transition-colors"
