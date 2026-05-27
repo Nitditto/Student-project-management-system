@@ -79,15 +79,17 @@ const UploadFiles = () => {
     await dispatch(
       downloadFile({ projectId: project._id, fileId: file._id }),
     ).then((res) => {
-      const { blob } = res.payload;
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", file.originalName || "download");
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      if (res.meta.requestStatus === "fulfilled" && res.payload?.blob) {
+        const { blob } = res.payload;
+        const url = window.URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", file.originalName || file.fileName || "download");
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
     });
   };
 
@@ -103,8 +105,8 @@ const UploadFiles = () => {
           <button
             onClick={() => setActiveTab("general")}
             className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${activeTab === "general"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
               }`}
           >
             <FolderOpen className="w-4 h-4" />
@@ -113,8 +115,8 @@ const UploadFiles = () => {
           <button
             onClick={() => setActiveTab("submissions")}
             className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${activeTab === "submissions"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
               }`}
           >
             <Calendar className="w-4 h-4" />
@@ -311,7 +313,7 @@ const UploadFiles = () => {
           <div className="space-y-4">
             <div className="card">
               <div className="card-header">
-                <h2 className="card-title">Deadline Submissions Tracker</h2>
+                <h2 className="card-title">Deadline Submissions Management</h2>
                 <p className="card-subtitle">Verify your submitted files and check supervisor feedback</p>
               </div>
 
@@ -326,11 +328,10 @@ const UploadFiles = () => {
                     {project.feedback.map((fb, idx) => (
                       <div key={idx} className="bg-white/80 p-3 rounded-xl border border-purple-100 shadow-sm">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            fb.type === 'positive' ? 'bg-emerald-100 text-emerald-700' :
-                            fb.type === 'negative' ? 'bg-red-100 text-red-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${fb.type === 'positive' ? 'bg-emerald-100 text-emerald-700' :
+                              fb.type === 'negative' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
+                            }`}>
                             {fb.type === 'positive' ? 'Positive' : fb.type === 'negative' ? 'Needs Revision' : 'General'}
                           </span>
                           <span className="text-[10px] text-slate-400">
@@ -394,44 +395,84 @@ const UploadFiles = () => {
                         {/* Submission Details */}
                         <div className="p-4 space-y-4">
                           {submission && (submission.status === "SUBMITTED" || submission.status === "LATE") ? (
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200/50">
-                              <div className="flex items-center space-x-3">
-                                {getFileIcon(submission.fileName)}
-                                <div>
-                                  <p className="font-medium text-slate-800 text-sm">{submission.fileName}</p>
-                                  <p className="text-[10px] text-slate-400">
-                                    Submitted on: {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-
+                            <div className="space-y-2">
                               {(() => {
-                                const matchedFile = (project?.files || []).find(
+                                // 1. Try to get the list of files from project.files for this deadline
+                                const matchedFiles = (project?.files || []).filter(
                                   f => f.fileCategory === "Submission" && f.deadlineId?.toString() === dl._id.toString()
                                 );
 
-                                if (matchedFile) {
-                                  return (
-                                    <button
-                                      onClick={() => handleDownloadFile(matchedFile)}
-                                      className="btn-outline btn-small flex items-center space-x-1"
-                                    >
-                                      <Download className="w-3.5 h-3.5" />
-                                      <span>Download</span>
-                                    </button>
-                                  );
+                                if (matchedFiles.length > 0) {
+                                  return matchedFiles.map((file, fIdx) => (
+                                    <div key={fIdx} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200/50">
+                                      <div className="flex items-center space-x-3">
+                                        {getFileIcon(file.originalName)}
+                                        <div>
+                                          <p className="font-medium text-slate-800 text-sm">{file.originalName}</p>
+                                          <p className="text-[10px] text-slate-400">
+                                            Submitted on: {new Date(file.uploadedAt || submission.submittedAt || submission.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDownloadFile(file)}
+                                        className="btn-outline btn-small flex items-center space-x-1"
+                                      >
+                                        <Download className="w-3.5 h-3.5" />
+                                        <span>Download</span>
+                                      </button>
+                                    </div>
+                                  ));
                                 }
 
+                                // 2. Fallback to submission.files array if present
+                                if (submission.files && submission.files.length > 0) {
+                                  return submission.files.map((file, fIdx) => (
+                                    <div key={fIdx} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200/50">
+                                      <div className="flex items-center space-x-3">
+                                        {getFileIcon(file.fileName)}
+                                        <div>
+                                          <p className="font-medium text-slate-800 text-sm">{file.fileName}</p>
+                                          <p className="text-[10px] text-slate-400">
+                                            Submitted on: {new Date(file.uploadedAt || submission.submittedAt || submission.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={`${import.meta.env.VITE_API_URL || ""}${file.fileUrl}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn-outline btn-small flex items-center space-x-1"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>View File</span>
+                                      </a>
+                                    </div>
+                                  ));
+                                }
+
+                                // 3. Fallback to single submission.fileName
                                 return (
-                                  <a
-                                    href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn-outline btn-small flex items-center space-x-1"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View File</span>
-                                  </a>
+                                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200/50">
+                                    <div className="flex items-center space-x-3">
+                                      {getFileIcon(submission.fileName)}
+                                      <div>
+                                        <p className="font-medium text-slate-800 text-sm">{submission.fileName}</p>
+                                        <p className="text-[10px] text-slate-400">
+                                          Submitted on: {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn-outline btn-small flex items-center space-x-1"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>View File</span>
+                                    </a>
+                                  </div>
                                 );
                               })()}
                             </div>

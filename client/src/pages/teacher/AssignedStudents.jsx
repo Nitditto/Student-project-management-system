@@ -166,6 +166,20 @@ const AssignedStudents = () => {
     },
   ];
 
+  const [expandedStudents, setExpandedStudents] = useState(new Set());
+
+  const toggleExpand = (studentId) => {
+    setExpandedStudents(prev => {
+      const next = new Set(prev);
+      if (next.has(studentId)) {
+        next.delete(studentId);
+      } else {
+        next.add(studentId);
+      }
+      return next;
+    });
+  };
+
   if (loading) return <Loader className="animate-spin w-16 h-16" />;
   if (error)
     return (
@@ -204,6 +218,8 @@ const AssignedStudents = () => {
         {/* students grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {sortedStudents.map((student) => {
+            const isExpanded = expandedStudents.has(student._id);
+            const hasMembers = student.project?.members?.length > 0;
             return (
               <div
                 className="card hover:shadow-lg transition-all duration-300"
@@ -221,9 +237,9 @@ const AssignedStudents = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-800">
-                        {student.name}
+                        {student.project?.groupName ? student.project.groupName : student.name}
                       </h3>
-                      <p className="text-sm text-slate-800">{student.email}</p>
+                      <p className="text-sm text-slate-800">{student.project?.groupName ? `Leader: ${student.name}` : student.email}</p>
                     </div>
                   </div>
 
@@ -239,12 +255,46 @@ const AssignedStudents = () => {
                   <h4 className="font-medium text-slate-700 mb-1">
                     {student.project?.title || "No project title"}
                   </h4>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-xs text-slate-600 mb-3">
                     Last Update:{" "}
                     {new Date(
                       student.project?.updatedAt || new Date(),
                     ).toLocaleDateString()}
                   </p>
+                  
+                  {hasMembers && (
+                    <div className="mt-3 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden">
+                      <button 
+                        onClick={() => toggleExpand(student._id)}
+                        className="w-full text-left px-4 py-2.5 bg-slate-100/50 hover:bg-slate-100 flex justify-between items-center transition-colors"
+                      >
+                        <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          Group Members ({student.project.members.length})
+                        </span>
+                        <span className="text-slate-400 text-xs font-bold">
+                          {isExpanded ? "Hide" : "View Details"}
+                        </span>
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="p-4 space-y-3 bg-white">
+                          {student.project.members.map((member) => (
+                            <div key={member._id} className="flex items-center justify-between text-sm p-2 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-100 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-600">
+                                  {member.name?.charAt(0) || "M"}
+                                </div>
+                                <span className="font-medium text-slate-700">
+                                  {member.name} {member._id === student._id && <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Leader</span>}
+                                </span>
+                              </div>
+                              <span className="text-slate-500 text-xs font-medium bg-slate-100 px-2 py-1 rounded-md">{member.email}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action */}
