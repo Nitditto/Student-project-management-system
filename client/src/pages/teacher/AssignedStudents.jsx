@@ -219,7 +219,8 @@ const AssignedStudents = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {sortedStudents.map((student) => {
             const isExpanded = expandedStudents.has(student._id);
-            const hasMembers = student.project?.members?.length > 0;
+            const isGroupProject = student.project?.projectMode === "group" || student.project?.members?.length > 1 || student.project?.groupName;
+            
             return (
               <div
                 className="card hover:shadow-lg transition-all duration-300"
@@ -237,9 +238,9 @@ const AssignedStudents = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-800">
-                        {student.project?.groupName ? student.project.groupName : student.name}
+                        {isGroupProject && student.project?.groupName ? student.project.groupName : student.name}
                       </h3>
-                      <p className="text-sm text-slate-800">{student.project?.groupName ? `Leader: ${student.name}` : student.email}</p>
+                      <p className="text-sm text-slate-800">{isGroupProject ? `Leader: ${student.name}` : student.email}</p>
                     </div>
                   </div>
 
@@ -262,7 +263,7 @@ const AssignedStudents = () => {
                     ).toLocaleDateString()}
                   </p>
                   
-                  {hasMembers && (
+                  {isGroupProject && student.project?.members && (
                     <div className="mt-3 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden">
                       <button 
                         onClick={() => toggleExpand(student._id)}
