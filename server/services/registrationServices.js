@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import ErrorHandler from "../middleware/error.js";
 import { GroupInvitation } from "../models/groupInvitation.js";
 import { Project } from "../models/project.js";
@@ -18,6 +19,8 @@ const DEFAULT_SETTINGS = {
   freePickOpen: false,
   proposalSubmissionOpen: true,
   notes: "",
+  groupEditLocked: false,
+  groupEditLockDate: null,
 };
 
 export const getRegistrationSettings = async () => {
@@ -39,6 +42,11 @@ export const updateRegistrationSettings = async (payload) => {
     proposalSubmissionOpen:
       payload.proposalSubmissionOpen ?? settings.proposalSubmissionOpen,
     notes: payload.notes ?? settings.notes,
+    groupEditLocked: payload.groupEditLocked ?? settings.groupEditLocked,
+    groupEditLockDate:
+      payload.groupEditLockDate !== undefined
+        ? payload.groupEditLockDate
+        : settings.groupEditLockDate,
   });
 
   if (settings.minGroupSize > settings.maxGroupSize) {
@@ -52,6 +60,27 @@ export const updateRegistrationSettings = async (payload) => {
 
   await settings.save();
   return settings;
+};
+
+/**
+ * Global Lock Guard — checks if the system has frozen group editing.
+ * Called by ALL student/teacher group-modification APIs.
+ */
+export const checkGroupEditLock = async () => {
+  const settings = await RegistrationSetting.findOne({ key: "default" });
+  if (!settings) return;
+
+  const now = new Date();
+  const isLockedByFlag = settings.groupEditLocked === true;
+  const isLockedByDate =
+    settings.groupEditLockDate && now >= new Date(settings.groupEditLockDate);
+
+  if (isLockedByFlag || isLockedByDate) {
+    throw new ErrorHandler(
+      "Group editing is locked. The roster has been finalized by the administrator.",
+      403,
+    );
+  }
 };
 
 const ensureStudentUser = async (userId) => {
@@ -568,4 +597,549 @@ export const assignSupervisorToProjectByAdmin = async ({
   supervisorId,
 }) => {
   return assignTeacherToProjectMembers({ project, teacherId: supervisorId });
+};
+
+// =============================================
+// STUDENT GROUP MANAGEMENT
+// =============================================
+
+/**
+ * Transfer leadership from current leader to another member.
+ * Allowed at any project status (leader might need to hand off).
+ */
+export const transferLeadership = async ({ projectId, currentLeaderId, newLeaderId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.student, currentLeaderId)) {
+    throw new ErrorHandler("Only the current leader can transfer leadership", 403);
+  }
+
+  if (isSameId(currentLeaderId, newLeaderId)) {
+    throw new ErrorHandler("New leader must be a different member", 400);
+  }
+
+  const isMember = (project.members || []).some((m) => isSameId(m, newLeaderId));
+  if (!isMember) {
+    throw new ErrorHandler("New leader must be an existing member of the project", 400);
+  }
+
+  if (["completed", "done", "defended"].includes(project.status)) {
+    throw new ErrorHandler("Cannot transfer leadership on a completed/defended project", 400);
+  }
+
+  project.student = newLeaderId;
+  await project.save();
+
+  const newLeader = await User.findById(newLeaderId).select("name");
+  const memberIds = getProjectMemberIds(project);
+  await Promise.all(
+    memberIds.map((memberId) =>
+      notificationServices.notifyUser(
+        memberId,
+        `Leadership of project "${project.groupName || project.title}" has been transferred to ${newLeader?.name || "a new member"}.`,
+        "general",
+        "/student/submit-proposal",
+        "medium",
+      ),
+    ),
+  );
+
+  return Project.findById(projectId)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
+};
+
+/**
+ * Leader kicks a member from the project.
+ * Files are kept as they belong to the project, not the individual.
+ * Only allowed before supervisor is assigned.
+ */
+export const kickMember = async ({ projectId, leaderId, memberId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.student, leaderId)) {
+    throw new ErrorHandler("Only the leader can remove members", 403);
+  }
+
+  if (isSameId(leaderId, memberId)) {
+    throw new ErrorHandler("Leader cannot remove themselves. Transfer leadership first or disband the group.", 400);
+  }
+
+  if (project.supervisor) {
+    throw new ErrorHandler(
+      "Cannot modify team after a supervisor has been assigned. Contact your supervisor or admin.",
+      400,
+    );
+  }
+
+  const memberIndex = (project.members || []).findIndex((m) => isSameId(m, memberId));
+  if (memberIndex === -1) {
+    throw new ErrorHandler("Student is not a member of this project", 400);
+  }
+
+  // Remove from project members
+  project.members.splice(memberIndex, 1);
+
+  // If only 1 member left → switch to individual
+  if (project.members.length <= 1) {
+    project.projectMode = "individual";
+  }
+
+  await project.save();
+
+  // Clear the kicked user's references
+  await User.findByIdAndUpdate(memberId, { project: null, supervisor: null });
+
+  // Cancel any pending invitations for this user on this project
+  await GroupInvitation.updateMany(
+    { project: projectId, invitee: memberId, status: "pending" },
+    { status: "cancelled" },
+  );
+
+  const kickedUser = await User.findById(memberId).select("name");
+  await notificationServices.notifyUser(
+    memberId,
+    `You have been removed from project "${project.groupName || project.title}".`,
+    "general",
+    "/student/submit-proposal",
+    "high",
+  );
+
+  // Notify remaining members
+  const remainingIds = getProjectMemberIds(project).filter((id) => !isSameId(id, memberId));
+  await Promise.all(
+    remainingIds.map((id) =>
+      notificationServices.notifyUser(
+        id,
+        `${kickedUser?.name || "A member"} has been removed from the project.`,
+        "general",
+        "/student/submit-proposal",
+        "low",
+      ),
+    ),
+  );
+
+  return Project.findById(projectId)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
+};
+
+/**
+ * Leader disbands the entire group.
+ * Uses MongoDB transaction for ACID compliance.
+ * Deletes the project, clears all user references, cancels invitations.
+ */
+export const disbandGroup = async ({ projectId, leaderId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.student, leaderId)) {
+    throw new ErrorHandler("Only the leader can disband the group", 403);
+  }
+
+  if (project.supervisor) {
+    throw new ErrorHandler(
+      "Cannot disband a project that already has a supervisor assigned. Contact your supervisor or admin.",
+      400,
+    );
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const memberIds = (project.members || []).map(String);
+
+    // Clear all members' user records
+    await User.updateMany(
+      { _id: { $in: memberIds } },
+      { $set: { project: null, supervisor: null } },
+      { session },
+    );
+
+    // Cancel all invitations for this project
+    await GroupInvitation.deleteMany({ project: projectId }, { session });
+
+    // Delete the project document
+    await Project.findByIdAndDelete(projectId, { session });
+
+    await session.commitTransaction();
+    return { message: "Group has been disbanded successfully." };
+  } catch (error) {
+    await session.abortTransaction();
+    throw new ErrorHandler(
+      "A system error occurred while disbanding the group. Data has been preserved.",
+      500,
+    );
+  } finally {
+    session.endSession();
+  }
+};
+
+// =============================================
+// TEACHER GROUP CONTROLS
+// =============================================
+
+/**
+ * Teacher adds an orphan student (no project) to a supervised project.
+ */
+export const addMemberToProject = async ({ projectId, teacherId, studentId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.supervisor, teacherId)) {
+    throw new ErrorHandler("You are not the supervisor of this project", 403);
+  }
+
+  const student = await ensureStudentUser(studentId);
+  if (student.project) {
+    throw new ErrorHandler("This student already belongs to another project", 400);
+  }
+
+  const settings = await getRegistrationSettings();
+  if ((project.members || []).length >= settings.maxGroupSize) {
+    throw new ErrorHandler(
+      `Group has reached the maximum size of ${settings.maxGroupSize} members`,
+      400,
+    );
+  }
+
+  // Add member
+  project.members = Array.from(
+    new Set([...(project.members || []).map(String), String(studentId)]),
+  );
+  project.projectMode = project.members.length > 1 ? "group" : "individual";
+  await project.save();
+
+  // Update user record
+  await User.findByIdAndUpdate(studentId, {
+    project: project._id,
+    supervisor: teacherId,
+  });
+
+  // Add to teacher's assignedStudents
+  await User.findByIdAndUpdate(teacherId, {
+    $addToSet: { assignedStudents: studentId },
+  });
+
+  await notificationServices.notifyUser(
+    studentId,
+    `You have been added to project "${project.groupName || project.title}" by your supervisor.`,
+    "general",
+    "/student/submit-proposal",
+    "medium",
+  );
+
+  return Project.findById(projectId)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
+};
+
+/**
+ * Teacher removes a member from a supervised project.
+ */
+export const removeMemberFromProject = async ({ projectId, teacherId, memberId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.supervisor, teacherId)) {
+    throw new ErrorHandler("You are not the supervisor of this project", 403);
+  }
+
+  if (isSameId(project.student, memberId)) {
+    throw new ErrorHandler(
+      "Cannot remove the project leader. Transfer leadership first.",
+      400,
+    );
+  }
+
+  if ((project.members || []).length <= 1) {
+    throw new ErrorHandler("Cannot remove the sole member of a project", 400);
+  }
+
+  const memberIndex = (project.members || []).findIndex((m) => isSameId(m, memberId));
+  if (memberIndex === -1) {
+    throw new ErrorHandler("Student is not a member of this project", 400);
+  }
+
+  project.members.splice(memberIndex, 1);
+  if (project.members.length <= 1) {
+    project.projectMode = "individual";
+  }
+  await project.save();
+
+  await User.findByIdAndUpdate(memberId, { project: null, supervisor: null });
+  await User.findByIdAndUpdate(teacherId, {
+    $pull: { assignedStudents: memberId },
+  });
+
+  await notificationServices.notifyUser(
+    memberId,
+    `You have been removed from project "${project.groupName || project.title}" by the supervisor.`,
+    "general",
+    "/student/submit-proposal",
+    "high",
+  );
+
+  return Project.findById(projectId)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
+};
+
+/**
+ * Teacher forces a leadership change on a supervised project.
+ */
+export const forceChangeLeader = async ({ projectId, teacherId, newLeaderId }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.supervisor, teacherId)) {
+    throw new ErrorHandler("You are not the supervisor of this project", 403);
+  }
+
+  const isMember = (project.members || []).some((m) => isSameId(m, newLeaderId));
+  if (!isMember) {
+    throw new ErrorHandler("New leader must be an existing member of the project", 400);
+  }
+
+  if (isSameId(project.student, newLeaderId)) {
+    throw new ErrorHandler("This student is already the leader", 400);
+  }
+
+  project.student = newLeaderId;
+  await project.save();
+
+  const newLeader = await User.findById(newLeaderId).select("name");
+  const memberIds = getProjectMemberIds(project);
+  await Promise.all(
+    memberIds.map((memberId) =>
+      notificationServices.notifyUser(
+        memberId,
+        `The supervisor has reassigned leadership of project "${project.groupName || project.title}" to ${newLeader?.name || "a new member"}.`,
+        "general",
+        "/student/submit-proposal",
+        "medium",
+      ),
+    ),
+  );
+
+  return Project.findById(projectId)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
+};
+
+/**
+ * Teacher splits a project into two sub-projects.
+ * The original project keeps the remaining members.
+ * A new project is created with the specified subset.
+ */
+export const splitProject = async ({ projectId, teacherId, memberIdsForNewProject, newTitle }) => {
+  await checkGroupEditLock();
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new ErrorHandler("Project not found", 404);
+
+  if (!isSameId(project.supervisor, teacherId)) {
+    throw new ErrorHandler("You are not the supervisor of this project", 403);
+  }
+
+  if (!memberIdsForNewProject || memberIdsForNewProject.length === 0) {
+    throw new ErrorHandler("Must specify at least one member for the new project", 400);
+  }
+
+  const currentMemberStrings = (project.members || []).map(String);
+  const newGroupStrings = memberIdsForNewProject.map(String);
+
+  // Validate all specified members are actually in this project
+  for (const id of newGroupStrings) {
+    if (!currentMemberStrings.includes(id)) {
+      throw new ErrorHandler(`Student ${id} is not a member of this project`, 400);
+    }
+  }
+
+  const remainingMembers = currentMemberStrings.filter((id) => !newGroupStrings.includes(id));
+  if (remainingMembers.length === 0) {
+    throw new ErrorHandler("Cannot move all members out. At least one must stay in the original project.", 400);
+  }
+
+  // If the leader is being moved to the new group, auto-transfer leadership first
+  if (newGroupStrings.includes(String(project.student))) {
+    // Pick the first remaining member as the new leader of the original project
+    project.student = remainingMembers[0];
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Update original project
+    project.members = remainingMembers;
+    project.projectMode = remainingMembers.length > 1 ? "group" : "individual";
+    await project.save({ session });
+
+    // Create new project
+    const newProject = await Project.create(
+      [
+        {
+          student: newGroupStrings[0], // First member in new group becomes leader
+          title: newTitle || `${project.title} (Split)`,
+          description: project.description,
+          groupName: newTitle || `${project.groupName || project.title} (Split)`,
+          projectMode: newGroupStrings.length > 1 ? "group" : "individual",
+          members: newGroupStrings,
+          supervisor: project.supervisor,
+          status: project.status,
+        },
+      ],
+      { session },
+    );
+
+    const createdProject = newProject[0];
+
+    // Update user records for new group
+    await User.updateMany(
+      { _id: { $in: newGroupStrings } },
+      { project: createdProject._id },
+      { session },
+    );
+
+    await session.commitTransaction();
+
+    // Notify everyone
+    const allMembers = [...remainingMembers, ...newGroupStrings];
+    await Promise.all(
+      allMembers.map((memberId) =>
+        notificationServices.notifyUser(
+          memberId,
+          `Project "${project.title}" has been split by the supervisor. Please check your project details.`,
+          "general",
+          "/student/submit-proposal",
+          "high",
+        ),
+      ),
+    );
+
+    return {
+      originalProject: await Project.findById(projectId)
+        .populate("student", "name email")
+        .populate("members", "name email")
+        .populate("supervisor", "name email"),
+      newProject: await Project.findById(createdProject._id)
+        .populate("student", "name email")
+        .populate("members", "name email")
+        .populate("supervisor", "name email"),
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw new ErrorHandler(
+      error.message || "A system error occurred while splitting the project.",
+      500,
+    );
+  } finally {
+    session.endSession();
+  }
+};
+
+// =============================================
+// ADMIN MASTER CONTROLS
+// =============================================
+
+/**
+ * Admin forces orphan students into a single project.
+ */
+export const forceMergeStudents = async ({ studentIds, title, description, supervisorId }) => {
+  if (!studentIds || studentIds.length === 0) {
+    throw new ErrorHandler("Must specify at least one student", 400);
+  }
+
+  // Verify all students exist and have no project
+  const students = await User.find({
+    _id: { $in: studentIds },
+    role: "Student",
+  }).select("name email project");
+
+  if (students.length !== studentIds.length) {
+    throw new ErrorHandler("One or more student IDs are invalid", 400);
+  }
+
+  const studentsWithProject = students.filter((s) => s.project);
+  if (studentsWithProject.length > 0) {
+    throw new ErrorHandler(
+      `Students already in a project: ${studentsWithProject.map((s) => s.name).join(", ")}`,
+      400,
+    );
+  }
+
+  const leaderId = studentIds[0];
+  const projectData = {
+    student: leaderId,
+    title: title || "Merged Project",
+    description: description || "Project created via admin force merge.",
+    groupName: title || "Merged Group",
+    projectMode: studentIds.length > 1 ? "group" : "individual",
+    members: studentIds,
+    status: "created",
+  };
+
+  if (supervisorId) {
+    const supervisor = await User.findById(supervisorId);
+    if (!supervisor || supervisor.role !== "Teacher") {
+      throw new ErrorHandler("Invalid supervisor", 400);
+    }
+    projectData.supervisor = supervisorId;
+    projectData.status = "approved";
+  }
+
+  const project = await Project.create(projectData);
+
+  // Update all students
+  await User.updateMany(
+    { _id: { $in: studentIds } },
+    {
+      project: project._id,
+      supervisor: supervisorId || null,
+    },
+  );
+
+  if (supervisorId) {
+    await User.findByIdAndUpdate(supervisorId, {
+      $addToSet: { assignedStudents: { $each: studentIds } },
+    });
+  }
+
+  await Promise.all(
+    studentIds.map((sid) =>
+      notificationServices.notifyUser(
+        sid,
+        `You have been assigned to project "${project.title}" by the administrator.`,
+        "general",
+        "/student/submit-proposal",
+        "high",
+      ),
+    ),
+  );
+
+  return Project.findById(project._id)
+    .populate("student", "name email")
+    .populate("members", "name email")
+    .populate("supervisor", "name email");
 };

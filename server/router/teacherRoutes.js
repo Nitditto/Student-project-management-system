@@ -31,6 +31,10 @@ import {
   getTeacherDirectory,
   getTeacherPreselectionCandidates,
   getTeacherPreselections,
+  teacherAddMember,
+  teacherRemoveMember,
+  teacherChangeLeader,
+  teacherSplitProject,
 } from "../controllers/registrationController.js";
 import {
   assignReviewerByChairman,
@@ -269,6 +273,30 @@ router.get(
   isAuthenticated,
   isAuthorized("Teacher"),
   downloadReviewerForm,
+);
+router.post(
+  "/projects/:projectId/add-member",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  teacherAddMember,
+);
+router.put(
+  "/projects/:projectId/remove-member",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  teacherRemoveMember,
+);
+router.put(
+  "/projects/:projectId/change-leader",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  teacherChangeLeader,
+);
+router.post(
+  "/projects/:projectId/split",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  teacherSplitProject,
 );
 
 export default router;

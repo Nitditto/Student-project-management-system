@@ -132,7 +132,6 @@ userSchema.methods.getResetPasswordToken = function () {
   return resetToken;
 };
 
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 userSchema.index({ department: 1 });
 

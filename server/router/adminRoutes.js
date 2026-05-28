@@ -29,6 +29,7 @@ import {
 import {
   getRegistrationSettings,
   updateRegistrationSettings,
+  forceMergeStudents,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 
@@ -161,5 +162,11 @@ router.put(
   isAuthenticated,
   isAuthorized("Admin"),
   updateRegistrationSettings,
+);
+router.post(
+  "/force-merge",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  forceMergeStudents,
 );
 export default router;

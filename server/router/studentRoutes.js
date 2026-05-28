@@ -37,6 +37,9 @@ import {
   getStudentRegistrationSetup,
   rejectTeacherPreselection,
   respondGroupInvitation,
+  transferLeadership,
+  kickMember,
+  disbandGroup,
 } from "../controllers/registrationController.js";
 import { isAuthenticated, isAuthorized } from "../middleware/authMiddleware.js";
 import { upload, handleUploadError, decodeFilenameMiddleware } from "../middleware/upload.js";
@@ -223,6 +226,24 @@ router.get(
   isAuthenticated,
   isAuthorized("Student"),
   downloadReviewerForm,
+);
+router.put(
+  "/projects/:projectId/transfer-leadership",
+  isAuthenticated,
+  isAuthorized("Student"),
+  transferLeadership,
+);
+router.put(
+  "/projects/:projectId/kick-member",
+  isAuthenticated,
+  isAuthorized("Student"),
+  kickMember,
+);
+router.delete(
+  "/projects/:projectId/disband",
+  isAuthenticated,
+  isAuthorized("Student"),
+  disbandGroup,
 );
 
 export default router;

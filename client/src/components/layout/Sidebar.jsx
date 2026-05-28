@@ -48,7 +48,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             icon: "clock",
           },
           {
-            name: "Supervised Students",
+            name: "My Supervision",
             path: "/teacher/assigned-students",
             icon: "users",
           },
@@ -56,11 +56,6 @@ const Sidebar = ({ open, setOpen, userRole }) => {
             name: "Deadline Management",
             path: "/teacher/deadlines",
             icon: "calendar",
-          },
-          {
-            name: "Submissions Matrix",
-            path: "/teacher/submissions",
-            icon: "document",
           },
           {
             name: "Defense Hub",

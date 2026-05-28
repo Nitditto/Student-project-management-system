@@ -113,3 +113,119 @@ export const rejectTeacherPreselection = asyncHandler(async (req, res) => {
     data: { invitation },
   });
 });
+
+// =============================================
+// STUDENT GROUP MANAGEMENT
+// =============================================
+
+export const transferLeadership = asyncHandler(async (req, res) => {
+  const project = await registrationServices.transferLeadership({
+    projectId: req.params.projectId,
+    currentLeaderId: req.user._id,
+    newLeaderId: req.body.newLeaderId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Leadership transferred successfully",
+    data: { project },
+  });
+});
+
+export const kickMember = asyncHandler(async (req, res) => {
+  const project = await registrationServices.kickMember({
+    projectId: req.params.projectId,
+    leaderId: req.user._id,
+    memberId: req.body.memberId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Member removed successfully",
+    data: { project },
+  });
+});
+
+export const disbandGroup = asyncHandler(async (req, res) => {
+  const result = await registrationServices.disbandGroup({
+    projectId: req.params.projectId,
+    leaderId: req.user._id,
+  });
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
+// =============================================
+// TEACHER GROUP CONTROLS
+// =============================================
+
+export const teacherAddMember = asyncHandler(async (req, res) => {
+  const project = await registrationServices.addMemberToProject({
+    projectId: req.params.projectId,
+    teacherId: req.user._id,
+    studentId: req.body.studentId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Member added to project successfully",
+    data: { project },
+  });
+});
+
+export const teacherRemoveMember = asyncHandler(async (req, res) => {
+  const project = await registrationServices.removeMemberFromProject({
+    projectId: req.params.projectId,
+    teacherId: req.user._id,
+    memberId: req.body.memberId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Member removed from project successfully",
+    data: { project },
+  });
+});
+
+export const teacherChangeLeader = asyncHandler(async (req, res) => {
+  const project = await registrationServices.forceChangeLeader({
+    projectId: req.params.projectId,
+    teacherId: req.user._id,
+    newLeaderId: req.body.newLeaderId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Leader reassigned successfully",
+    data: { project },
+  });
+});
+
+export const teacherSplitProject = asyncHandler(async (req, res) => {
+  const result = await registrationServices.splitProject({
+    projectId: req.params.projectId,
+    teacherId: req.user._id,
+    memberIdsForNewProject: req.body.memberIds,
+    newTitle: req.body.newTitle,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Project split successfully",
+    data: result,
+  });
+});
+
+// =============================================
+// ADMIN MASTER CONTROLS
+// =============================================
+
+export const forceMergeStudents = asyncHandler(async (req, res) => {
+  const project = await registrationServices.forceMergeStudents({
+    studentIds: req.body.studentIds,
+    title: req.body.title,
+    description: req.body.description,
+    supervisorId: req.body.supervisorId,
+  });
+  res.status(201).json({
+    success: true,
+    message: "Students merged into project successfully",
+    data: { project },
+  });
+});

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 export const connectDB = async () => {
+  mongoose.set("strictPopulate", false);
   mongoose
     .connect(process.env.MONGO_URL, {
       dbName: "fyp_management_system",

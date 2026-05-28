@@ -30,6 +30,8 @@ export const errorMiddleware = (err, req, res, next) => {
     ? Object.values(err.errors).map((e) => e.message).join(", ")
     : err.message;
 
+  console.error("API ERROR:", err);
+
   return res.status(err.statusCode).json({
     success: false,
     message: errorMessage,

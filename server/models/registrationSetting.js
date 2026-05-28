@@ -46,6 +46,14 @@ const registrationSettingSchema = new mongoose.Schema(
       default: "",
       maxLength: 1000,
     },
+    groupEditLocked: {
+      type: Boolean,
+      default: false,
+    },
+    groupEditLockDate: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

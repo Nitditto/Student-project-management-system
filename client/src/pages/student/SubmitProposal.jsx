@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
+import {
+  Crown,
+  UserMinus,
+  Trash2,
+  ArrowRightLeft,
+  AlertTriangle,
+  X,
+  Shield,
+  ChevronDown,
+} from "lucide-react";
 
 const SubmitProposal = () => {
   const { authUser } = useSelector((state) => state.auth);
@@ -15,6 +25,14 @@ const SubmitProposal = () => {
     groupName: "",
     memberIds: [],
   });
+
+  // Leader action modals
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showKickModal, setShowKickModal] = useState(false);
+  const [showDisbandModal, setShowDisbandModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -80,6 +98,61 @@ const SubmitProposal = () => {
     }
   };
 
+  // ---- Leader Actions ----
+
+  const handleTransferLeadership = async () => {
+    if (!selectedMember || !project) return;
+    setActionLoading(true);
+    try {
+      await axiosInstance.put(`/student/projects/${project._id}/transfer-leadership`, {
+        newLeaderId: selectedMember._id,
+      });
+      toast.success("Leadership transferred successfully");
+      setShowTransferModal(false);
+      setSelectedMember(null);
+      await loadData();
+    } catch (error) {
+      console.error("TRANSFER ERROR:", error);
+      console.error("RESPONSE DATA:", error.response?.data);
+      toast.error(error.response?.data?.message || "Failed to transfer leadership");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleKickMember = async () => {
+    if (!selectedMember || !project) return;
+    setActionLoading(true);
+    try {
+      await axiosInstance.put(`/student/projects/${project._id}/kick-member`, {
+        memberId: selectedMember._id,
+      });
+      toast.success("Member removed from group");
+      setShowKickModal(false);
+      setSelectedMember(null);
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to remove member");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDisbandGroup = async () => {
+    if (!project) return;
+    setActionLoading(true);
+    try {
+      await axiosInstance.delete(`/student/projects/${project._id}/disband`);
+      toast.success("Group has been disbanded");
+      setShowDisbandModal(false);
+      await loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to disband group");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="card">Loading registration setup...</div>;
   }
@@ -93,6 +166,12 @@ const SubmitProposal = () => {
   );
   const outgoingInvitations = invitations.filter(
     (invitation) => invitation.inviter?._id === authUser?._id,
+  );
+
+  const isLeader = project?.student?._id === authUser?._id;
+  const hasSupervisor = !!project?.supervisor;
+  const otherMembers = (project?.members || []).filter(
+    (m) => m._id !== authUser?._id,
   );
 
   return (
@@ -137,11 +216,69 @@ const SubmitProposal = () => {
 
       {project ? (
         <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Current Project Proposal</h2>
-            <p className="card-subtitle">
-              The student who created this proposal is the group representative.
-            </p>
+          <div className="card-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="card-title">Current Project Proposal</h2>
+              <p className="card-subtitle">
+                {isLeader
+                  ? "You are the group representative (Leader)."
+                  : `Group representative: ${project.student?.name}`}
+              </p>
+            </div>
+
+            {/* Leader Actions Dropdown */}
+            {isLeader && project.projectMode === "group" && (
+              <div className="relative">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                  onClick={() => setActionsOpen(!actionsOpen)}
+                >
+                  <Shield className="w-4 h-4" />
+                  Leader Actions
+                  <ChevronDown className={`w-4 h-4 transition-transform ${actionsOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {actionsOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-20 py-1">
+                    <button
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5"
+                      onClick={() => {
+                        setActionsOpen(false);
+                        setShowTransferModal(true);
+                      }}
+                    >
+                      <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                      Transfer Leadership
+                    </button>
+                    {!hasSupervisor && (
+                      <>
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5"
+                          onClick={() => {
+                            setActionsOpen(false);
+                            setShowKickModal(true);
+                          }}
+                        >
+                          <UserMinus className="w-4 h-4 text-orange-500" />
+                          Remove a Member
+                        </button>
+                        <div className="border-t border-slate-100 my-1" />
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5"
+                          onClick={() => {
+                            setActionsOpen(false);
+                            setShowDisbandModal(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Disband Group
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -155,27 +292,46 @@ const SubmitProposal = () => {
                 {project.groupName || project.title}
               </p>
             </div>
-            <div>
-              <p className="text-sm text-slate-500">Project Mode</p>
-              <p className="font-semibold text-slate-800 capitalize">
-                {project.projectMode}
-              </p>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-sm text-slate-500">Project Mode</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${project.projectMode === "group" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"}`}>
+                  {project.projectMode === "group" ? "Group" : "Individual"}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Status</p>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 bg-yellow-100 text-yellow-800 capitalize">
+                  {project.status}
+                </span>
+              </div>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Representative</p>
-              <p className="font-semibold text-slate-800">{project.student?.name}</p>
+              <p className="text-sm text-slate-500">Representative (Leader)</p>
+              <div className="mt-1 flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-500" />
+                <p className="font-semibold text-slate-800">{project.student?.name}</p>
+              </div>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Members</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(project.members || []).map((member) => (
-                  <span
-                    key={member._id}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700"
-                  >
-                    {member.name}
-                  </span>
-                ))}
+              <p className="text-sm text-slate-500 mb-2">Members</p>
+              <div className="flex flex-wrap gap-2">
+                {(project.members || []).map((member) => {
+                  const memberIsLeader = member._id === project.student?._id;
+                  return (
+                    <span
+                      key={member._id}
+                      className={`rounded-full px-3 py-1.5 text-sm flex items-center gap-1.5 ${
+                        memberIsLeader
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                      }`}
+                    >
+                      {memberIsLeader && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                      {member.name}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -329,6 +485,160 @@ const SubmitProposal = () => {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODALS ===== */}
+
+      {/* Transfer Leadership Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowTransferModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-blue-500" />
+                Transfer Leadership
+              </h2>
+              <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowTransferModal(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              Select a member to become the new group leader. You will remain as a regular member.
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {otherMembers.map((member) => (
+                <label
+                  key={member._id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedMember?._id === member._id
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="newLeader"
+                    checked={selectedMember?._id === member._id}
+                    onChange={() => setSelectedMember(member)}
+                  />
+                  <div>
+                    <p className="font-medium text-slate-800">{member.name}</p>
+                    <p className="text-sm text-slate-500">{member.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowTransferModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={!selectedMember || actionLoading}
+                onClick={handleTransferLeadership}
+              >
+                {actionLoading ? "Transferring..." : "Confirm Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kick Member Modal */}
+      {showKickModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowKickModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <UserMinus className="w-5 h-5 text-orange-500" />
+                Remove Member
+              </h2>
+              <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowKickModal(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              Select a member to remove from the group. Project files will be preserved.
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {otherMembers.map((member) => (
+                <label
+                  key={member._id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedMember?._id === member._id
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="kickMember"
+                    checked={selectedMember?._id === member._id}
+                    onChange={() => setSelectedMember(member)}
+                  />
+                  <div>
+                    <p className="font-medium text-slate-800">{member.name}</p>
+                    <p className="text-sm text-slate-500">{member.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowKickModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                disabled={!selectedMember || actionLoading}
+                onClick={handleKickMember}
+              >
+                {actionLoading ? "Removing..." : "Confirm Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disband Group Modal */}
+      {showDisbandModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDisbandModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Disband Group
+              </h2>
+              <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowDisbandModal(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800 font-medium mb-2">
+                This action is irreversible!
+              </p>
+              <ul className="text-sm text-red-700 list-disc pl-4 space-y-1">
+                <li>The project and all uploaded files will be permanently deleted</li>
+                <li>All members will be removed from the group</li>
+                <li>All pending invitations will be cancelled</li>
+              </ul>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">
+              Project: <strong>{project?.title}</strong>
+            </p>
+            <div className="flex gap-3">
+              <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowDisbandModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={actionLoading}
+                onClick={handleDisbandGroup}
+              >
+                {actionLoading ? "Disbanding..." : "Confirm Disband"}
+              </button>
+            </div>
           </div>
         </div>
       )}
