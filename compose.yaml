@@ -1,12 +1,4 @@
 services:
-
-  mongo:
-    image: mongodb/mongodb-community-server:latest
-    container_name: mongo_db
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-
   client:
     build: ./client
     ports:
@@ -28,8 +20,10 @@ services:
       - "4000:4000"
     env_file:
       - ./server/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
     depends_on:
-      - mongo
+      - redis
     volumes:
       - ./server:/server
       - /server/node_modules
@@ -45,6 +39,13 @@ services:
       - "4040:4040"
     depends_on:
       - client
+
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
 volumes:
   mongo_data:
