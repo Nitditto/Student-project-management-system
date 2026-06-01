@@ -20,8 +20,6 @@ services:
       - "4000:4000"
     env_file:
       - ./server/.env
-    environment:
-      - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
     volumes:
@@ -33,8 +31,8 @@ services:
     image: ngrok/ngrok:latest
     container_name: ngrok
     command: http client:5173
-    environment:
-      NGROK_AUTHTOKEN: 3DPMjz7bOsjVehQBlKKhSZn1478_3X1mqWKCKBjqYcCakwXya
+    env_file:
+      - ./server/.env
     ports:
       - "4040:4040"
     depends_on:
@@ -46,6 +44,3 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
-
-volumes:
-  mongo_data:
