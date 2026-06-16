@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatAssessmentScore } from "../../lib/assessment";
 
 const formatDateTime = (value) => {
@@ -85,7 +85,7 @@ const getCouncilFormValidationMessage = (form) => {
 const FieldBlock = ({ label, hint, children }) => (
   <div className="space-y-2">
     <div>
-      <label className="label">{label}</label>
+      <label className="label text-sm font-semibold text-slate-700">{label}</label>
       {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
     </div>
     {children}
@@ -103,6 +103,15 @@ const CouncilsPage = () => {
   const [assignForms, setAssignForms] = useState({});
   const [councilToDelete, setCouncilToDelete] = useState(null);
   const [editingCouncilId, setEditingCouncilId] = useState(null);
+
+  // States for Search, Filter, Pagination, and Modal
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [trackFilter, setTrackFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("dateDesc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const loadData = async () => {
     setLoading(true);
@@ -158,12 +167,13 @@ const CouncilsPage = () => {
   const resetForm = () => {
     setForm(createEmptyCouncilForm());
     setEditingCouncilId(null);
+    setIsFormModalOpen(false);
   };
 
   const startEditingCouncil = (council) => {
     setEditingCouncilId(council._id);
     setForm(mapCouncilToForm(council));
-    globalThis.scrollTo?.({ top: 0, behavior: "smooth" });
+    setIsFormModalOpen(true);
   };
 
   const isTeacherSelectedInOtherMember = (memberIndex, teacherId) =>
@@ -241,17 +251,137 @@ const CouncilsPage = () => {
     }
   };
 
+  // Search, Filter & Sort Handlers
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleTrackFilterChange = (value) => {
+    setTrackFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortByChange = (value) => {
+    setSortBy(value);
+    setCurrentPage(1);
+  };
+
+  // Filtered and Sorted Councils
+  const filteredCouncils = useMemo(() => {
+    let result = [...councils];
+
+    // Search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter((council) => {
+        const nameMatch = council.name?.toLowerCase().includes(term);
+        const descMatch = council.description?.toLowerCase().includes(term);
+        const roomMatch = council.room?.toLowerCase().includes(term);
+
+        // Members match
+        const membersMatch = council.members?.some((m) =>
+          m.teacher?.name?.toLowerCase().includes(term)
+        );
+
+        // Projects match
+        const projectsMatch = council.projects?.some((p) =>
+          p.project?.groupName?.toLowerCase().includes(term) ||
+          p.project?.title?.toLowerCase().includes(term)
+        );
+
+        return nameMatch || descMatch || roomMatch || membersMatch || projectsMatch;
+      });
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter((council) => {
+        const projCount = council.projects?.length || 0;
+        if (projCount === 0) {
+          return statusFilter === "unassigned";
+        }
+
+        const allDone = council.projects.every((p) => p.status === "done");
+        if (allDone) {
+          return statusFilter === "completed";
+        } else {
+          return statusFilter === "pending";
+        }
+      });
+    }
+
+    // Track filter
+    if (trackFilter !== "all") {
+      result = result.filter((council) => {
+        return council.projects?.some((p) => {
+          const track = p.projectTrack || p.project?.projectTrack || "capstone";
+          return track === trackFilter;
+        });
+      });
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortBy === "dateAsc") {
+        return new Date(a.defenseDate || 0) - new Date(b.defenseDate || 0);
+      }
+      if (sortBy === "dateDesc") {
+        return new Date(b.defenseDate || 0) - new Date(a.defenseDate || 0);
+      }
+      if (sortBy === "nameAsc") {
+        return (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "nameDesc") {
+        return (b.name || "").localeCompare(a.name || "");
+      }
+      return 0;
+    });
+
+    return result;
+  }, [councils, searchTerm, statusFilter, trackFilter, sortBy]);
+
+  const totalPages = Math.ceil(filteredCouncils.length / itemsPerPage);
+
+  const paginatedCouncils = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCouncils.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCouncils, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   if (loading) {
-    return <div className="card">Loading councils...</div>;
+    return <div className="card text-center py-8">Loading councils...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-lg p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">Defense Council Setup</h1>
-        <p className="text-indigo-100">
-          Admin creates the council, assigns chairman and secretary, then attaches approved-completed projects.
-        </p>
+      {/* Header Block with Create Button */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-lg p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Defense Council Setup</h1>
+          <p className="text-indigo-100">
+            Admin creates the council, assigns chairman and secretary, then attaches approved-completed projects.
+          </p>
+        </div>
+        <button
+          className="bg-white text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-200 shrink-0"
+          onClick={() => {
+            resetForm();
+            setIsFormModalOpen(true);
+          }}
+        >
+          Create Council
+        </button>
       </div>
 
       {qaDashboard && (
@@ -324,340 +454,503 @@ const CouncilsPage = () => {
         </div>
       )}
 
-      <div className="card space-y-4">
-        <div className="card-header">
-          <h2 className="card-title">
-            {editingCouncilId ? "Edit Defense Council" : "Create New Defense Council"}
-          </h2>
-          <p className="card-subtitle">
-            {editingCouncilId
-              ? "Update council information and members. Member changes are blocked after scoring starts."
-              : "Chairman and secretary are mandatory. Chairman will assign reviewer later."}
-          </p>
-        </div>
-
-        <FieldBlock
-          label="C1. Defense Council Name"
-          hint='Example: "Final Defense Council - Software Engineering - Round 1"'
-        >
-          <input
-            className="input"
-            placeholder="Enter defense council name"
-            value={form.name}
-            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-          />
-        </FieldBlock>
-
-        <FieldBlock
-          label="C2. Council Description"
-          hint="Describe the defense batch, faculty, or any note the admin wants to keep with this council."
-        >
-          <textarea
-            className="input min-h-20"
-            placeholder="Enter short council description"
-            value={form.description}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, description: event.target.value }))
-            }
-          />
-        </FieldBlock>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <FieldBlock
-            label="C3. Defense Date And Time"
-            hint="This is the official date-time when the council starts hearing defenses."
-          >
-            <input
-              className="input"
-              type="datetime-local"
-              value={form.defenseDate}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, defenseDate: event.target.value }))
-              }
-            />
-          </FieldBlock>
-          <FieldBlock
-            label="C4. Defense Room Or Meeting Link"
-            hint="Enter room name, lab name, or online meeting location."
-          >
-            <input
-              className="input"
-              placeholder="Example: Room B305 or Google Meet link"
-              value={form.room}
-              onChange={(event) => setForm((current) => ({ ...current, room: event.target.value }))}
-            />
-          </FieldBlock>
-        </div>
-
-        {form.members.map((member, index) => (
-          <div
-            key={index}
-            className="rounded-lg border border-slate-200 p-3 grid grid-cols-1 md:grid-cols-3 gap-3"
-          >
-            <div className="md:col-span-3 border-b border-slate-200 pb-2 flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-slate-800">
-                  C5.{index + 1}. Council Member {index + 1}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {member.role === "chairman"
-                    ? "Required: choose the chairman who will coordinate the council and assign reviewer later."
-                    : member.role === "secretary"
-                      ? "Required: choose the secretary who records the defense process."
-                      : "Optional: add another council member and set their score weight."}
-                </p>
-              </div>
-              {member.role === "member" && (
-                <button
-                  className="text-sm font-medium text-red-600 hover:text-red-700"
-                  onClick={() => removeMember(index)}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            <FieldBlock label="Teacher" hint="Select the teacher for this council position.">
-              <select
-                className="input"
-                value={member.teacher}
-                onChange={(event) => handleMemberChange(index, "teacher", event.target.value)}
-              >
-                <option value="">Select teacher</option>
-                {teachers.map((teacher) => (
-                  <option
-                    key={teacher._id}
-                    value={teacher._id}
-                    disabled={isTeacherSelectedInOtherMember(index, teacher._id)}
-                  >
-                    {teacher.name}
-                  </option>
-                ))}
-              </select>
-            </FieldBlock>
-            <FieldBlock label="Role" hint="Set the role this teacher will hold inside the council.">
-              <select
-                className="input"
-                value={member.role}
-                onChange={(event) => handleMemberChange(index, "role", event.target.value)}
-              >
-                <option
-                  value="chairman"
-                  disabled={isRoleTakenInOtherMember(index, "chairman")}
-                >
-                  Chairman
-                </option>
-                <option
-                  value="secretary"
-                  disabled={isRoleTakenInOtherMember(index, "secretary")}
-                >
-                  Secretary
-                </option>
-                <option value="member">Additional Member</option>
-              </select>
-            </FieldBlock>
-            <FieldBlock label="Score Weight" hint="This weight contributes to the final weighted council score.">
-              <input
-                className="input"
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={member.weight}
-                onChange={(event) => handleMemberChange(index, "weight", event.target.value)}
-                placeholder="Example: 1 or 1.5"
-              />
-            </FieldBlock>
-          </div>
-        ))}
-
-        <div className="flex gap-3">
-          <button
-            className="btn-outline"
-            onClick={() =>
-              setForm((current) => ({
-                ...current,
-                members: [...current.members, createMember("member", 1)],
-              }))
-            }
-          >
-            Add Additional Member
-          </button>
-          {editingCouncilId && (
-            <button className="btn-outline" onClick={resetForm}>
-              Cancel Edit
-            </button>
-          )}
-          <button className="btn-primary" onClick={saveCouncil}>
-            {editingCouncilId ? "Update Defense Council" : "Create Defense Council"}
-          </button>
-        </div>
-      </div>
-
+      {/* Main List Section */}
       <div className="space-y-4">
-        {councils.map((council) => (
-          <div
-            key={council._id}
-            className={`card ${editingCouncilId === council._id ? "ring-2 ring-blue-200" : ""}`}
-          >
-            <div className="card-header">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h2 className="card-title">{council.name}</h2>
-                  <p className="card-subtitle">
-                    {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    className="btn-outline"
-                    onClick={() => startEditingCouncil(council)}
-                  >
-                    Edit Council
-                  </button>
-                  <button
-                    className="btn-danger"
-                    onClick={() => setCouncilToDelete(council)}
-                  >
-                    Delete Council
-                  </button>
-                </div>
-              </div>
+        {/* Search, Filter & Sort Controls */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search input */}
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by council name, room, member name, or assigned project..."
+                className="input pl-10 w-full"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <div>
-                <p className="font-medium text-slate-700 mb-2">Council Members</p>
-                <div className="space-y-2">
-                  {(council.members || []).map((member) => (
-                    <div
-                      key={member.teacher?._id}
-                      className="rounded-lg bg-slate-50 p-3 flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="font-medium text-slate-800">{member.teacher?.name}</p>
-                        <p className="text-sm text-slate-500 capitalize">{member.role}</p>
-                      </div>
-                      <span className="text-sm text-slate-500">Weight {member.weight}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <p className="font-medium text-slate-700">Assign Project To Council</p>
+            {/* Filtering attributes */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:w-2/3">
+              <div className="relative">
                 <select
-                  className="input"
-                  value={assignForms[council._id]?.projectId || ""}
-                  onChange={(event) =>
-                    updateAssignForm(council._id, "projectId", event.target.value)
-                  }
+                  className="input pr-8 appearance-none w-full"
+                  value={statusFilter}
+                  onChange={(e) => handleStatusFilterChange(e.target.value)}
                 >
-                  <option value="">Select completed project</option>
-                  {eligibleProjects.map((project) => (
-                    <option key={project._id} value={project._id}>
-                      {project.groupName || project.title}
-                    </option>
-                  ))}
+                  <option value="all">All Statuses</option>
+                  <option value="completed">Completed (Done)</option>
+                  <option value="pending">Pending (In Progress)</option>
+                  <option value="unassigned">Unassigned</option>
                 </select>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <select
-                    className="input"
-                    value={assignForms[council._id]?.projectTrack || "capstone"}
-                    onChange={(event) =>
-                      updateAssignForm(council._id, "projectTrack", event.target.value)
-                    }
-                  >
-                    <option value="capstone">Capstone</option>
-                    <option value="research">Research thesis</option>
-                  </select>
-                  <select
-                    className="input"
-                    value={assignForms[council._id]?.templateId || ""}
-                    onChange={(event) =>
-                      updateAssignForm(council._id, "templateId", event.target.value)
-                    }
-                  >
-                    <option value="">Default template for selected track</option>
-                    {templates
-                      .filter(
-                        (template) =>
-                          template.projectTrack ===
-                          (assignForms[council._id]?.projectTrack || "capstone"),
-                      )
-                      .map((template) => (
-                        <option key={template._id} value={template._id}>
-                          {template.name} ({template.version})
-                        </option>
-                      ))}
-                  </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                  <Filter className="h-4 w-4" />
                 </div>
-                <button className="btn-primary" onClick={() => assignProject(council._id)}>
-                  Assign Project To This Council
-                </button>
+              </div>
+
+              <div className="relative">
+                <select
+                  className="input pr-8 appearance-none w-full"
+                  value={trackFilter}
+                  onChange={(e) => handleTrackFilterChange(e.target.value)}
+                >
+                  <option value="all">All Tracks</option>
+                  <option value="capstone">Capstone</option>
+                  <option value="research">Research</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                  <Filter className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <select
+                  className="input pr-8 appearance-none w-full"
+                  value={sortBy}
+                  onChange={(e) => handleSortByChange(e.target.value)}
+                >
+                  <option value="dateDesc">Date (Newest)</option>
+                  <option value="dateAsc">Date (Oldest)</option>
+                  <option value="nameAsc">Name (A-Z)</option>
+                  <option value="nameDesc">Name (Z-A)</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                  <Filter className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <select
+                  className="input pr-8 appearance-none w-full"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={5}>5 per page</option>
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                  <Filter className="h-4 w-4" />
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="mt-4">
-              <p className="font-medium text-slate-700 mb-2">Projects Already Assigned</p>
-              <div className="space-y-2">
-                {(council.projects || []).map((projectItem) => (
-                  <div key={projectItem.project?._id} className="rounded-lg border border-slate-200 p-3">
-                    <p className="font-medium text-slate-800">
-                      {projectItem.project?.groupName || projectItem.project?.title}
+        {/* Councils Cards List */}
+        <div className="space-y-4">
+          {paginatedCouncils.map((council) => (
+            <div
+              key={council._id}
+              className={`card ${editingCouncilId === council._id ? "ring-2 ring-blue-200" : ""}`}
+            >
+              <div className="card-header">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="card-title">{council.name}</h2>
+                    <p className="card-subtitle">
+                      {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
                     </p>
-                    <p className="text-sm text-slate-500">
-                      Supervisor: {projectItem.project?.supervisor?.name || "N/A"}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Reviewer: {projectItem.reviewer?.name || "Waiting for chairman assignment"}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Track: {projectItem.projectTrack || projectItem.project?.projectTrack || "capstone"} | Template:{" "}
-                      {projectItem.templateVersion || projectItem.assessmentSummary?.templateVersion || "default"}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Final weighted score: {projectItem.weightedAverage ?? "N/A"} | Status: {projectItem.status}
-                    </p>
-                    {projectItem.assessmentSummary && (
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg bg-slate-50 p-3">
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">Team result</p>
-                          <p className="font-semibold text-slate-800">
-                            {formatAssessmentScore(projectItem.assessmentSummary.teamFinalScore, "/10")} |{" "}
-                            {projectItem.assessmentSummary.teamPassStatus}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">QA completeness</p>
-                          <p className="font-semibold text-slate-800">
-                            {projectItem.assessmentSummary.qaEvidenceSummary?.completenessPercent || 0}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">CLO at risk</p>
-                          <p className="font-semibold text-slate-800">
-                            {projectItem.assessmentSummary.cloResults
-                              ?.filter((item) => item.status === "not_achieved")
-                              .map((item) => item.cloCode)
-                              .join(", ") || "None"}
-                          </p>
-                        </div>
-                      </div>
+                    {council.description && (
+                      <p className="text-sm text-slate-500 mt-1 max-w-2xl">{council.description}</p>
                     )}
                   </div>
-                ))}
-                {(!council.projects || council.projects.length === 0) && (
-                  <p className="text-slate-500">No project assigned yet.</p>
-                )}
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="btn-outline"
+                      onClick={() => startEditingCouncil(council)}
+                    >
+                      Edit Council
+                    </button>
+                    <button
+                      className="btn-danger"
+                      onClick={() => setCouncilToDelete(council)}
+                    >
+                      Delete Council
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div>
+                  <p className="font-medium text-slate-700 mb-2">Council Members</p>
+                  <div className="space-y-2">
+                    {(council.members || []).map((member) => (
+                      <div
+                        key={member.teacher?._id}
+                        className="rounded-lg bg-slate-50 p-3 flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="font-medium text-slate-800">{member.teacher?.name}</p>
+                          <p className="text-sm text-slate-500 capitalize">{member.role}</p>
+                        </div>
+                        <span className="text-sm text-slate-500">Weight {member.weight}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="font-medium text-slate-700">Assign Project To Council</p>
+                  <select
+                    className="input"
+                    value={assignForms[council._id]?.projectId || ""}
+                    onChange={(event) =>
+                      updateAssignForm(council._id, "projectId", event.target.value)
+                    }
+                  >
+                    <option value="">Select completed project</option>
+                    {eligibleProjects.map((project) => (
+                      <option key={project._id} value={project._id}>
+                        {project.groupName || project.title}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select
+                      className="input"
+                      value={assignForms[council._id]?.projectTrack || "capstone"}
+                      onChange={(event) =>
+                        updateAssignForm(council._id, "projectTrack", event.target.value)
+                      }
+                    >
+                      <option value="capstone">Capstone</option>
+                      <option value="research">Research thesis</option>
+                    </select>
+                    <select
+                      className="input"
+                      value={assignForms[council._id]?.templateId || ""}
+                      onChange={(event) =>
+                        updateAssignForm(council._id, "templateId", event.target.value)
+                      }
+                    >
+                      <option value="">Default template for selected track</option>
+                      {templates
+                        .filter(
+                          (template) =>
+                            template.projectTrack ===
+                            (assignForms[council._id]?.projectTrack || "capstone"),
+                        )
+                        .map((template) => (
+                          <option key={template._id} value={template._id}>
+                            {template.name} ({template.version})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <button className="btn-primary" onClick={() => assignProject(council._id)}>
+                    Assign Project To This Council
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="font-medium text-slate-700 mb-2">Projects Already Assigned</p>
+                <div className="space-y-2">
+                  {(council.projects || []).map((projectItem) => (
+                    <div key={projectItem.project?._id} className="rounded-lg border border-slate-200 p-3">
+                      <p className="font-medium text-slate-800">
+                        {projectItem.project?.groupName || projectItem.project?.title}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Supervisor: {projectItem.project?.supervisor?.name || "N/A"}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Reviewer: {projectItem.reviewer?.name || "Waiting for chairman assignment"}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Track: {projectItem.projectTrack || projectItem.project?.projectTrack || "capstone"} | Template:{" "}
+                        {projectItem.templateVersion || projectItem.assessmentSummary?.templateVersion || "default"}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Final weighted score: {projectItem.weightedAverage ?? "N/A"} | Status: {projectItem.status}
+                      </p>
+                      {projectItem.assessmentSummary && (
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg bg-slate-50 p-3">
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">Team result</p>
+                            <p className="font-semibold text-slate-800">
+                              {formatAssessmentScore(projectItem.assessmentSummary.teamFinalScore, "/10")} |{" "}
+                              {projectItem.assessmentSummary.teamPassStatus}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">QA completeness</p>
+                            <p className="font-semibold text-slate-800">
+                              {projectItem.assessmentSummary.qaEvidenceSummary?.completenessPercent || 0}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-slate-500">CLO at risk</p>
+                            <p className="font-semibold text-slate-800">
+                              {projectItem.assessmentSummary.cloResults
+                                ?.filter((item) => item.status === "not_achieved")
+                                .map((item) => item.cloCode)
+                                .join(", ") || "None"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {(!council.projects || council.projects.length === 0) && (
+                    <p className="text-slate-500">No project assigned yet.</p>
+                  )}
+                </div>
               </div>
             </div>
+          ))}
+
+          {paginatedCouncils.length === 0 && (
+            <div className="card text-center py-8 text-slate-500">
+              No councils found matching your search or filters.
+            </div>
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+            <span className="text-sm text-slate-500">
+              Showing <span className="font-semibold text-slate-700">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredCouncils.length)}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, filteredCouncils.length)}</span> of{" "}
+              <span className="font-semibold text-slate-700">{filteredCouncils.length}</span> councils
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${
+                    currentPage === page
+                      ? "bg-indigo-600 text-white"
+                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-        ))}
-        {councils.length === 0 && <div className="card">No councils created yet.</div>}
+        )}
       </div>
 
+      {/* Form Dialog Modal (Create / Edit Council) */}
+      {isFormModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl shrink-0">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  {editingCouncilId ? "Edit Defense Council" : "Create New Defense Council"}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {editingCouncilId
+                    ? "Update council information and members. Member changes are blocked after scoring starts."
+                    : "Chairman and secretary are mandatory. Chairman will assign reviewer later."}
+                </p>
+              </div>
+              <button
+                onClick={resetForm}
+                className="text-slate-400 hover:text-slate-600 text-2xl font-semibold p-1 leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6 overflow-y-auto">
+              <FieldBlock
+                label="C1. Defense Council Name"
+                hint='Example: "Final Defense Council - Software Engineering - Round 1"'
+              >
+                <input
+                  className="input"
+                  placeholder="Enter defense council name"
+                  value={form.name}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                />
+              </FieldBlock>
+
+              <FieldBlock
+                label="C2. Council Description"
+                hint="Describe the defense batch, faculty, or any note the admin wants to keep with this council."
+              >
+                <textarea
+                  className="input min-h-20"
+                  placeholder="Enter short council description"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                />
+              </FieldBlock>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FieldBlock
+                  label="C3. Defense Date And Time"
+                  hint="This is the official date-time when the council starts hearing defenses."
+                >
+                  <input
+                    className="input"
+                    type="datetime-local"
+                    value={form.defenseDate}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, defenseDate: event.target.value }))
+                    }
+                  />
+                </FieldBlock>
+                <FieldBlock
+                  label="C4. Defense Room Or Meeting Link"
+                  hint="Enter room name, lab name, or online meeting location."
+                >
+                  <input
+                    className="input"
+                    placeholder="Example: Room B305 or Google Meet link"
+                    value={form.room}
+                    onChange={(event) => setForm((current) => ({ ...current, room: event.target.value }))}
+                  />
+                </FieldBlock>
+              </div>
+
+              <div className="space-y-4">
+                <p className="font-semibold text-slate-700">Council Members</p>
+                {form.members.map((member, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-slate-200 p-3 grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50/50"
+                  >
+                    <div className="md:col-span-3 border-b border-slate-200 pb-2 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-800">
+                          C5.{index + 1}. Council Member {index + 1}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {member.role === "chairman"
+                            ? "Required: choose the chairman who will coordinate the council and assign reviewer later."
+                            : member.role === "secretary"
+                              ? "Required: choose the secretary who records the defense process."
+                              : "Optional: add another council member and set their score weight."}
+                        </p>
+                      </div>
+                      {member.role === "member" && (
+                        <button
+                          className="text-sm font-medium text-red-600 hover:text-red-700"
+                          onClick={() => removeMember(index)}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <FieldBlock label="Teacher" hint="Select the teacher for this council position.">
+                      <select
+                        className="input"
+                        value={member.teacher}
+                        onChange={(event) => handleMemberChange(index, "teacher", event.target.value)}
+                      >
+                        <option value="">Select teacher</option>
+                        {teachers.map((teacher) => (
+                          <option
+                            key={teacher._id}
+                            value={teacher._id}
+                            disabled={isTeacherSelectedInOtherMember(index, teacher._id)}
+                          >
+                            {teacher.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldBlock>
+                    <FieldBlock label="Role" hint="Set the role this teacher will hold inside the council.">
+                      <select
+                        className="input"
+                        value={member.role}
+                        onChange={(event) => handleMemberChange(index, "role", event.target.value)}
+                      >
+                        <option
+                          value="chairman"
+                          disabled={isRoleTakenInOtherMember(index, "chairman")}
+                        >
+                          Chairman
+                        </option>
+                        <option
+                          value="secretary"
+                          disabled={isRoleTakenInOtherMember(index, "secretary")}
+                        >
+                          Secretary
+                        </option>
+                        <option value="member">Additional Member</option>
+                      </select>
+                    </FieldBlock>
+                    <FieldBlock label="Score Weight" hint="This weight contributes to the final weighted council score.">
+                      <input
+                        className="input"
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={member.weight}
+                        onChange={(event) => handleMemberChange(index, "weight", event.target.value)}
+                        placeholder="Example: 1 or 1.5"
+                      />
+                    </FieldBlock>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  className="btn-outline"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      members: [...current.members, createMember("member", 1)],
+                    }))
+                  }
+                >
+                  Add Additional Member
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 rounded-b-xl shrink-0">
+              <button className="btn-outline" onClick={resetForm}>
+                Cancel
+              </button>
+              <button className="btn-primary px-6" onClick={saveCouncil}>
+                {editingCouncilId ? "Update Council" : "Create Council"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
       {councilToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
             <div className="flex items-center mb-4 justify-center">
               <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-red-100">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
