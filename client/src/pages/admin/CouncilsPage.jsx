@@ -112,6 +112,7 @@ const CouncilsPage = () => {
   const [sortBy, setSortBy] = useState("dateDesc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [isQaExpanded, setIsQaExpanded] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -359,6 +360,14 @@ const CouncilsPage = () => {
     }
   }, [totalPages, currentPage]);
 
+  const displayedProjectWarnings = useMemo(() => {
+    if (!qaDashboard || !qaDashboard.projectWarnings) return [];
+    if (isQaExpanded) {
+      return qaDashboard.projectWarnings;
+    }
+    return qaDashboard.projectWarnings.slice(0, 5);
+  }, [qaDashboard, isQaExpanded]);
+
   if (loading) {
     return <div className="card text-center py-8">Loading councils...</div>;
   }
@@ -432,7 +441,7 @@ const CouncilsPage = () => {
             <div className="rounded-lg border border-slate-200 p-4">
               <p className="mb-3 font-medium text-slate-700">Projects Requiring QA Follow-up</p>
               <div className="space-y-2">
-                {(qaDashboard.projectWarnings || []).slice(0, 8).map((item) => (
+                {displayedProjectWarnings.map((item) => (
                   <div key={item.projectId} className="rounded-lg bg-amber-50 p-3">
                     <p className="font-medium text-slate-800">{item.projectName}</p>
                     <p className="text-sm text-slate-600">
@@ -447,6 +456,14 @@ const CouncilsPage = () => {
                 ))}
                 {(qaDashboard.projectWarnings || []).length === 0 && (
                   <p className="text-slate-500">No QA warnings right now.</p>
+                )}
+                {(qaDashboard.projectWarnings || []).length > 5 && (
+                  <button
+                    className="text-indigo-600 hover:text-indigo-700 font-medium text-sm mt-2 block w-full text-center py-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+                    onClick={() => setIsQaExpanded(!isQaExpanded)}
+                  >
+                    {isQaExpanded ? "Show Less" : `Show All (${qaDashboard.projectWarnings.length})`}
+                  </button>
                 )}
               </div>
             </div>

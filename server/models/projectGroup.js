@@ -60,7 +60,7 @@ const projectGroupSchema = new mongoose.Schema(
 /**
  * Ensure leader is included in members.
  */
-projectGroupSchema.pre("validate", function (next) {
+projectGroupSchema.pre("validate", function () {
   const leaderId = String(this.leader);
   const hasLeaderInMembers = this.members.some(
     (m) => String(m.student) === leaderId
@@ -72,8 +72,6 @@ projectGroupSchema.pre("validate", function (next) {
       joinedAt: new Date(),
     });
   }
-
-  next();
 });
 
 projectGroupSchema.index({ registrationPeriod: 1, leader: 1 });

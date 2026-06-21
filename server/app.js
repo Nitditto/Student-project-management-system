@@ -11,6 +11,7 @@ import projectRouter from "./router/projectRoutes.js";
 import deadlineRouter from "./router/deadlineRoutes.js";
 import teacherRouter from "./router/teacherRoutes.js";
 import messageRouter from "./router/messageRoutes.js";
+import aiRouter from "./router/aiRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -120,6 +121,7 @@ app.use("/api/v1/project", projectRouter);
 app.use("/api/v1/deadline", deadlineRouter);
 app.use("/api/v1/teacher", teacherRouter);
 app.use("/api/v1/message", messageRouter);
+app.use("/api/v1/ai", aiRouter);
 app.use(errorMiddleware);
 
 export default app;

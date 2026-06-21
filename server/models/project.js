@@ -276,6 +276,10 @@ const projectSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    embedding: {
+      type: [Number],
+      default: [],
+    },
   },
   {
     timestamps: true,

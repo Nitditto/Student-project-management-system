@@ -26,6 +26,44 @@ const SubmitProposal = () => {
     memberIds: [],
   });
 
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiData, setAiData] = useState({ duplicates: [], supervisors: [] });
+  const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (!formData.title.trim() && !formData.description.trim() && !file) {
+      setAiData({ duplicates: [], supervisors: [] });
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setAiLoading(true);
+      try {
+        const data = new FormData();
+        data.append("title", formData.title);
+        data.append("description", formData.description);
+        if (file) {
+          data.append("file", file);
+        }
+        
+        const res = await axiosInstance.post("/ai/analyze-proposal", data, {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        });
+        if (res.data && res.data.success) {
+          setAiData(res.data.data);
+        }
+      } catch (error) {
+        console.error("AI Analysis failed:", error);
+      } finally {
+        setAiLoading(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.title, formData.description, file]);
+
   // Leader action modals
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showKickModal, setShowKickModal] = useState(false);
@@ -374,6 +412,125 @@ const SubmitProposal = () => {
               required
             />
           </div>
+
+          <div>
+            <label className="label">Outline Draft (Optional PDF/DOCX/TXT)</label>
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              className="border border-slate-200 p-2 rounded-lg w-full bg-white text-sm"
+              onChange={(e) => setFile(e.target.files ? e.target.files[0] || null : null)}
+            />
+          </div>
+
+          {/* AI Feedback Section */}
+          {(formData.title.trim() || formData.description.trim() || file) && (
+            <div className="card space-y-6">
+              {/* Header */}
+              <div className="card-header flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="card-title flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${aiLoading ? "animate-ping bg-blue-400" : "bg-slate-300"}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${aiLoading ? "bg-blue-500" : "bg-slate-400"}`}></span>
+                    </span>
+                    AI Real-time Assistant
+                  </h3>
+                  <p className="card-subtitle">AI-powered similarity check & mentor recommendation</p>
+                </div>
+                {aiLoading ? (
+                  <span className="text-xs text-blue-600 font-medium animate-pulse">Analyzing...</span>
+                ) : (
+                  <span className="text-xs text-slate-400 font-medium">Ready</span>
+                )}
+              </div>
+
+              {/* Duplicate Detection */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-800">Duplicate Check</h4>
+                {aiData.duplicates && aiData.duplicates.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <span>Found similar previous project proposals. Please review to avoid duplicates.</span>
+                    </div>
+                    <div className="space-y-2">
+                      {aiData.duplicates.map((item, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg flex justify-between items-center text-sm shadow-sm">
+                          <div>
+                            <p className="font-semibold text-slate-800">{item.title}</p>
+                            <p className="text-xs text-slate-500">Student: {item.student} | Status: {item.status}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full ${item.score > 0.7 ? "bg-red-500" : "bg-yellow-500"}`}
+                                style={{ width: `${Math.round(item.score * 100)}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.score > 0.7 ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                              {Math.round(item.score * 100)}% Match
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-green-600 font-medium">✓ No similar projects found. Your topic seems unique!</p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-slate-100" />
+
+              {/* Recommended Mentors */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-800">Recommended Supervisors</h4>
+                {aiData.supervisors && aiData.supervisors.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {aiData.supervisors.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        className="bg-slate-50 border border-slate-200 p-4 rounded-lg flex flex-col justify-between"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <h5 className="font-semibold text-slate-800 text-sm">{item.name}</h5>
+                              <p className="text-xs text-slate-500">{item.department || "General Department"}</p>
+                            </div>
+                            <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full flex-shrink-0">
+                              {Math.round(item.score * 100)}% Fit
+                            </span>
+                          </div>
+                          
+                          <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-slate-300 pl-2.5 my-2">
+                            "{item.aiSummary || "Recommended based on similar academic focus areas."}"
+                          </p>
+                        </div>
+
+                        {item.experties && item.experties.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {item.experties.slice(0, 3).map((exp, eidx) => (
+                              <span 
+                                key={eidx} 
+                                className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 rounded-full px-2.5 py-0.5"
+                              >
+                                {exp}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">Provide more details to see supervisor recommendations.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {settings?.allowGroupProjects && (
             <>
