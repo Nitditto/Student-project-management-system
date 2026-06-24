@@ -5,6 +5,7 @@ import { Project } from "../../models/project.js";
 import { User } from "../../models/user.js";
 import { DefenseCouncil } from "../../models/defenseCouncil.js";
 import { SchedulerJob } from "../../models/schedulerJob.js";
+import { TeacherSchedule } from "../../models/teacherSchedule.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +64,10 @@ export const executeSchedulerJob = async (jobId) => {
       isActive: true
     }).select("name email experties embedding department").lean();
 
+    const teacherSchedules = await TeacherSchedule.find({
+      teacher: { $in: job.config.teacherIds }
+    }).lean();
+
     // 2. Prepare payload for worker
     const rawData = {
       projects,
@@ -71,7 +76,8 @@ export const executeSchedulerJob = async (jobId) => {
       timeSlots: job.config.timeSlots.map(slot => ({
         startAt: slot.startAt.toISOString(),
         endAt: slot.endAt.toISOString()
-      }))
+      })),
+      teacherSchedules
     };
 
     const rawConfig = {
@@ -101,6 +107,7 @@ export const executeSchedulerJob = async (jobId) => {
         name: `Hội đồng Phòng ${session.room} - ${formattedDate}`,
         description: `Hội đồng bảo vệ tự động lập lịch ngày ${formattedDate}`,
         defenseDate: dateObj,
+        defenseEndDate: new Date(session.timeSlot.endAt),
         room: session.room,
         members: session.councilMembers.map(m => ({
           teacher: m.teacher,

@@ -285,11 +285,20 @@ const CouncilsPage = () => {
     return () => clearInterval(interval);
   }, [jobId, solving]);
 
-  const checkTimeOverlap = (dateA, dateB) => {
-    if (!dateA || !dateB) return false;
-    const tA = new Date(dateA).getTime();
-    const tB = new Date(dateB).getTime();
-    return Math.abs(tA - tB) < 3.5 * 60 * 60 * 1000; // 3.5 hours
+  const checkCouncilsOverlap = (c1, c2) => {
+    if (!c1.defenseDate || !c2.defenseDate) return false;
+
+    const startA = new Date(c1.defenseDate).getTime();
+    const endA = c1.defenseEndDate 
+      ? new Date(c1.defenseEndDate).getTime() 
+      : startA + 3.5 * 60 * 60 * 1000;
+
+    const startB = new Date(c2.defenseDate).getTime();
+    const endB = c2.defenseEndDate 
+      ? new Date(c2.defenseEndDate).getTime() 
+      : startB + 3.5 * 60 * 60 * 1000;
+
+    return startA < endB && endA > startB;
   };
 
   const conflictsMap = useMemo(() => {
@@ -318,7 +327,7 @@ const CouncilsPage = () => {
         const c2 = councils[j];
         if (!c2.defenseDate || !c2.room) continue;
 
-        if (checkTimeOverlap(c1.defenseDate, c2.defenseDate)) {
+        if (checkCouncilsOverlap(c1, c2)) {
           // Room conflict
           if (c1.room.trim().toLowerCase() === c2.room.trim().toLowerCase()) {
             if (!map[c1._id]) map[c1._id] = { room: false, teachers: new Set(), projects: new Set(), supervisors: new Set() };
@@ -465,8 +474,15 @@ const CouncilsPage = () => {
           if (editingCouncilId && c._id === editingCouncilId) return;
           if (!c.defenseDate || !c.room) return;
 
-          const cDate = new Date(c.defenseDate);
-          const isTimeOverlapping = Math.abs(formDate - cDate) < 3.5 * 60 * 60 * 1000;
+          const formStart = formDate.getTime();
+          const formEnd = formStart + 3.5 * 60 * 60 * 1000;
+
+          const cStart = new Date(c.defenseDate).getTime();
+          const cEnd = c.defenseEndDate 
+            ? new Date(c.defenseEndDate).getTime() 
+            : cStart + 3.5 * 60 * 60 * 1000;
+
+          const isTimeOverlapping = formStart < cEnd && formEnd > cStart;
 
           if (isTimeOverlapping) {
             // Room conflict

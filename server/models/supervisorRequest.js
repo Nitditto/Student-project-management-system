@@ -16,6 +16,10 @@ const supervisorRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     project: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",

@@ -45,9 +45,11 @@ const ManageStudents = () => {
       (user) => user?.role.toLowerCase() === "student",
     );
     return studentUsers.map((student) => {
-      const studentProject = (projects || []).find(
-        (project) => (project.student?._id || project.student) === student._id,
-      );
+      const studentProject = (projects || []).find((project) => {
+        const leaderId = (project.student?._id || project.student || "").toString();
+        const memberIds = (project.members || []).map((m) => (m?._id || m || "").toString());
+        return leaderId === student._id.toString() || memberIds.includes(student._id.toString());
+      });
       return {
         ...student,
         projectTitle: studentProject?.title || null,

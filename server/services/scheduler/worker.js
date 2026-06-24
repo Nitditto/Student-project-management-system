@@ -7,6 +7,7 @@ import { NoSupervisorInCouncilConstraint } from "./rules/NoSupervisorInCouncilCo
 import { NoTeacherOverbookingConstraint } from "./rules/NoTeacherOverbookingConstraint.js";
 import { NoRoomOverbookingConstraint } from "./rules/NoRoomOverbookingConstraint.js";
 import { ExpertiseCosineMatchConstraint } from "./rules/ExpertiseCosineMatchConstraint.js";
+import { TeacherAvailabilityConstraint } from "./rules/TeacherAvailabilityConstraint.js";
 
 const runSolver = async () => {
   try {
@@ -17,6 +18,7 @@ const runSolver = async () => {
       new NoSupervisorInCouncilConstraint(),
       new NoTeacherOverbookingConstraint(),
       new NoRoomOverbookingConstraint(),
+      new TeacherAvailabilityConstraint(),
       new ExpertiseCosineMatchConstraint(config.expertiseWeight || 5.0)
     ];
 

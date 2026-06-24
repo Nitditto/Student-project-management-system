@@ -231,12 +231,12 @@ const teacherSlice = createSlice({
       const updatedRequest = action.payload;
       state.list = state.list.map((request) =>
         request._id === updatedRequest._id
-          ? { ...request, status: "accepted" }
+          ? { ...request, ...updatedRequest }
           : request,
       );
       state.pendingRequests = state.pendingRequests.map((request) =>
         request._id === updatedRequest._id
-          ? { ...request, status: "accepted" }
+          ? { ...request, ...updatedRequest }
           : request,
       );
     });

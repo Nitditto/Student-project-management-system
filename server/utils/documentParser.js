@@ -11,14 +11,25 @@ const pdf = require("pdf-parse");
  * @returns {Promise<string>} Clean text content
  */
 export const parseDocument = async (filePath) => {
-  if (!filePath || !fs.existsSync(filePath)) {
-    console.warn(`File path empty or does not exist: ${filePath}`);
-    return "";
-  }
+  let buffer;
+  let ext;
 
   try {
-    const ext = filePath.split(".").pop().toLowerCase();
-    const buffer = fs.readFileSync(filePath);
+    if (filePath && (filePath.startsWith("http://") || filePath.startsWith("https://"))) {
+      const response = await fetch(filePath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file from remote URL: ${filePath}`);
+      }
+      buffer = Buffer.from(await response.arrayBuffer());
+      ext = filePath.split("?")[0].split(".").pop().toLowerCase();
+    } else {
+      if (!filePath || !fs.existsSync(filePath)) {
+        console.warn(`File path empty or does not exist: ${filePath}`);
+        return "";
+      }
+      buffer = fs.readFileSync(filePath);
+      ext = filePath.split(".").pop().toLowerCase();
+    }
     return parseBufferByExt(buffer, ext, filePath);
   } catch (error) {
     console.error(`Error parsing document at ${filePath}:`, error.message);

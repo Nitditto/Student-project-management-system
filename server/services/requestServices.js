@@ -19,7 +19,14 @@ export const getAllRequest = async (filters) => {
   const requests = await SupervisorRequest.find(filters)
     .populate("student", "name email")
     .populate("supervisor", "name email")
-    .populate("project", "title groupName members projectMode")
+    .populate({
+      path: "project",
+      select: "title groupName members projectMode student supervisor status",
+      populate: {
+        path: "student",
+        select: "name email"
+      }
+    })
     .sort({ createdAt: -1 });
   const total = await SupervisorRequest.countDocuments(filters);
 
@@ -30,7 +37,14 @@ export const acceptRequest = async (requestId, supervisorId) => {
   const request = await SupervisorRequest.findById(requestId)
     .populate("student", "name email supervisor project")
     .populate("supervisor", "name email assignedStudents maxStudent")
-    .populate("project", "student members supervisor status archiveLocked");
+    .populate({
+      path: "project",
+      select: "student members supervisor status archiveLocked",
+      populate: {
+        path: "student",
+        select: "name email supervisor project"
+      }
+    });
   if (!request) {
     throw new Error("Request not found");
   }
@@ -41,13 +55,38 @@ export const acceptRequest = async (requestId, supervisorId) => {
     throw new Error("Request has already been processed");
   }
 
+  request.status = "approved";
+  await request.save();
+
+  // Automatically cancel other pending requests for the same project
+  const projectId = request.project?._id || request.project;
+  if (projectId) {
+    await SupervisorRequest.updateMany(
+      {
+        project: projectId,
+        _id: { $ne: request._id },
+        status: "pending"
+      },
+      {
+        $set: { status: "cancelled" }
+      }
+    );
+  }
+
   return request;
 };
 
 export const rejectRequest = async (requestId, supervisorId) => {
   const request = await SupervisorRequest.findById(requestId)
     .populate("student", "name email")
-    .populate("supervisor", "name email");
+    .populate("supervisor", "name email")
+    .populate({
+      path: "project",
+      populate: {
+        path: "student",
+        select: "name email"
+      }
+    });
   if (!request) {
     throw new Error("Request not found");
   }

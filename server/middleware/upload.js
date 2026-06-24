@@ -119,4 +119,76 @@ const decodeFilenameMiddleware = (req, res, next) => {
   next();
 };
 
-export { upload, handleUploadError, decodeFilenameMiddleware };
+import { uploadToCloud } from "../services/supabaseStorage.js";
+
+const uploadToCloudMiddleware = async (req, res, next) => {
+  // If no files uploaded, continue
+  if (!req.file && !req.files) {
+    return next();
+  }
+
+  try {
+    // Handle single file (multer upload.single())
+    if (req.file) {
+      const destination = `uploads/${Date.now()}-${req.file.filename}`;
+      const cloudUrl = await uploadToCloud(req.file.path, destination, req.file.mimetype);
+      if (cloudUrl) {
+        req.file.path = cloudUrl; // Replace local path with cloud URL!
+      }
+    }
+
+    // Handle multiple files (multer upload.array() or upload.fields())
+    if (req.files) {
+      if (Array.isArray(req.files)) {
+        await Promise.all(
+          req.files.map(async (file) => {
+            const destination = `uploads/${Date.now()}-${file.filename}`;
+            const cloudUrl = await uploadToCloud(file.path, destination, file.mimetype);
+            if (cloudUrl) {
+              file.path = cloudUrl; // Replace local path with cloud URL!
+            }
+          })
+        );
+      } else {
+        // Multi-fields object (e.g. { files: [...], evidence: [...] })
+        const keys = Object.keys(req.files);
+        await Promise.all(
+          keys.map(async (key) => {
+            await Promise.all(
+              req.files[key].map(async (file) => {
+                const destination = `uploads/${Date.now()}-${file.filename}`;
+                const cloudUrl = await uploadToCloud(file.path, destination, file.mimetype);
+                if (cloudUrl) {
+                  file.path = cloudUrl; // Replace local path with cloud URL!
+                }
+              })
+            );
+          })
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[uploadToCloudMiddleware] Cloud upload failed:", err.message);
+  }
+
+  next();
+};
+
+// Redefine standard multer methods to automatically chain the cloud upload middleware
+const originalSingle = upload.single;
+const originalArray = upload.array;
+const originalFields = upload.fields;
+
+upload.single = function (...args) {
+  return [originalSingle.apply(upload, args), uploadToCloudMiddleware];
+};
+
+upload.array = function (...args) {
+  return [originalArray.apply(upload, args), uploadToCloudMiddleware];
+};
+
+upload.fields = function (...args) {
+  return [originalFields.apply(upload, args), uploadToCloudMiddleware];
+};
+
+export { upload, handleUploadError, decodeFilenameMiddleware, uploadToCloudMiddleware };

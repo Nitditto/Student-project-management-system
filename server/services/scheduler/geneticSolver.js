@@ -21,10 +21,16 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
     if (projects.length === 0 || teachers.length === 0 || rooms.length === 0 || timeSlots.length === 0) {
       throw new Error("Cannot run scheduler: projects, teachers, rooms, and timeSlots must not be empty.");
     }
+    if (teachers.length < 3) {
+      throw new Error("Cannot run scheduler: Need at least 3 teachers to form a council.");
+    }
 
     // Context for rule evaluator
     const teacherMap = new Map(teachers.map(t => [t._id.toString(), t]));
-    const context = { teacherMap };
+    const context = { 
+      teacherMap,
+      teacherSchedules: data.teacherSchedules || []
+    };
 
     // Helper: Translate chromosome (sessions) to flat assignments for rules
     const chromosomeToAssignments = (chromosome) => {
@@ -82,7 +88,7 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
         // Choose 3 distinct random teachers for council
         const shuffledTeachers = [...teachers].sort(() => 0.5 - Math.random());
         session.councilMembers = [
-          { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 2.0 },
+          { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 1.5 },
           { teacher: shuffledTeachers[1]._id, role: "secretary", weight: 1.0 },
           { teacher: shuffledTeachers[2]._id, role: "member", weight: 1.0 }
         ];
@@ -189,6 +195,9 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
             scheduledProjectIds.add(pId);
             return true;
           });
+          if (session.projects.length === 0) {
+            session.councilMembers = [];
+          }
         }
 
         // Re-distribute any missing projects
@@ -206,6 +215,16 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
             : teachers[0]._id;
 
           targetSess.projects.push({ project, reviewer });
+
+          // If this session was previously empty, assign council members
+          if (!targetSess.councilMembers || targetSess.councilMembers.length === 0) {
+            const shuffledTeachers = [...teachers].sort(() => 0.5 - Math.random());
+            targetSess.councilMembers = [
+              { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 1.5 },
+              { teacher: shuffledTeachers[1]._id, role: "secretary", weight: 1.0 },
+              { teacher: shuffledTeachers[2]._id, role: "member", weight: 1.0 }
+            ];
+          }
         }
 
         // Mutation
@@ -219,6 +238,21 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
 
             const randSessDest = childChromosome[Math.floor(Math.random() * childChromosome.length)];
             randSessDest.projects.push(pItem);
+
+            // If destination was empty, assign council members
+            if (!randSessDest.councilMembers || randSessDest.councilMembers.length === 0) {
+              const shuffledTeachers = [...teachers].sort(() => 0.5 - Math.random());
+              randSessDest.councilMembers = [
+                { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 1.5 },
+                { teacher: shuffledTeachers[1]._id, role: "secretary", weight: 1.0 },
+                { teacher: shuffledTeachers[2]._id, role: "member", weight: 1.0 }
+              ];
+            }
+
+            // If source session becomes empty, clear its council members
+            if (randSessSrc.projects.length === 0) {
+              randSessSrc.councilMembers = [];
+            }
           }
 
           // Mutate a random session's teachers
@@ -226,7 +260,7 @@ export class GeneticAlgorithmSolver extends ISchedulerSolver {
           if (randSess.projects.length > 0) {
             const shuffledTeachers = [...teachers].sort(() => 0.5 - Math.random());
             randSess.councilMembers = [
-              { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 2.0 },
+              { teacher: shuffledTeachers[0]._id, role: "chairman", weight: 1.5 },
               { teacher: shuffledTeachers[1]._id, role: "secretary", weight: 1.0 },
               { teacher: shuffledTeachers[2]._id, role: "member", weight: 1.0 }
             ];

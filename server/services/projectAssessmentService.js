@@ -565,6 +565,7 @@ export const updateTeacherMilestoneSubmission = async ({
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }
+  ensureProjectEditable(project);
 
   const assessment = await ProjectAssessment.findOne({
     project: projectId,
@@ -783,6 +784,7 @@ export const finalizeProjectAssessment = async ({
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }
+  ensureProjectEditable(project);
 
   const council = await DefenseCouncil.findById(councilId);
   if (!council) {

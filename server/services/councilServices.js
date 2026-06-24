@@ -196,10 +196,17 @@ export const createCouncil = async (payload) => {
 
   await ensureCouncilMembersValid(members);
 
+  const defenseDate = payload.defenseDate ? new Date(payload.defenseDate) : null;
+  let defenseEndDate = null;
+  if (defenseDate) {
+    defenseEndDate = new Date(defenseDate.getTime() + 3.5 * 60 * 60 * 1000);
+  }
+
   return DefenseCouncil.create({
     name: payload.name,
     description: payload.description || "",
-    defenseDate: payload.defenseDate || null,
+    defenseDate,
+    defenseEndDate,
     room: payload.room || "",
     members,
     status: "draft",
@@ -244,6 +251,11 @@ export const updateCouncil = async (councilId, payload) => {
   council.name = payload.name;
   council.description = payload.description || "";
   council.defenseDate = payload.defenseDate || null;
+  if (payload.defenseDate) {
+    council.defenseEndDate = new Date(new Date(payload.defenseDate).getTime() + 3.5 * 60 * 60 * 1000);
+  } else {
+    council.defenseEndDate = null;
+  }
   council.room = payload.room || "";
   council.members = members;
   await council.save();

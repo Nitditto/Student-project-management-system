@@ -58,6 +58,11 @@ export const getRequest = asyncHandler(async (req, res) => {
       const requestObj =
         typeof reqObj.toObject === "function" ? reqObj.toObject() : reqObj;
 
+      // Fallback: Use project's student if student field is missing/undefined/null
+      if (!requestObj.student && requestObj.project?.student) {
+        requestObj.student = requestObj.project.student;
+      }
+
       if (requestObj?.project?._id) {
         return { ...requestObj, latestProject: requestObj.project };
       }
@@ -92,35 +97,52 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
   const request = await requestServices.acceptRequest(requestId, teacherId);
   if (!request) return next(new ErrorHandler("Request not found", 404));
   
-  // 1. Cập nhật học sinh
-  await User.findByIdAndUpdate(request.student._id, {
-    supervisor: teacherId,
-  });
+  const student = request.student || request.project?.student;
+  if (!student || !student._id) {
+    return next(new ErrorHandler("No student associated with this request", 400));
+  }
+  const studentId = student._id;
+
+  // Retrieve project safely (by ID or fallback to student search)
+  const studentProject = request.project
+    ? await Project.findById(request.project._id || request.project)
+    : await Project.findOne({ student: studentId });
+
+  const memberIds = studentProject
+    ? getProjectMemberIds(studentProject)
+    : [studentId];
+
+  // 1. Cập nhật học sinh (tất cả thành viên trong nhóm)
+  await Promise.all(
+    memberIds.map((mId) =>
+      User.findByIdAndUpdate(mId, {
+        supervisor: teacherId,
+      })
+    )
+  );
 
   // 2. Cập nhật giáo viên
   await User.findByIdAndUpdate(teacherId, {
-    $addToSet: { assignedStudents: request.student._id },
+    $addToSet: { assignedStudents: { $each: memberIds } },
   });
 
   // 3. Cập nhật Project của học sinh
-  const studentProject = await Project.findOne({ student: request.student._id });
   if (studentProject) {
     studentProject.supervisor = teacherId;
-    if (studentProject.status === "pending") {
+    if (studentProject.status === "pending" || studentProject.status === "created") {
       studentProject.status = "approved";
     }
     await studentProject.save();
   }
 
   await notificationServices.notifyUser(
-    request.student._id,
+    studentId,
     `Your supervisor request has been accepted by ${req.user.name}`,
     "approval",
     "/student/status",
     "low",
   );
 
-  const student = await User.findById(request.student._id);
   const message = generateRequestAcceptedTemplate(req.user.name);
   await sendEmail({
     to: student.email,
@@ -128,10 +150,17 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
     message,
   });
   await invalidateCache(`teacher:assigned_students:${teacherId}`);
+
+  // Fallback: Populate request student details in serialized output to prevent frontend from clearing student info
+  const requestObj = request.toObject ? request.toObject() : request;
+  if (!requestObj.student) {
+    requestObj.student = student;
+  }
+
   res.status(200).json({
     success: true,
     message: "Request accepted successfully",
-    data: { request },
+    data: { request: requestObj },
   });
 });
 
@@ -144,12 +173,18 @@ export const rejectRequest = asyncHandler(async (req, res, next) => {
     throw new ErrorHandler("Request not found", 404);
   }
 
+  const student = request.student || request.project?.student;
+  if (!student || !student._id) {
+    throw new ErrorHandler("No student associated with this request", 400);
+  }
+  const studentId = student._id;
+
   const studentProject = request.project
     ? await Project.findById(request.project)
-    : await Project.findOne({ student: request.student._id });
+    : await Project.findOne({ student: studentId });
   const memberIds = studentProject
     ? getProjectMemberIds(studentProject)
-    : [request.student._id];
+    : [studentId];
 
   await Promise.all(
     memberIds.map((memberId) =>
@@ -163,7 +198,6 @@ export const rejectRequest = asyncHandler(async (req, res, next) => {
     ),
   );
 
-  const student = await User.findById(request.student._id);
   const message = generateRequestRejectedTemplate(req.user.name);
   await sendEmail({
     to: student.email,

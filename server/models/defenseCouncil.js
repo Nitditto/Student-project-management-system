@@ -180,6 +180,10 @@ const defenseCouncilSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    defenseEndDate: {
+      type: Date,
+      default: null,
+    },
     room: {
       type: String,
       trim: true,

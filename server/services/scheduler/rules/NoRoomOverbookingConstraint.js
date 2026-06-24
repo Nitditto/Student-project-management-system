@@ -38,6 +38,11 @@ export class NoRoomOverbookingConstraint extends BaseConstraint {
       const otherStart = new Date(otherSlot.startAt).getTime();
       const otherEnd = new Date(otherSlot.endAt).getTime();
 
+      // If they are in the same session (same room, same start and end times), they do not conflict.
+      if (otherStart === startAt && otherEnd === endAt) {
+        continue;
+      }
+
       // Check for time overlap
       const isOverlapping = (startAt < otherEnd && endAt > otherStart);
       if (isOverlapping) {

@@ -10,6 +10,7 @@ export class NoTeacherOverbookingConstraint extends BaseConstraint {
   }
 
   evaluate(assignment, context) {
+    const room = assignment.room;
     const timeSlot = assignment.timeSlot;
     if (!timeSlot || !timeSlot.startAt || !timeSlot.endAt) return 1.0;
 
@@ -39,6 +40,11 @@ export class NoTeacherOverbookingConstraint extends BaseConstraint {
 
       const otherStart = new Date(otherSlot.startAt).getTime();
       const otherEnd = new Date(otherSlot.endAt).getTime();
+
+      // If they are in the same session (same room, same start and end times), they do not conflict.
+      if (other.room === room && otherStart === startAt && otherEnd === endAt) {
+        continue;
+      }
 
       // Check for time overlap
       const isOverlapping = (startAt < otherEnd && endAt > otherStart);

@@ -98,7 +98,7 @@ const PendingRequests = () => {
             >
               <option value="all">All Requests</option>
               <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
+              <option value="approved">Accepted</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
@@ -139,7 +139,7 @@ const PendingRequests = () => {
                         {req?.student?.name || "Unknown Student"}
                       </h3>
                       <span
-                        className={`badge ${req.status === "pending" ? "badge-pending" : req.status === "accepted" ? "badge-approved" : "badge-rejected"}`}
+                        className={`badge ${req.status === "pending" ? "badge-pending" : (req.status === "accepted" || req.status === "approved") ? "badge-approved" : "badge-rejected"}`}
                       >
                         {req.status?.charAt(0).toUpperCase() +
                           req.status?.slice(1)}
