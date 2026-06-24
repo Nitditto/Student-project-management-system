@@ -1,5 +1,6 @@
 import ErrorHandler from "../middleware/error.js";
 import { Project } from "../models/project.js";
+import { uploadToSupabase, buildStoragePath } from "./supabaseService.js";
 export const getStudentProject = async (studentId) => {
   return await Project.findOne({
     $or: [{ student: studentId }, { members: studentId }],

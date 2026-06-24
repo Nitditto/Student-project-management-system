@@ -1,0 +1,19 @@
+BÁO CÁO THỬ NGHIỆM ĐỀ TÀI NGHIÊN CỨU KHOA HỌC
+TÊN ĐỀ TÀI: Xây dựng hệ thống quản lý học tập thông minh dựa trên AI
+
+TÓM TẮT ĐỀ TÀI:
+Nghiên cứu này đề xuất giải pháp tích hợp các mô hình ngôn ngữ lớn (LLM) và kỹ thuật RAG (Retrieval-Augmented Generation) vào quy trình quản lý dự án tốt nghiệp của sinh viên. Hệ thống tự động phân tích độ trùng lặp đề tài bằng cơ chế so khớp vector ngữ nghĩa, đồng thời tự động đánh giá tiến độ bài nộp dựa trên các chuẩn đầu ra (CLO) của học phần.
+
+Chương 1: Phân tích bài toán
+Quy trình hướng dẫn và chấm điểm dự án hiện tại còn thủ công, tốn nhiều thời gian của giảng viên. Sinh viên gặp khó khăn trong việc định hướng và tự đánh giá chất lượng tài liệu trước khi nộp. Nhóm đề xuất xây dựng công cụ Submission Analysis Engine hoạt động trực tuyến để hỗ trợ giải quyết vấn đề này.
+
+Chương 2: Thiết kế giải pháp
+Kiến trúc hệ thống bao gồm:
+1. Module trích xuất văn bản từ tài liệu PDF/Docx.
+2. Module phân đoạn ngữ nghĩa để băm nhỏ báo cáo thành các chunk 500 từ.
+3. Module tạo vector embedding sử dụng mô hình Gemini text-embedding-004.
+4. Module kiểm tra trùng lặp bằng cách tính toán khoảng cách cosine similarity.
+5. Gating logic tự động kiểm tra độ tin cậy để quyết định có gọi RAG bổ trợ hay không.
+
+Chương 3: Triển khai thử nghiệm
+Nhóm đã phát triển mã nguồn backend bằng NodeJS, kết nối cơ sở dữ liệu MongoDB và sử dụng thư viện @google/generative-ai. Ở frontend, chúng tôi xây dựng dashboard trực quan với thang điểm progress bar cho từng CLO và biểu đồ gauge hiển thị phần trăm trùng lặp. Kết quả thử nghiệm bước đầu cho thấy độ chính xác đạt trên 85% và thời gian phản hồi trung bình khoảng 3-5 giây.

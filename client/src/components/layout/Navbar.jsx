@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { logout } from "../../store/slices/authSlice";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LogOut } from "lucide-react";
 import QrScannerModal from "../modal/QrScannerModal";
 import NotificationDetailModal from "../modal/NotificationDetailModal";
@@ -94,6 +95,15 @@ const faqData = [
 ];
 
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language;
+
+  const toggleLanguage = () => {
+    const newLang = currentLanguage === "vi" ? "en" : "vi";
+    i18n.changeLanguage(newLang);
+    localStorage.setItem("language", newLang);
+  };
+
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -239,7 +249,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 </div>
                 <div className="ml-3 hidden sm:block">
                   <h1 className="text-lg font-semibold text-slate-800">
-                    Final Year Project Management System
+                    {t("app.title")}
                   </h1>
                 </div>
               </div>
@@ -247,6 +257,21 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center space-x-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition duration-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              title={currentLanguage === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+            >
+              <span className={`transition-all duration-300 ${currentLanguage === "vi" ? "text-blue-600 font-bold" : "text-slate-400"}`}>
+                VN
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className={`transition-all duration-300 ${currentLanguage === "en" ? "text-blue-600 font-bold" : "text-slate-400"}`}>
+                EN
+              </span>
+            </button>
+
             <button
               id="navbar-help"
               onClick={() => {
@@ -255,7 +280,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 setProfileDropdownOpen(false);
               }}
               className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Quy trình & Hướng dẫn bảo vệ"
+              title={t("nav.help")}
             >
               <HelpCircle className="h-5 w-5" />
             </button>
@@ -267,7 +292,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                   setProfileDropdownOpen(false);
                 }}
                 className="relative rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title="Notifications"
+                title={t("nav.notifications")}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -283,12 +308,12 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
-                          Notifications
+                          {t("nav.notifications")}
                         </p>
                         <p className="text-xs text-slate-500">
                           {unreadCount > 0
-                            ? `${unreadCount} unread updates`
-                            : "All caught up"}
+                            ? `${unreadCount} ${t("nav.unreadUpdates")}`
+                            : t("nav.allCaughtUp")}
                         </p>
                       </div>
                       {unreadCount > 0 && (
@@ -296,7 +321,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                           className="text-xs font-medium text-blue-600 hover:text-blue-700"
                           onClick={() => dispatch(markAllAsRead())}
                         >
-                          Mark all as read
+                          {t("nav.markAllAsRead")}
                         </button>
                       )}
                     </div>
@@ -352,7 +377,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                       ))
                     ) : (
                       <div className="px-4 py-10 text-center text-sm text-slate-500">
-                        No notifications yet.
+                        {t("nav.noNotifications")}
                       </div>
                     )}
                   </div>
@@ -367,7 +392,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                           navigate(notificationsPagePath);
                         }}
                       >
-                        View All Notifications
+                        {t("nav.viewAllNotifications")}
                       </button>
                     </div>
                   )}
@@ -379,7 +404,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
               <button
                 id="navbar-qr-scanner"
                 onClick={() => setScannerOpen(true)}
-                title="Scan attendance QR"
+                title={t("nav.scanQr")}
                 className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <AiOutlineScan className="h-6 w-6" />
@@ -443,7 +468,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                         className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <Settings className="w-4 h-4 mr-3 text-slate-400" />
-                        Settings
+                        {t("nav.settings")}
                       </Link>
                     </div>
                     <div className="border-t border-slate-100 py-1">
@@ -452,7 +477,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                         onClick={handleLogout}
                       >
                         <LogOut className="w-4 h-4 mr-3 text-red-400" />
-                        Sign out
+                        {t("nav.signOut")}
                       </button>
                     </div>
                   </div>
@@ -501,10 +526,12 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">
-                    Quy trình & Hướng dẫn Bảo vệ Đồ án
+                    {t("nav.help")}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Thông tin chi tiết từng bước & giải đáp thắc mắc
+                    {currentLanguage === "vi"
+                      ? "Thông tin chi tiết từng bước & giải đáp thắc mắc"
+                      : "Detailed step-by-step information & FAQs"}
                   </p>
                 </div>
               </div>
@@ -526,7 +553,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                Quy trình 7 bước
+                {t("nav.steps")}
               </button>
               <button
                 onClick={() => setActiveTab("faq")}
@@ -536,7 +563,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                Câu hỏi thường gặp (Q&A)
+                {t("nav.faq")}
               </button>
             </div>
 

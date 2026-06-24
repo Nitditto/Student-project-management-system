@@ -11,7 +11,7 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
-    allowedHosts: ["uninclusive-unpatronizable-ossie.ngrok-free.dev", "localhost"],
+    allowedHosts: ["clubhouse-wrath-awhile.ngrok-free.dev", "localhost"],
     watch: {
       usePolling: true,
     },

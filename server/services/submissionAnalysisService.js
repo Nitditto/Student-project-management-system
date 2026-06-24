@@ -6,6 +6,7 @@ import { AssessmentTemplate } from "../models/assessmentTemplate.js";
 import { ProjectAssessment } from "../models/projectAssessment.js";
 import { parseDocument } from "../utils/documentParser.js";
 import { SubmissionChunk } from "../models/submissionChunk.js";
+import redisClient from "../config/redisClient.js";
 
 import {
   generateEmbedding,
@@ -354,8 +355,11 @@ export const analyzeSubmission = async (submissionId, filePath, milestoneCode) =
 
   const studentId = submission.submittedBy;
 
-  // Check or create SubmissionAnalysis tracking document
-  let analysis = await SubmissionAnalysis.findOne({ submission: submissionId });
+  // Check or create SubmissionAnalysis tracking document (per milestone)
+  let analysis = await SubmissionAnalysis.findOne({
+    submission: submissionId,
+    "scoreEstimate.milestone": milestoneCode
+  });
   if (!analysis) {
     analysis = new SubmissionAnalysis({
       submission: submissionId,
@@ -538,14 +542,39 @@ export const analyzeSubmission = async (submissionId, filePath, milestoneCode) =
       : [];
     console.log(`[AI Engine] Retrieved ${feedbackExamples.length} highly rated few-shot examples for auto-learning.`);
 
-    // 7. Perform combined AI analysis in a single request to save tokens
+    // 7. Filter CLOs relevant to this milestone (weight > 0 in matrix)
+    const allClos = template.cloDefinitions || [];
+    const matrixData = template.matrix || {};
+    const relevantClos = allClos.filter(clo => {
+      let row;
+      if (matrixData.get) {
+        row = matrixData.get(clo.code);
+      } else {
+        row = matrixData[clo.code];
+      }
+      if (!row) return false;
+      const weight = Number(row.get ? row.get(milestoneCode) : (row[milestoneCode] || 0));
+      return weight > 0;
+    });
+
+    if (relevantClos.length === 0) {
+      console.warn(`[AI Engine] No CLOs with weight > 0 for milestone ${milestoneCode}. Using all CLOs as fallback.`);
+    }
+    const closToEvaluate = relevantClos.length > 0 ? relevantClos : allClos;
+
+    const milestoneDef = (template.milestoneDefinitions || []).find(m => m.code === milestoneCode);
+    console.log(`[AI Engine] Milestone ${milestoneCode}: Evaluating ${closToEvaluate.length}/${allClos.length} CLOs: ${closToEvaluate.map(c => c.code).join(", ")}`);
+
+    // 8. Perform combined AI analysis in a single request to save tokens
     console.log("[AI Engine] Querying Gemini for combined scoring and feedback (single request)...");
     const aiResult = await analyzeSubmissionSingleRequest(
       docText,
-      template.cloDefinitions || [],
+      closToEvaluate,
       feedbackExamples,
       similarProjects,
-      ragContext
+      ragContext,
+      milestoneCode,
+      milestoneDef?.label || ""
     );
 
     if (!aiResult || !aiResult.scoreEstimate || !aiResult.feedback) {
@@ -608,6 +637,16 @@ export const analyzeSubmission = async (submissionId, filePath, milestoneCode) =
     }
 
     console.log(`[AI Engine] Completed analysis successfully in ${analysis.processingTimeMs}ms.`);
+
+    // Cache result in Redis (TTL 1 hour)
+    try {
+      const cacheKey = `analysis:${submissionId}:${milestoneCode}`;
+      await redisClient.setEx(cacheKey, 3600, JSON.stringify(analysis.toObject()));
+      console.log(`[AI Engine] Cached analysis result with key: ${cacheKey}`);
+    } catch (cacheErr) {
+      console.warn("[Redis] Failed to cache analysis result:", cacheErr.message);
+    }
+
     return analysis;
 
   } catch (error) {

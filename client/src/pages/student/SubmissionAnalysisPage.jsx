@@ -50,7 +50,7 @@ const SubmissionAnalysisPage = () => {
   // Fetch or trigger analysis
   const fetchAnalysis = async (forceTrigger = false) => {
     try {
-      const response = await axiosInstance.get(`/ai/analyze-submission/${submissionId}`);
+      const response = await axiosInstance.get(`/ai/analyze-submission/${submissionId}?milestone=${milestoneFromUrl}`);
       
       if (!response.data.data || forceTrigger) {
         // Trigger a new analysis
@@ -94,7 +94,7 @@ const SubmissionAnalysisPage = () => {
       setPollingStage(stageCounter);
 
       try {
-        const response = await axiosInstance.get(`/ai/analyze-submission/${submissionId}`);
+        const response = await axiosInstance.get(`/ai/analyze-submission/${submissionId}?milestone=${milestoneFromUrl}`);
         const data = response.data.data;
         if (data && data.status !== "pending" && data.status !== "processing") {
           clearInterval(pollInterval);

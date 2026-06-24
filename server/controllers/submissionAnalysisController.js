@@ -5,6 +5,7 @@ import { Submission } from "../models/submission.js";
 import { SubmissionAnalysis } from "../models/submissionAnalysis.js";
 import { analyzeSubmission } from "../services/submissionAnalysisService.js";
 import ErrorHandler from "../middleware/error.js";
+import redisClient from "../config/redisClient.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,80 +45,94 @@ export const triggerAnalysis = async (req, res, next) => {
       return next(new ErrorHandler("No uploaded files found in this submission to analyze", 400));
     }
 
-    // Resolve file URL to local server physical absolute path
-    const serverRoot = path.join(__dirname, "..");
-    
-    // Decode URI component to handle spaces and special characters in old filenames
-    let decodedFileUrl = selectedFileUrl;
-    try {
-      decodedFileUrl = decodeURIComponent(selectedFileUrl);
-    } catch (e) {
-      console.warn(`[AI Engine] Failed to decode file URL: ${selectedFileUrl}`, e.message);
-    }
+    // Resolve file URL: if remote and not a local upload path, pass directly. Otherwise, resolve to local filesystem.
+    let finalFilePath = selectedFileUrl;
 
-    let cleanRelativePath = decodedFileUrl;
+    const isRemote = selectedFileUrl.startsWith("http://") || selectedFileUrl.startsWith("https://");
+    const isLocalUpload = selectedFileUrl.includes("/uploads/");
 
-    // Handle full HTTP URLs by extracting the /uploads/ segment
-    const uploadsIndex = decodedFileUrl.indexOf("/uploads/");
-    if (uploadsIndex !== -1) {
-      cleanRelativePath = decodedFileUrl.substring(uploadsIndex);
-    }
-
-    const relativePath = cleanRelativePath.startsWith("/") ? cleanRelativePath.slice(1) : cleanRelativePath;
-    const absolutePath = path.join(serverRoot, relativePath);
-
-    if (!fs.existsSync(absolutePath)) {
-      console.warn(`[AI Engine] File not found at path: ${absolutePath}. Creating a fallback file so the analysis can proceed.`);
-      const ext = path.extname(absolutePath).toLowerCase();
-      const parentDir = path.dirname(absolutePath);
-      if (!fs.existsSync(parentDir)) {
-        fs.mkdirSync(parentDir, { recursive: true });
+    if (isRemote && !isLocalUpload) {
+      finalFilePath = selectedFileUrl;
+      console.log(`[AI Engine] File is remote, passing URL directly: ${finalFilePath}`);
+    } else {
+      const serverRoot = path.join(__dirname, "..");
+      
+      // Decode URI component to handle spaces and special characters in old filenames
+      let decodedFileUrl = selectedFileUrl;
+      try {
+        decodedFileUrl = decodeURIComponent(selectedFileUrl);
+      } catch (e) {
+        console.warn(`[AI Engine] Failed to decode file URL: ${selectedFileUrl}`, e.message);
       }
 
-      let copied = false;
-      if (ext === ".pdf") {
-        const sourcePdf1 = path.join(serverRoot, "uploads/temp/TTCS-1782298264920-778431082.pdf");
-        const sourcePdf2 = path.join(serverRoot, "uploads/projects/6a317a8460a804ad8deda943/TTCS-1782298030686-189135960.pdf");
-        if (fs.existsSync(sourcePdf1)) {
-          fs.copyFileSync(sourcePdf1, absolutePath);
-          copied = true;
-        } else if (fs.existsSync(sourcePdf2)) {
-          fs.copyFileSync(sourcePdf2, absolutePath);
-          copied = true;
-        }
-      } else if (ext === ".docx") {
-        const sourceDocx1 = path.join(serverRoot, "uploads/1778966728879-840436408.docx");
-        const sourceDocx2 = path.join(serverRoot, "uploads/temp/B23DCDT285_-_Bu_i_Nguye_n_Hoa_ng_Vie__t_-_Analysis-1782298485346-772384523.docx");
-        if (fs.existsSync(sourceDocx1)) {
-          fs.copyFileSync(sourceDocx1, absolutePath);
-          copied = true;
-        } else if (fs.existsSync(sourceDocx2)) {
-          fs.copyFileSync(sourceDocx2, absolutePath);
-          copied = true;
-        }
+      let cleanRelativePath = decodedFileUrl;
+
+      // Handle full HTTP URLs by extracting the /uploads/ segment
+      const uploadsIndex = decodedFileUrl.indexOf("/uploads/");
+      if (uploadsIndex !== -1) {
+        cleanRelativePath = decodedFileUrl.substring(uploadsIndex);
       }
 
-      if (!copied) {
-        // Fallback to copying sample_report.txt or creating a dummy file
-        const sourceTxt = path.join(serverRoot, "test/sample_report.txt");
-        if (fs.existsSync(sourceTxt)) {
-          fs.copyFileSync(sourceTxt, absolutePath);
-          console.log(`[AI Engine Fallback] Copied sample_report.txt to ${absolutePath}`);
-        } else {
-          fs.writeFileSync(
-            absolutePath,
-            `BÁO CÁO THỬ NGHIỆM ĐỀ TÀI CỦA SINH VIÊN\n\n` +
-            `Tên đề tài: Đề tài nghiên cứu khoa học và phát triển hệ thống AI\n` +
-            `Mục tiêu: Xây dựng hệ thống quản lý học tập thông minh.\n` +
-            `Nội dung: Trình bày chi tiết kiến trúc giải pháp và mô hình RAG tích hợp.\n`
-          );
-          console.log(`[AI Engine Fallback] Generated new dummy text file at ${absolutePath}`);
+      const relativePath = cleanRelativePath.startsWith("/") ? cleanRelativePath.slice(1) : cleanRelativePath;
+      const absolutePath = path.join(serverRoot, relativePath);
+
+      if (!fs.existsSync(absolutePath)) {
+        console.warn(`[AI Engine] File not found at path: ${absolutePath}. Creating a fallback file so the analysis can proceed.`);
+        const ext = path.extname(absolutePath).toLowerCase();
+        const parentDir = path.dirname(absolutePath);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+
+        let copied = false;
+        if (ext === ".pdf") {
+          const sourcePdf1 = path.join(serverRoot, "uploads/temp/TTCS-1782298264920-778431082.pdf");
+          const sourcePdf2 = path.join(serverRoot, "uploads/projects/6a317a8460a804ad8deda943/TTCS-1782298030686-189135960.pdf");
+          if (fs.existsSync(sourcePdf1)) {
+            fs.copyFileSync(sourcePdf1, absolutePath);
+            copied = true;
+          } else if (fs.existsSync(sourcePdf2)) {
+            fs.copyFileSync(sourcePdf2, absolutePath);
+            copied = true;
+          }
+        } else if (ext === ".docx") {
+          const sourceDocx1 = path.join(serverRoot, "uploads/1778966728879-840436408.docx");
+          const sourceDocx2 = path.join(serverRoot, "uploads/temp/B23DCDT285_-_Bu_i_Nguye_n_Hoa_ng_Vie__t_-_Analysis-1782298485346-772384523.docx");
+          if (fs.existsSync(sourceDocx1)) {
+            fs.copyFileSync(sourceDocx1, absolutePath);
+            copied = true;
+          } else if (fs.existsSync(sourceDocx2)) {
+            fs.copyFileSync(sourceDocx2, absolutePath);
+            copied = true;
+          }
+        }
+
+        if (!copied) {
+          // Fallback to copying sample_report.txt or creating a dummy file
+          const sourceTxt = path.join(serverRoot, "test/sample_report.txt");
+          if (fs.existsSync(sourceTxt)) {
+            fs.copyFileSync(sourceTxt, absolutePath);
+            console.log(`[AI Engine Fallback] Copied sample_report.txt to ${absolutePath}`);
+          } else {
+            fs.writeFileSync(
+              absolutePath,
+              `BÁO CÁO THỬ NGHIỆM ĐỀ TÀI CỦA SINH VIÊN\n\n` +
+              `Tên đề tài: Đề tài nghiên cứu khoa học và phát triển hệ thống AI\n` +
+              `Mục tiêu: Xây dựng hệ thống quản lý học tập thông minh.\n` +
+              `Nội dung: Trình bày chi tiết kiến trúc giải pháp và mô hình RAG tích hợp.\n`
+            );
+            console.log(`[AI Engine Fallback] Generated new dummy text file at ${absolutePath}`);
+          }
         }
       }
+      finalFilePath = absolutePath;
     }
 
-    // Check if analysis is already running
-    let analysis = await SubmissionAnalysis.findOne({ submission: submissionId });
+    // Check if analysis is already running for this milestone
+    let analysis = await SubmissionAnalysis.findOne({
+      submission: submissionId,
+      "scoreEstimate.milestone": milestoneCode
+    });
     if (analysis && analysis.status === "processing") {
       return res.status(200).json({
         success: true,
@@ -142,8 +157,15 @@ export const triggerAnalysis = async (req, res, next) => {
     analysis.errorMessage = null;
     await analysis.save();
 
+    // Invalidate Redis cache for this submission+milestone
+    try {
+      await redisClient.del(`analysis:${submissionId}:${milestoneCode}`);
+    } catch (cacheErr) {
+      console.warn("[Redis] Failed to invalidate cache:", cacheErr.message);
+    }
+
     // Trigger analysis asynchronously
-    analyzeSubmission(submissionId, absolutePath, milestoneCode)
+    analyzeSubmission(submissionId, finalFilePath, milestoneCode)
       .catch((err) => {
         console.error(`[AI Engine Controller] Background analysis failed for submission ${submissionId}:`, err);
       });
@@ -168,9 +190,33 @@ export const triggerAnalysis = async (req, res, next) => {
  */
 export const getAnalysisResult = async (req, res, next) => {
   const { submissionId } = req.params;
+  const milestoneCode = req.query.milestone || "";
 
   try {
-    const analysis = await SubmissionAnalysis.findOne({ submission: submissionId })
+    // 1. Check Redis cache first (if milestone is specified)
+    if (milestoneCode) {
+      try {
+        const cacheKey = `analysis:${submissionId}:${milestoneCode}`;
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          console.log(`[Cache Hit] analysis for ${submissionId}:${milestoneCode}`);
+          return res.status(200).json({
+            success: true,
+            data: JSON.parse(cached)
+          });
+        }
+      } catch (cacheErr) {
+        console.warn("[Redis] Cache read error:", cacheErr.message);
+      }
+    }
+
+    // 2. Query MongoDB (by milestone if specified)
+    const query = { submission: submissionId };
+    if (milestoneCode) {
+      query["scoreEstimate.milestone"] = milestoneCode;
+    }
+
+    const analysis = await SubmissionAnalysis.findOne(query)
       .populate("project", "title description")
       .populate("student", "name email");
 
@@ -179,6 +225,16 @@ export const getAnalysisResult = async (req, res, next) => {
         success: true,
         data: null
       });
+    }
+
+    // Cache in Redis if analysis is complete
+    if (analysis.status === "done" && milestoneCode) {
+      try {
+        const cacheKey = `analysis:${submissionId}:${milestoneCode}`;
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(analysis.toObject()));
+      } catch (cacheErr) {
+        console.warn("[Redis] Failed to populate cache:", cacheErr.message);
+      }
     }
 
     return res.status(200).json({

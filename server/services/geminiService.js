@@ -336,7 +336,9 @@ export const analyzeSubmissionSingleRequest = async (
   cloDefinitions = [],
   feedbackExamples = [],
   similarProjects = [],
-  ragContext = ""
+  ragContext = "",
+  milestoneCode = "",
+  milestoneLabel = ""
 ) => {
   const ai = getGenAIInstance();
   if (!documentText || documentText.trim() === "") {
@@ -350,7 +352,7 @@ export const analyzeSubmissionSingleRequest = async (
       return {
         cloCode: clo.code,
         estimatedScore: score,
-        rationale: `[Bản xem trước - Không có API Key] Đánh giá sơ bộ dựa trên các thuật ngữ liên quan đến ${clo.label}.`
+        rationale: `[Demo - Không có API Key] Đánh giá sơ bộ ${clo.label} cho giai đoạn ${milestoneCode || "N/A"}.`
       };
     });
     return {
@@ -390,58 +392,46 @@ export const analyzeSubmissionSingleRequest = async (
       ? similarProjects.map((p, idx) => `- Đề tài liên quan ${idx + 1}: "${p.title}"\n  Mô tả: ${p.description || "N/A"}`).join("\n")
       : "Không có đề tài liên quan.";
 
+    const milestoneInfo = milestoneCode
+      ? `\nBạn đang đánh giá giai đoạn: **${milestoneCode} - ${milestoneLabel || milestoneCode}**.\nCHỈ đánh giá các chuẩn đầu ra (CLO) được liệt kê dưới đây. KHÔNG thêm CLO nào khác ngoài danh sách này.\nĐánh giá dựa trên nội dung bài báo cáo có PHẢN ÁNH ĐÚNG yêu cầu của giai đoạn ${milestoneCode} hay không.\n`
+      : "";
+
     const prompt = `Bạn là một giảng viên hướng dẫn tốt nghiệp và chuyên gia đánh giá học thuật độc lập, tận tâm và sắc sảo.
-Dựa vào nội dung tài liệu báo cáo của sinh viên dưới đây, chuẩn đầu ra (CLO), danh sách các đề tài liên quan từ cơ sở tri thức và các ví dụ lịch sử, hãy thực hiện ĐỒNG THỜI hai nhiệm vụ sau:
-
+Dựa vào nội dung tài liệu báo cáo của sinh viên, hãy thực hiện ĐỒNG THỜI hai nhiệm vụ sau:
+${milestoneInfo}
 Nhiệm vụ 1: Ước lượng điểm số cho từng CLO theo thang điểm 1-5 (số nguyên từ 1 đến 5).
-Đồng thời tính toán độ tự tin (confidence score, từ 0 đến 1) của bạn đối với việc đánh giá này. Nếu thông tin trong tài liệu không đủ rõ ràng để đánh giá một số CLO, hãy giảm độ tự tin xuống dưới 0.70.
+Đồng thời tính toán độ tự tin (confidence score, từ 0 đến 1). Nếu tài liệu không đủ rõ ràng để đánh giá, hãy giảm confidence xuống dưới 0.70.
 
-Nhiệm vụ 2: Tạo phản hồi nhận xét cá nhân hóa bằng tiếng Việt để giúp sinh viên cải thiện chất lượng báo cáo tốt hơn. Nhận xét cần phân tích rõ điểm mạnh, điểm yếu và đề xuất giải pháp cụ thể dựa trên điểm số CLO ước lượng và so sánh với các đề tài liên quan.
+Nhiệm vụ 2: Tạo phản hồi nhận xét cá nhân hóa bằng tiếng Việt gồm điểm mạnh, điểm yếu và đề xuất cải thiện cụ thể dựa trên điểm CLO và nội dung báo cáo.
 
-Danh sách chuẩn đầu ra (CLO) cần đánh giá:
+Danh sách CLO cần đánh giá cho giai đoạn ${milestoneCode || "tổng hợp"}:
 ${cloStr}
 
----
-Các ví dụ tham khảo từ lịch sử đánh giá đã có phản hồi tốt (Dùng để học cách chấm):
-${examplesStr}
-
----
-Các đề tài liên quan trong cơ sở tri thức để tham khảo định hướng:
-${similarStr}
-
-${ragContext ? `---\nThông tin đối chiếu RAG (Dữ liệu đề tài tương tự và điểm số/nhận xét thực tế của Hội đồng bảo vệ trước đây):\n${ragContext}` : ""}
-
+${examplesStr !== "Không có ví dụ mẫu." ? `---\nVí dụ tham khảo lịch sử đánh giá:\n${examplesStr}\n` : ""}
+${similarStr !== "Không có đề tài liên quan." ? `---\nĐề tài liên quan trong cơ sở tri thức:\n${similarStr}\n` : ""}
+${ragContext ? `---\nĐối chiếu RAG (điểm số/nhận xét thực tế Hội đồng bảo vệ):\n${ragContext}\n` : ""}
 ---
 Nội dung tài liệu báo cáo của sinh viên:
 ${documentText.slice(0, 40000)}
 
 ---
-Hãy trả về kết quả dưới dạng JSON duy nhất có cấu trúc chính xác như sau:
+QUAN TRỌNG: Chỉ trả về JSON duy nhất với cấu trúc sau. Chỉ bao gồm các CLO đã liệt kê ở trên:
 {
   "scoreEstimate": {
     "cloBreakdown": [
       {
-        "cloCode": "Mã CLO (ví dụ: CLO1)",
+        "cloCode": "CLO1",
         "estimatedScore": 4,
-        "rationale": "Giải thích chi tiết tại sao chấm điểm này dựa trên nội dung cụ thể trong báo cáo (bằng tiếng Việt)"
+        "rationale": "Giải thích chi tiết bằng tiếng Việt"
       }
     ],
     "confidence": 0.85
   },
   "feedback": {
-    "strengths": [
-      "Điểm mạnh thứ nhất (cụ thể, dựa trên nội dung báo cáo)",
-      "Điểm mạnh thứ hai..."
-    ],
-    "weaknesses": [
-      "Điểm yếu hoặc phần thiếu sót thứ nhất",
-      "Điểm yếu hoặc phần thiếu sót thứ hai..."
-    ],
-    "suggestions": [
-      "Khuyến nghị cụ thể 1 để khắc phục điểm yếu và nâng cao điểm số",
-      "Khuyến nghị cụ thể 2..."
-    ],
-    "overallComment": "Nhận xét tổng quan mang tính động viên và định hướng hành động."
+    "strengths": ["Điểm mạnh cụ thể dựa trên nội dung báo cáo"],
+    "weaknesses": ["Điểm yếu / thiếu sót cần lưu ý"],
+    "suggestions": ["Khuyến nghị cụ thể để cải thiện"],
+    "overallComment": "Nhận xét tổng quan mang tính động viên và định hướng."
   }
 }
 `;

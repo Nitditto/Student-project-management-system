@@ -5,7 +5,7 @@ import { Submission } from "../models/submission.js";
 import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
 import * as notificationServices from "../services/notificationServices.js";
-import { uploadToSupabase, buildStoragePath } from "../services/supabaseService.js";
+import { uploadToSupabase, buildStoragePath, deleteFileByUrl } from "../services/supabaseService.js";
 
 const findStudentProject = (studentId) =>
   Project.findOne({
@@ -302,6 +302,17 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
   const firstFileName = filesList[0].fileName;
 
   if (submission) {
+    // Delete old files from Supabase Storage before overwriting
+    if (submission.files && submission.files.length > 0) {
+      for (const file of submission.files) {
+        if (file.fileUrl) {
+          await deleteFileByUrl(file.fileUrl);
+        }
+      }
+    } else if (submission.fileUrl) {
+      await deleteFileByUrl(submission.fileUrl);
+    }
+
     submission.fileUrl = firstFileUrl;
     submission.fileName = firstFileName;
     submission.files = filesList;
@@ -381,6 +392,17 @@ export const unsubmitDeadline = asyncHandler(async (req, res, next) => {
 
   if (!submission) {
     return next(new ErrorHandler("No submission found", 404));
+  }
+
+  // Delete files from Supabase Storage
+  if (submission.files && submission.files.length > 0) {
+    for (const file of submission.files) {
+      if (file.fileUrl) {
+        await deleteFileByUrl(file.fileUrl);
+      }
+    }
+  } else if (submission.fileUrl) {
+    await deleteFileByUrl(submission.fileUrl);
   }
 
   // Clear submission files info

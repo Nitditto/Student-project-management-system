@@ -162,10 +162,12 @@ const submissionAnalysisSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-submissionAnalysisSchema.index({ submission: 1 });
+submissionAnalysisSchema.index(
+  { submission: 1, "scoreEstimate.milestone": 1 },
+  { unique: true }
+);
 submissionAnalysisSchema.index({ project: 1 });
 submissionAnalysisSchema.index({ student: 1 });
-submissionAnalysisSchema.index({ "scoreEstimate.milestone": 1 });
 
 export const SubmissionAnalysis =
   mongoose.models.SubmissionAnalysis ||

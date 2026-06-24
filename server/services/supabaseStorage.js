@@ -5,8 +5,8 @@ import { config } from "dotenv";
 config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabaseBucket = process.env.SUPABASE_BUCKET || "fyp-storage";
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+const supabaseBucket = process.env.SUPABASE_BUCKET || "Student_Management";
 
 let supabase = null;
 
