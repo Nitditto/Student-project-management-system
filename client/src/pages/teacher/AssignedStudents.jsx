@@ -712,7 +712,6 @@ const AssignedStudents = () => {
                     <th className="p-4">Project Role</th>
                     <th className="p-4">Project Title</th>
                     <th className="p-4">Mode</th>
-                    <th className="p-4 rounded-tr-lg">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -770,12 +769,6 @@ const AssignedStudents = () => {
                             }`}
                           >
                             {mode === "group" ? "Group" : "Individual"}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>{" "}
-                            Active
                           </span>
                         </td>
                       </tr>

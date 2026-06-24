@@ -332,6 +332,17 @@ const Sidebar = ({ open, setOpen, userRole }) => {
   };
 
   const navigationItems = getNavigationItems();
+  const isItemActive = (item) => {
+    const currentPath = location.pathname.replace(/\/+$/, "");
+    const itemPath = item.path.replace(/\/+$/, "");
+    const roleRoot = `/${userRole?.toLowerCase()}`;
+
+    if (itemPath === roleRoot) {
+      return currentPath === itemPath;
+    }
+
+    return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+  };
 
   return (
     <>
@@ -343,13 +354,13 @@ const Sidebar = ({ open, setOpen, userRole }) => {
         <div className="flex flex-col h-full">
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigationItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = isItemActive(item);
 
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className={({ isActive }) => `
+                  className={`
                     flex items-center px-4 py-3 rounded-lg transition-all duration-200
                     ${isActive
                       ? "bg-blue-50 text-blue-700 border-r-4 border-blue-500"
@@ -451,13 +462,13 @@ const Sidebar = ({ open, setOpen, userRole }) => {
           {/* Mobile navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigationItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = isItemActive(item);
 
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className={({ isActive }) => `
+                  className={`
               flex items-center px-4 py-3 rounded-lg transition-all duration-200
               ${isActive
                       ? "bg-blue-50 text-blue-700"
