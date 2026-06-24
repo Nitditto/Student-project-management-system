@@ -40,6 +40,7 @@ import DeadlinesPage from "./pages/admin/DeadlinesPage";
 import ProjectsPage from "./pages/admin/ProjectsPage";
 import CouncilsPage from "./pages/admin/CouncilsPage";
 import RegistrationSettingsPage from "./pages/admin/RegistrationSettingsPage";
+import AutoScheduler from "./pages/admin/AutoScheduler";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -146,6 +147,7 @@ const App = () => {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="councils" element={<CouncilsPage />} />
           <Route path="registration-settings" element={<RegistrationSettingsPage />} />
+          <Route path="scheduler" element={<AutoScheduler />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
 

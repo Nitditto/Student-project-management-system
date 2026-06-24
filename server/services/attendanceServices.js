@@ -66,7 +66,7 @@ const syncSessionStatus = async (session) => {
   return session;
 };
 
-const buildStudentAttendanceSummary = (sessions, studentId) => {
+export const buildStudentAttendanceSummary = (sessions, studentId) => {
   const history = [];
 
   for (const session of sessions) {

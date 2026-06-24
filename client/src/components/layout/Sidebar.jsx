@@ -86,6 +86,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
           { name: "Deadlines", path: "/admin/deadlines", icon: "calendar" },
           { name: "Projects", path: "/admin/projects", icon: "folder" },
           { name: "Councils", path: "/admin/councils", icon: "academic" },
+          { name: "Auto Scheduler", path: "/admin/scheduler", icon: "clock" },
         ];
       default:
         return [];
