@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
 import { axiosInstance } from "../../lib/axios";
 import {
   AlertTriangle,
@@ -25,7 +27,7 @@ import { formatAssessmentScore } from "../../lib/assessment";
 
 const formatDateTime = (value) => {
   if (!value) return "N/A";
-  return new Date(value).toLocaleString("vi-VN");
+  return new Date(value).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US");
 };
 
 const getVietnameseDayOfWeek = (dateValue) => {
@@ -33,19 +35,31 @@ const getVietnameseDayOfWeek = (dateValue) => {
   const d = new Date(dateValue);
   if (isNaN(d.getTime())) return "";
   const day = d.getDay();
-  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-  return days[day];
+  const daysKeys = [
+    "student.deadlines.sun",
+    "student.deadlines.mon",
+    "student.deadlines.tue",
+    "student.deadlines.wed",
+    "student.deadlines.thu",
+    "student.deadlines.fri",
+    "student.deadlines.sat",
+  ];
+  return i18n.t(daysKeys[day]);
 };
 
 const formatCouncilSchedule = (defenseDate, room) => {
-  if (!defenseDate) return "Chưa xếp lịch";
+  if (!defenseDate) return i18n.t("admin.councils.notScheduled");
   const d = new Date(defenseDate);
-  if (isNaN(d.getTime())) return "Lịch không hợp lệ";
+  if (isNaN(d.getTime())) return i18n.t("admin.councils.invalidSchedule");
   const dayName = getVietnameseDayOfWeek(d);
-  const dateStr = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const timeStr = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  const roomInfo = room ? `Phòng: ${room}` : "Chưa xếp phòng";
-  return `${dayName}, ngày ${dateStr} vào lúc ${timeStr} | ${roomInfo}`;
+  const dateStr = d.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = d.toLocaleTimeString(i18n.language === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" });
+  const roomInfo = room ? i18n.t("admin.councils.roomInfo", { room }) : i18n.t("admin.councils.noRoom");
+  if (i18n.language === "vi") {
+    return `${dayName}, ngày ${dateStr} vào lúc ${timeStr} | ${roomInfo}`;
+  } else {
+    return `${dayName}, ${dateStr} at ${timeStr} | ${roomInfo}`;
+  }
 };
 
 const getPeriodFromDate = (dateValue) => {
@@ -141,6 +155,7 @@ const FieldBlock = ({ label, hint, children }) => (
 );
 
 const CouncilsPage = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [teachers, setTeachers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -897,7 +912,7 @@ const CouncilsPage = () => {
   }, [qaDashboard, isQaExpanded]);
 
   if (loading) {
-    return <div className="card text-center py-8">Loading councils...</div>;
+    return <div className="card text-center py-8">{t("admin.councils.loading", "Loading councils...")}</div>;
   }
 
   return (
@@ -905,9 +920,9 @@ const CouncilsPage = () => {
       {/* Header Block with Tab actions */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-lg p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Quản lý Hội đồng bảo vệ Đồ án</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("admin.councils.title")}</h1>
           <p className="text-indigo-100 text-sm">
-            Tạo hội đồng, quản lý lịch bảo vệ đồ án tốt nghiệp và phân bổ tài nguyên hợp lý.
+            {t("admin.councils.subtitle")}
           </p>
         </div>
         {activeTab === "list" && (
@@ -918,7 +933,7 @@ const CouncilsPage = () => {
               setIsFormModalOpen(true);
             }}
           >
-            Tạo Hội đồng mới
+            {t("admin.councils.createBtn")}
           </button>
         )}
       </div>
@@ -933,7 +948,7 @@ const CouncilsPage = () => {
               : "border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-300"
           }`}
         >
-          Danh sách Hội đồng
+          {t("admin.councils.listTab")}
         </button>
         <button
           onClick={() => setActiveTab("scheduler")}
@@ -943,7 +958,7 @@ const CouncilsPage = () => {
               : "border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-300"
           }`}
         >
-          Tự động lập lịch
+          {t("admin.councils.schedulerTab")}
         </button>
         <button
           onClick={() => setActiveTab("grid")}
@@ -953,7 +968,7 @@ const CouncilsPage = () => {
               : "border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-300"
           }`}
         >
-          Lịch trình tuần
+          {t("admin.councils.gridTab")}
         </button>
       </div>
 
@@ -963,9 +978,9 @@ const CouncilsPage = () => {
           {qaDashboard && (
             <div className="card space-y-4">
               <div className="card-header">
-                <h2 className="card-title">CLO QA Dashboard</h2>
+                <h2 className="card-title">{t("admin.councils.qaDashboardTitle", "CLO QA Dashboard")}</h2>
                 <p className="card-subtitle">
-                  Theo dõi kết quả đạt chuẩn đầu ra CLO, mức độ hoàn thiện minh chứng và các đề tài cần lưu ý về QA.
+                  {t("admin.councils.qaDashboardSub", "Theo dõi kết quả đạt chuẩn đầu ra CLO, mức độ hoàn thiện minh chứng và các đề tài cần lưu ý về QA.")}
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -1379,9 +1394,9 @@ const CouncilsPage = () => {
           {/* Genetic Algorithm title banner */}
           <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold mb-2">Tối ưu hóa Lịch Bảo vệ tự động (Genetic Algorithm)</h2>
+              <h2 className="text-xl font-bold mb-2">{t("admin.councils.autoTitle")}</h2>
               <p className="text-blue-100 text-sm">
-                Hệ thống tự động phân bổ phòng, phân công giảng viên và xếp slot bảo vệ tối ưu, tránh trùng lịch giáo viên/học sinh.
+                {t("admin.councils.autoIntro")}
               </p>
             </div>
             <button
@@ -1392,12 +1407,12 @@ const CouncilsPage = () => {
               {solving ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  Đang tính toán...
+                  {t("admin.councils.solving")}
                 </>
               ) : (
                 <>
                   <Play className="w-5 h-5 fill-current" />
-                  Bắt đầu lập lịch
+                  {t("admin.councils.runSolver")}
                 </>
               )}
             </button>
