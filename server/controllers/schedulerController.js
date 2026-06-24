@@ -168,3 +168,21 @@ export const discardSchedulerJob = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Lists all past scheduler jobs.
+ * Route: GET /api/v1/admin/scheduler/jobs
+ */
+export const getSchedulerJobs = async (req, res, next) => {
+  try {
+    const jobs = await SchedulerJob.find({})
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: jobs
+    });
+  } catch (error) {
+    next(error);
+  }
+};

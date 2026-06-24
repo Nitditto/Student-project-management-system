@@ -20,6 +20,26 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString("vi-VN");
 };
 
+const getVietnameseDayOfWeek = (dateValue) => {
+  if (!dateValue) return "";
+  const d = new Date(dateValue);
+  if (isNaN(d.getTime())) return "";
+  const day = d.getDay();
+  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+  return days[day];
+};
+
+const formatCouncilSchedule = (defenseDate, room) => {
+  if (!defenseDate) return "Chưa xếp lịch";
+  const d = new Date(defenseDate);
+  if (isNaN(d.getTime())) return "Lịch không hợp lệ";
+  const dayName = getVietnameseDayOfWeek(d);
+  const dateStr = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const roomInfo = room ? `Phòng: ${room}` : "Chưa xếp phòng";
+  return `${dayName}, ngày ${dateStr} vào lúc ${timeStr} | ${roomInfo}`;
+};
+
 const getProjectDisplayName = (project) => project?.groupName || project?.title || "N/A";
 const toEntityId = (value) => value?._id || value || "";
 
@@ -1440,7 +1460,7 @@ const DefenseHubPage = () => {
               <div className="mb-4">
                 <p className="font-semibold text-slate-800">{council.name}</p>
                 <p className="text-sm text-slate-500">
-                  {formatDateTime(council.defenseDate)} | Room: {council.room || "N/A"}
+                  {formatCouncilSchedule(council.defenseDate, council.room)}
                 </p>
               </div>
 

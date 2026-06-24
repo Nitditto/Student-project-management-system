@@ -5,11 +5,15 @@ import {
   AlertCircle,
   Bell,
   Calendar,
+  ChevronRight,
+  HelpCircle,
   MessageCircle,
+  Play,
   Settings,
   ShieldAlert,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 import { logout } from "../../store/slices/authSlice";
 import { Link } from "react-router-dom";
@@ -28,11 +32,75 @@ import {
 } from "../../lib/notifications";
 import { AiOutlineScan } from "react-icons/ai";
 
+const stepsData = [
+  {
+    number: "01",
+    title: "Đăng ký Đề tài & Xem Thông tin",
+    description: "Sử dụng mục Đăng ký đề tài trên hệ thống để điền tên đề tài, mô tả và lập đề cương chi tiết, sau đó theo dõi trạng thái phê duyệt trực tuyến từ GVHD và Bộ môn.",
+  },
+  {
+    number: "02",
+    title: "Quản lý Tiến độ & Điểm danh họp",
+    description: "Xem kế hoạch công việc tuần, ghi nhận nhật ký thực hiện và sử dụng nút Quét mã QR (cạnh Avatar) trên thanh điều hướng để điểm danh trong các buổi họp định kỳ với GVHD.",
+  },
+  {
+    number: "03",
+    title: "Nộp Báo cáo Học phần & Cột mốc",
+    description: "Truy cập tính năng 'Nộp bài' (Upload Files) để tải lên các tài liệu báo cáo tiến độ hoặc báo cáo dự thảo dưới dạng file PDF/DOCX (dung lượng tối đa 50MB) theo đúng thời hạn.",
+  },
+  {
+    number: "04",
+    title: "Đối chiếu Tài liệu & Xem Phân tích",
+    description: "Nhấp vào nút 'Phân tích học thuật' sau khi nộp file để hệ thống tự động đối chiếu cơ sở dữ liệu RAG, dự đoán điểm CLO, kiểm tra trùng lặp và gợi ý các khuyến nghị chỉnh sửa.",
+  },
+  {
+    number: "05",
+    title: "Theo dõi Đánh giá từ Giảng viên",
+    description: "Truy cập trang chi tiết bài nộp để xem trực tiếp các nhận xét, góp ý chi tiết cùng bảng điểm đánh giá độc lập từ GVHD và Giảng viên phản biện (GVPB).",
+  },
+  {
+    number: "06",
+    title: "Nhận Lịch Bảo vệ từ Thông báo",
+    description: "Kiểm tra biểu tượng Chuông thông báo (Bell) để nhận thông tin chi tiết về thời gian, phòng bảo vệ, số thứ tự thuyết trình và thành viên Hội đồng đánh giá.",
+  },
+  {
+    number: "07",
+    title: "Nộp Báo cáo Chỉnh sửa Hoàn thiện",
+    description: "Sau khi bảo vệ trước Hội đồng, thực hiện chỉnh sửa báo cáo theo góp ý và nộp bản PDF đồ án hoàn thiện cuối cùng lên hệ thống để lưu trữ và kết thúc học phần.",
+  },
+];
+
+const faqData = [
+  {
+    question: "Điều kiện để được bảo vệ đồ án tốt nghiệp là gì?",
+    answer: "Sinh viên cần hoàn thành đủ số tín chỉ tích lũy theo quy định, không bị kỷ luật, hoàn thành đồ án đúng hạn, được GVHD ký đồng ý cho bảo vệ, và tỷ lệ trùng lặp báo cáo (nếu có kiểm tra) nằm trong giới hạn cho phép của khoa (thường dưới 20%).",
+  },
+  {
+    question: "Tỷ lệ trùng lặp báo cáo đồ án được tính như thế nào?",
+    answer: "Hệ thống sẽ đối chiếu tự động báo cáo của bạn với cơ sở dữ liệu học thuật và internet. Kết quả trả về gồm tỷ lệ trùng lặp tổng quan và chi tiết từng phần. Nếu vượt quá giới hạn, sinh viên cần chỉnh sửa cách diễn đạt (paraphrase) và trích dẫn nguồn đúng quy chuẩn.",
+  },
+  {
+    question: "Thời gian thuyết trình và chất vấn tại Hội đồng là bao lâu?",
+    answer: "Thông thường mỗi sinh viên/nhóm sinh viên có 15-20 phút thuyết trình slide và demo sản phẩm, sau đó là 10-15 phút nghe câu hỏi nhận xét từ GV Phản biện, các thành viên Hội đồng và trả lời trực tiếp.",
+  },
+  {
+    question: "Em cần mang theo những tài liệu gì trong ngày bảo vệ?",
+    answer: "Bạn cần chuẩn bị slide trình chiếu (lưu trên USB và gửi trước cho thư ký), poster đồ án (nếu khoa yêu cầu treo), các bản in báo cáo (đã đóng quyển bìa mềm/cứng theo quy chuẩn), và máy tính cá nhân để chạy demo sản phẩm thực tế.",
+  },
+  {
+    question: "Làm thế nào nếu kết quả bảo vệ không đạt yêu cầu?",
+    answer: "Nếu điểm số từ hội đồng dưới trung bình hoặc đồ án bị bác bỏ, sinh viên sẽ phải thực hiện chỉnh sửa lớn dưới sự hướng dẫn của GVHD và đăng ký bảo vệ lại ở đợt sau (thường là học kỳ kế tiếp).",
+  },
+];
+
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("steps");
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
   const { authUser } = useSelector((state) => state.auth);
   const notifications = useSelector((state) => state.notification.list);
   const unreadCount = useSelector((state) => state.notification.unreadCount);
@@ -117,11 +185,14 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
       : "/student/notifications";
 
   return (
-    <nav className="fixed top-0 z-30 w-full border-b border-slate-200 bg-white shadow-sm">
+    <nav className={`fixed top-0 w-full border-b border-slate-200 bg-white shadow-sm ${
+      helpModalOpen || scannerOpen || selectedNotification ? "z-50" : "z-30"
+    }`}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between">
           <div className="flex items-center">
             <button
+              id="navbar-mobile-toggle"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -149,7 +220,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
               </svg>
             </button>
 
-            <div className="ml-4 flex items-center">
+            <div className="ml-4 flex items-center" id="navbar-logo">
               <div className="flex items-center">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500">
                   <svg
@@ -176,7 +247,20 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative">
+            <button
+              id="navbar-help"
+              onClick={() => {
+                setHelpModalOpen(true);
+                setNotificationsOpen(false);
+                setProfileDropdownOpen(false);
+              }}
+              className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Quy trình & Hướng dẫn bảo vệ"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+
+            <div className="relative" id="navbar-notifications">
               <button
                 onClick={() => {
                   setNotificationsOpen((current) => !current);
@@ -293,6 +377,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
 
             {authUser?.role === "Student" && (
               <button
+                id="navbar-qr-scanner"
                 onClick={() => setScannerOpen(true)}
                 title="Scan attendance QR"
                 className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -301,7 +386,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
               </button>
             )}
 
-            <div className="relative">
+            <div className="relative" id="navbar-profile">
               <button
                 onClick={() => {
                   setProfileDropdownOpen((current) => !current);
@@ -396,6 +481,172 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
           openNotificationDestination(selectedNotification)
         }
       />
+
+      {/* Help & Q&A Modal */}
+      {helpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setHelpModalOpen(false)}
+          />
+
+          {/* Modal content */}
+          <div className="relative z-10 w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <HelpCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Quy trình & Hướng dẫn Bảo vệ Đồ án
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Thông tin chi tiết từng bước & giải đáp thắc mắc
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setHelpModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-100 px-6">
+              <button
+                onClick={() => setActiveTab("steps")}
+                className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                  activeTab === "steps"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Quy trình 7 bước
+              </button>
+              <button
+                onClick={() => setActiveTab("faq")}
+                className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                  activeTab === "faq"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Câu hỏi thường gặp (Q&A)
+              </button>
+            </div>
+
+            {/* Content Area (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {activeTab === "steps" ? (
+                <div className="relative border-l-2 border-blue-100 ml-4 pl-6 space-y-8">
+                  {stepsData.map((step, idx) => (
+                    <div key={idx} className="relative">
+                      {/* Step Indicator Dot */}
+                      <span className="absolute -left-[37px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-[11px] font-bold text-white ring-4 ring-white">
+                        {step.number}
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-800">
+                          {step.title}
+                        </h4>
+                        <p className="mt-1 text-sm text-slate-500 leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {faqData.map((faq, idx) => {
+                    const isOpen = openFaqIndex === idx;
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden transition-all duration-200"
+                      >
+                        <button
+                          onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                          className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-slate-50"
+                        >
+                          <span className="text-sm font-semibold text-slate-800 pr-4">
+                            {faq.question}
+                          </span>
+                          <span
+                            className={`transform transition-transform text-slate-400 ${
+                              isOpen ? "rotate-180" : ""
+                            }`}
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-slate-100 bg-white p-4">
+                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                              {faq.answer}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs font-medium text-slate-500 text-center sm:text-left">
+                {authUser?.role === "Teacher" 
+                  ? "🎓 Chúc các thầy cô làm việc hiệu quả và đánh giá chính xác!" 
+                  : "🎓 Chúc các bạn chuẩn bị thật tốt và đạt kết quả cao!"}
+              </p>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => {
+                    setHelpModalOpen(false);
+                    // Dispatch custom event to trigger onboarding tour
+                    window.dispatchEvent(new CustomEvent("start-onboarding-tour"));
+                  }}
+                  className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1 w-full sm:w-auto justify-center flex-shrink-0"
+                >
+                  <Play className="h-3 w-3" />
+                  Khám phá giao diện
+                </button>
+                {(authUser?.role === "Student" || authUser?.role === "Teacher") && (
+                  <button
+                    onClick={() => {
+                      setHelpModalOpen(false);
+                      navigate(authUser?.role === "Teacher" ? "/teacher/guide" : "/student/guide");
+                    }}
+                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 w-full sm:w-auto justify-center flex-shrink-0"
+                  >
+                    Xem tài liệu chi tiết
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

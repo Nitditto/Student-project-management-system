@@ -4,12 +4,14 @@ import {
   createSchedulerJob,
   getSchedulerJobStatus,
   applySchedulerJobResults,
-  discardSchedulerJob
+  discardSchedulerJob,
+  getSchedulerJobs
 } from "../controllers/schedulerController.js";
 
 const router = express.Router();
 
 // All scheduling routes are restricted to authenticated Admins
+router.get("/jobs", isAuthenticated, isAuthorized("Admin"), getSchedulerJobs);
 router.post("/jobs", isAuthenticated, isAuthorized("Admin"), createSchedulerJob);
 router.get("/jobs/:id", isAuthenticated, isAuthorized("Admin"), getSchedulerJobStatus);
 router.post("/jobs/:id/apply", isAuthenticated, isAuthorized("Admin"), applySchedulerJobResults);

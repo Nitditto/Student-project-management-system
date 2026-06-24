@@ -86,7 +86,6 @@ const Sidebar = ({ open, setOpen, userRole }) => {
           { name: "Deadlines", path: "/admin/deadlines", icon: "calendar" },
           { name: "Projects", path: "/admin/projects", icon: "folder" },
           { name: "Councils", path: "/admin/councils", icon: "academic" },
-          { name: "Auto Scheduler", path: "/admin/scheduler", icon: "clock" },
         ];
       default:
         return [];
@@ -349,6 +348,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
     <>
       {/* Desktop Sidebar */}
       <div
+        id="sidebar-container"
         className={`fixed -left-full lg:left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-slate-200 transition-all duration-300 z-30 ${open ? "w-64" : "w-20"
           }`}
       >

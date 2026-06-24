@@ -281,12 +281,15 @@ const AdminDashboard = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                       <XAxis
                         dataKey="name"
-                        tick={{ fontSize: 12, fill: "#334155" }}
+                        tick={{ fontSize: 10, fill: "#334155" }}
                         axisLine={{ stroke: "#CBD5E1" }}
                         tickLine={{ stroke: "#CBD5E1" }}
                         interval={0}
-                        height={50}
-                        dy={10}
+                        height={90}
+                        angle={-45}
+                        textAnchor="end"
+                        dx={-8}
+                        dy={5}
                       />
                       <YAxis
                         allowDecimals={false}

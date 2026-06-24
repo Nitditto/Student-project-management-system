@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import AddTeacher from "../../components/modal/AddTeacher";
 import { getAllUsers, updateTeacher, deleteTeacher } from "../../store/slices/adminSlice";
 import { toggleTeacherModal } from "../../store/slices/popupSlice";
-import { BadgeCheck, Users, X, Plus, TriangleAlert, AlertTriangle } from "lucide-react";
+import { BadgeCheck, Users, X, Plus, TriangleAlert, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 
 const getTeacherCapacity = (teacher, fallback = 36) => {
   if (typeof teacher?.maxStudent === "number") return teacher.maxStudent;
@@ -29,6 +29,9 @@ const ManageTeachers = () => {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
+  const [filterCapacity, setFilterCapacity] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
 
@@ -58,16 +61,48 @@ const ManageTeachers = () => {
     return Array.from(set);
   }, [teachers]);
 
-  const filteredTeachers = teachers.filter((teacher) => {
-    const matchesSearch =
-      (teacher.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (teacher.email || "").toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredTeachers = useMemo(() => {
+    return teachers.filter((teacher) => {
+      const matchesSearch =
+        (teacher.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (teacher.email || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      filterDepartment === "all" || teacher.department === filterDepartment;
+      const matchesDepartment =
+        filterDepartment === "all" || teacher.department === filterDepartment;
 
-    return matchesSearch && matchesFilter;
-  });
+      const currentAssigned = teacher.assignedStudents?.length || 0;
+      const capacity = getTeacherCapacity(teacher);
+      const matchesCapacity =
+        filterCapacity === "all" ||
+        (filterCapacity === "available" && currentAssigned < capacity) ||
+        (filterCapacity === "full" && currentAssigned >= capacity);
+
+      return matchesSearch && matchesDepartment && matchesCapacity;
+    });
+  }, [teachers, searchTerm, filterDepartment, filterCapacity]);
+
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+
+  const paginatedTeachers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredTeachers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredTeachers, currentPage, itemsPerPage]);
+
+  const visiblePages = useMemo(() => {
+    const range = [];
+    const maxVisible = 10;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+    return range;
+  }, [currentPage, totalPages]);
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -199,7 +234,7 @@ const ManageTeachers = () => {
 
         {/* Filter */}
         <div className="card">
-          <div className="flex flex-fol md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <label
                 htmlFor=""
@@ -212,17 +247,23 @@ const ManageTeachers = () => {
                 placeholder="Search by name or email..."
                 className="input-field w-full"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Filter Status
+                Filter Department
               </label>
               <select
                 className="input-field w-full"
                 value={filterDepartment}
-                onChange={(e) => setFilterDepartment(e.target.value)}
+                onChange={(e) => {
+                  setFilterDepartment(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="all">All Departments</option>
                 {departments.map((dept) => (
@@ -230,6 +271,23 @@ const ManageTeachers = () => {
                     {dept}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="w-full md:w-48">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Filter Capacity
+              </label>
+              <select
+                className="input-field w-full"
+                value={filterCapacity}
+                onChange={(e) => {
+                  setFilterCapacity(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="all">All Capacity</option>
+                <option value="available">Available Advisor</option>
+                <option value="full">Full Capacity</option>
               </select>
             </div>
           </div>
@@ -264,7 +322,7 @@ const ManageTeachers = () => {
                 </thead>
 
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {filteredTeachers.map((teacher) => {
+                  {paginatedTeachers.map((teacher) => {
                     return (
                       <tr key={teacher._id} className="hover:bg-slate-50">
                         <td className="px-6 py-4">
@@ -332,6 +390,49 @@ const ManageTeachers = () => {
               )
             )}
           </div>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-lg">
+              <span className="text-sm text-slate-500">
+                Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến{" "}
+                <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, filteredTeachers.length)}</span> trong số{" "}
+                <span className="font-semibold text-slate-700">{filteredTeachers.length}</span> giảng viên
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {visiblePages.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Edit Student Modal */}
           {showModal && (

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   downloadFile,
@@ -27,12 +28,18 @@ import {
 
 const UploadFiles = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { project, files } = useSelector((state) => state.student);
   const { deadlines } = useSelector((state) => state.deadline);
 
   const [activeTab, setActiveTab] = useState("general"); // "general" or "submissions"
   const [selectedFiles, setSelectedFiles] = useState([]);
+
+  // AI Submission Analysis Modal States
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
+  const [selectedMilestone, setSelectedMilestone] = useState("M4");
 
   const reportRef = useRef(null);
   const presRef = useRef(null);
@@ -101,7 +108,7 @@ const UploadFiles = () => {
     <>
       <div className="space-y-6">
         {/* Beautiful Tabs Header */}
-        <div className="flex border-b border-slate-200 bg-white px-6 pt-4 rounded-t-2xl shadow-sm">
+        <div id="upload-tabs-wrapper" className="flex border-b border-slate-200 bg-white px-6 pt-4 rounded-t-2xl shadow-sm">
           <button
             onClick={() => setActiveTab("general")}
             className={`pb-4 px-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 outline-none ${activeTab === "general"
@@ -136,7 +143,7 @@ const UploadFiles = () => {
               </div>
 
               {/* Upload section */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div id="upload-dropzones-grid" className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
                   <div className="mb-4">
                     <FileText className="w-12 h-12 text-slate-400 mx-auto" />
@@ -217,7 +224,7 @@ const UploadFiles = () => {
               </div>
 
               <div className="flex justify-end mt-4">
-                <button className="btn-primary" onClick={handleUpload}>
+                <button id="upload-submit-btn" className="btn-primary" onClick={handleUpload}>
                   Upload Selected Files
                 </button>
               </div>
@@ -352,8 +359,8 @@ const UploadFiles = () => {
                   <p className="text-slate-500 font-medium">No deadlines active for your project supervisor.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {deadlines.map((dl) => {
+                <div id="upload-deadlines-list" className="space-y-4">
+                  {deadlines.map((dl, idx) => {
                     const submission = dl.submission;
                     const hasFeedback = submission?.feedback?.message || submission?.feedback?.fileName;
 
@@ -414,13 +421,36 @@ const UploadFiles = () => {
                                           </p>
                                         </div>
                                       </div>
-                                      <button
-                                        onClick={() => handleDownloadFile(file)}
-                                        className="btn-outline btn-small flex items-center space-x-1"
-                                      >
-                                        <Download className="w-3.5 h-3.5" />
-                                        <span>Download</span>
-                                      </button>
+                                      <div className="flex items-center space-x-2">
+                                        <button
+                                          onClick={() => handleDownloadFile(file)}
+                                          className="btn-outline btn-small flex items-center space-x-1"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                          <span>Download</span>
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedSubmissionId(submission._id);
+                                            const titleLower = dl.title.toLowerCase();
+                                            if (titleLower.includes("proposal") || titleLower.includes("đề cương") || titleLower.includes("m1")) {
+                                              setSelectedMilestone("M1");
+                                            } else if (titleLower.includes("midterm") || titleLower.includes("giữa kỳ") || titleLower.includes("m2")) {
+                                              setSelectedMilestone("M2");
+                                            } else if (titleLower.includes("logbook") || titleLower.includes("tiến độ") || titleLower.includes("m3")) {
+                                              setSelectedMilestone("M3");
+                                            } else {
+                                              setSelectedMilestone("M4");
+                                            }
+                                            setShowMilestoneModal(true);
+                                          }}
+                                          id={idx === 0 ? "upload-analysis-btn-first" : undefined}
+                                          className="btn-primary btn-small flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 outline-none cursor-pointer"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          <span>Phân tích học thuật</span>
+                                        </button>
+                                      </div>
                                     </div>
                                   ));
                                 }
@@ -438,15 +468,38 @@ const UploadFiles = () => {
                                           </p>
                                         </div>
                                       </div>
-                                      <a
-                                        href={`${import.meta.env.VITE_API_URL || ""}${file.fileUrl}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn-outline btn-small flex items-center space-x-1"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        <span>View File</span>
-                                      </a>
+                                      <div className="flex items-center space-x-2">
+                                        <a
+                                          href={`${import.meta.env.VITE_API_URL || ""}${file.fileUrl}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="btn-outline btn-small flex items-center space-x-1"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                          <span>View File</span>
+                                        </a>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedSubmissionId(submission._id);
+                                            const titleLower = dl.title.toLowerCase();
+                                            if (titleLower.includes("proposal") || titleLower.includes("đề cương") || titleLower.includes("m1")) {
+                                              setSelectedMilestone("M1");
+                                            } else if (titleLower.includes("midterm") || titleLower.includes("giữa kỳ") || titleLower.includes("m2")) {
+                                              setSelectedMilestone("M2");
+                                            } else if (titleLower.includes("logbook") || titleLower.includes("tiến độ") || titleLower.includes("m3")) {
+                                              setSelectedMilestone("M3");
+                                            } else {
+                                              setSelectedMilestone("M4");
+                                            }
+                                            setShowMilestoneModal(true);
+                                          }}
+                                          id={idx === 0 ? "upload-analysis-btn-fallback-first" : undefined}
+                                          className="btn-primary btn-small flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 outline-none cursor-pointer"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          <span>Phân tích học thuật</span>
+                                        </button>
+                                      </div>
                                     </div>
                                   ));
                                 }
@@ -463,15 +516,37 @@ const UploadFiles = () => {
                                         </p>
                                       </div>
                                     </div>
-                                    <a
-                                      href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="btn-outline btn-small flex items-center space-x-1"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                      <span>View File</span>
-                                    </a>
+                                     <div className="flex items-center space-x-2">
+                                       <a
+                                         href={`${import.meta.env.VITE_API_URL || ""}${submission.fileUrl}`}
+                                         target="_blank"
+                                         rel="noreferrer"
+                                         className="btn-outline btn-small flex items-center space-x-1"
+                                       >
+                                         <Eye className="w-3.5 h-3.5" />
+                                         <span>View File</span>
+                                       </a>
+                                       <button
+                                         onClick={() => {
+                                           setSelectedSubmissionId(submission._id);
+                                           const titleLower = dl.title.toLowerCase();
+                                           if (titleLower.includes("proposal") || titleLower.includes("đề cương") || titleLower.includes("m1")) {
+                                             setSelectedMilestone("M1");
+                                           } else if (titleLower.includes("midterm") || titleLower.includes("giữa kỳ") || titleLower.includes("m2")) {
+                                             setSelectedMilestone("M2");
+                                           } else if (titleLower.includes("logbook") || titleLower.includes("tiến độ") || titleLower.includes("m3")) {
+                                             setSelectedMilestone("M3");
+                                           } else {
+                                             setSelectedMilestone("M4");
+                                           }
+                                           setShowMilestoneModal(true);
+                                         }}
+                                         className="btn-primary btn-small flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 outline-none cursor-pointer"
+                                       >
+                                         <FileText className="w-3.5 h-3.5" />
+                                         <span>Phân tích học thuật</span>
+                                       </button>
+                                     </div>
                                   </div>
                                 );
                               })()}
@@ -524,6 +599,53 @@ const UploadFiles = () => {
           </div>
         )}
       </div>
+
+      {/* Milestone Selection Modal */}
+      {showMilestoneModal && (
+        <div className="modal-overlay">
+          <div className="modal-content p-6 rounded-2xl bg-white shadow-xl max-w-sm w-full mx-4 border border-slate-200">
+            <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Chọn Milestone Đánh Giá
+            </h3>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              Rubric đánh giá chuẩn đầu ra (CLO) khác nhau theo từng giai đoạn. Vui lòng chọn đúng milestone để nhận kết quả phân tích chính xác nhất.
+            </p>
+            
+            <div className="space-y-3 mb-5">
+              <label className="label text-xs">Milestone:</label>
+              <select
+                value={selectedMilestone}
+                onChange={(e) => setSelectedMilestone(e.target.value)}
+                className="input text-xs cursor-pointer"
+              >
+                <option value="M1">M1 - Đề xuất đề tài (Proposal Outline)</option>
+                <option value="M2">M2 - Báo cáo giữa kỳ (Midterm Progress)</option>
+                <option value="M3">M3 - Nhật ký & Tiến độ (Logbook & Progress)</option>
+                <option value="M4">M4 - Báo cáo chung cuộc (Final Thesis/Report)</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                onClick={() => setShowMilestoneModal(false)}
+                className="btn-outline btn-small cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowMilestoneModal(false);
+                  navigate(`/student/analysis/${selectedSubmissionId}?milestone=${selectedMilestone}`);
+                }}
+                className="btn-primary btn-small bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              >
+                Bắt đầu phân tích
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

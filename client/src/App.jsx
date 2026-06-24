@@ -13,10 +13,12 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import SubmitProposal from "./pages/student/SubmitProposal";
 import UploadFiles from "./pages/student/UploadFiles";
+import SubmissionAnalysisPage from "./pages/student/SubmissionAnalysisPage";
 import SupervisorPage from "./pages/student/SupervisorPage";
 import NotificationsPage from "./pages/student/NotificationsPage";
 import MyDefensePage from "./pages/student/MyDefensePage";
 import StudentDeadlinesPage from "./pages/student/DeadlinesPage";
+import StudentGuidePage from "./pages/student/StudentGuidePage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -30,6 +32,7 @@ import DeadlineManagement from "./pages/teacher/DeadlineManagement";
 import DeadlineSubmissionsPage from "./pages/teacher/DeadlineSubmissionsPage";
 import GroupProgressOverview from "./pages/teacher/GroupProgressOverview";
 import SubmissionPreviewPage from "./pages/teacher/SubmissionPreviewPage";
+import TeacherGuidePage from "./pages/teacher/TeacherGuidePage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -40,7 +43,6 @@ import DeadlinesPage from "./pages/admin/DeadlinesPage";
 import ProjectsPage from "./pages/admin/ProjectsPage";
 import CouncilsPage from "./pages/admin/CouncilsPage";
 import RegistrationSettingsPage from "./pages/admin/RegistrationSettingsPage";
-import AutoScheduler from "./pages/admin/AutoScheduler";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -147,7 +149,6 @@ const App = () => {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="councils" element={<CouncilsPage />} />
           <Route path="registration-settings" element={<RegistrationSettingsPage />} />
-          <Route path="scheduler" element={<AutoScheduler />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
 
@@ -171,6 +172,7 @@ const App = () => {
           <Route path="deadlines/:deadlineId/submissions" element={<DeadlineSubmissionsPage />} />
           <Route path="deadlines/submissions/preview" element={<SubmissionPreviewPage />} />
           <Route path="group-progress" element={<GroupProgressOverview />} />
+          <Route path="guide" element={<TeacherGuidePage />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
 
@@ -190,10 +192,12 @@ const App = () => {
           />
           <Route path="submit-proposal" element={<SubmitProposal />} />
           <Route path="upload-files" element={<UploadFiles />} />
+          <Route path="analysis/:submissionId" element={<SubmissionAnalysisPage />} />
           <Route path="supervisor" element={<SupervisorPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="defense" element={<MyDefensePage />} />
           <Route path="deadlines" element={<StudentDeadlinesPage />} />
+          <Route path="guide" element={<StudentGuidePage />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
 
