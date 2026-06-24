@@ -28,6 +28,8 @@ import {
 } from "../controllers/attendanceController.js";
 import {
   createTeacherPreselection,
+  updateTeacherPreselection,
+  deleteTeacherPreselection,
   getTeacherDirectory,
   getTeacherPreselectionCandidates,
   getTeacherPreselections,
@@ -135,6 +137,18 @@ router.post(
   isAuthenticated,
   isAuthorized("Teacher"),
   createTeacherPreselection,
+);
+router.put(
+  "/preselections/:preselectionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  updateTeacherPreselection,
+);
+router.delete(
+  "/preselections/:preselectionId",
+  isAuthenticated,
+  isAuthorized("Teacher"),
+  deleteTeacherPreselection,
 );
 router.get(
   "/schedules",

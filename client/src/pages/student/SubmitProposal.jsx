@@ -11,6 +11,8 @@ import {
   X,
   Shield,
   ChevronDown,
+  Search,
+  Plus,
 } from "lucide-react";
 
 const SubmitProposal = () => {
@@ -19,6 +21,7 @@ const SubmitProposal = () => {
   const [saving, setSaving] = useState(false);
   const [setup, setSetup] = useState(null);
   const [candidates, setCandidates] = useState([]);
+  const [searchEmail, setSearchEmail] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -102,6 +105,38 @@ const SubmitProposal = () => {
           : [...current.memberIds, studentId],
       };
     });
+  };
+
+  const handleAddByEmail = () => {
+    const trimmedEmail = searchEmail.trim().toLowerCase();
+    if (!trimmedEmail) {
+      toast.error("Please enter a student email");
+      return;
+    }
+
+    const student = candidates.find(
+      (c) => c.email.toLowerCase() === trimmedEmail
+    );
+
+    if (!student) {
+      toast.error("No eligible student found with this email");
+      return;
+    }
+
+    if (formData.memberIds.includes(student._id)) {
+      toast.warning("This student is already in your group selection");
+      return;
+    }
+
+    const maxGroupSize = setup?.settings?.maxGroupSize || 3;
+    if (formData.memberIds.length + 1 >= maxGroupSize) {
+      toast.error(`Maximum group size is ${maxGroupSize} students (including yourself).`);
+      return;
+    }
+
+    toggleMember(student._id);
+    setSearchEmail("");
+    toast.success(`Added ${student.name} to the group selection`);
   };
 
   const handleSubmit = async (event) => {
@@ -553,26 +588,68 @@ const SubmitProposal = () => {
               <div>
                 <label className="label">Invite Group Members</label>
                 <p className="text-sm text-slate-500 mb-3">
-                  Pick students now. They will receive an invitation and can accept later.
+                  Search for a student by their exact email address to add them to your group selection.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {candidates.map((student) => (
-                    <label
-                      key={student._id}
-                      className="rounded-lg border border-slate-200 p-3 flex items-start gap-3"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.memberIds.includes(student._id)}
-                        onChange={() => toggleMember(student._id)}
-                      />
-                      <div>
-                        <p className="font-medium text-slate-800">{student.name}</p>
-                        <p className="text-sm text-slate-500">{student.email}</p>
-                      </div>
-                    </label>
-                  ))}
+                
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="email"
+                      className="input pl-9"
+                      value={searchEmail}
+                      onChange={(e) => setSearchEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddByEmail();
+                        }
+                      }}
+                      placeholder="Enter student's exact email address..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-primary flex items-center gap-1.5"
+                    onClick={handleAddByEmail}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add
+                  </button>
                 </div>
+
+                {formData.memberIds.length > 0 && (
+                  <div className="space-y-2.5 mt-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Selected Members ({formData.memberIds.length})
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.memberIds.map((id) => {
+                        const student = candidates.find((c) => c._id === id);
+                        if (!student) return null;
+                        return (
+                          <div
+                            key={student._id}
+                            className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 flex items-center justify-between shadow-sm animate-fadeIn"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-800">{student.name}</p>
+                              <p className="text-xs text-slate-500">{student.email}</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                              onClick={() => toggleMember(student._id)}
+                              title="Remove Member"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

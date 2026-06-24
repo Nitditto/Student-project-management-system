@@ -79,6 +79,30 @@ export const getTeacherPreselections = asyncHandler(async (req, res) => {
   });
 });
 
+export const updateTeacherPreselection = asyncHandler(async (req, res) => {
+  const invitation = await registrationServices.updateTeacherPreselection({
+    teacherId: req.user._id,
+    preselectionId: req.params.preselectionId,
+    note: req.body.note,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Preselection invitation updated successfully",
+    data: { invitation },
+  });
+});
+
+export const deleteTeacherPreselection = asyncHandler(async (req, res) => {
+  const result = await registrationServices.deleteTeacherPreselection({
+    teacherId: req.user._id,
+    preselectionId: req.params.preselectionId,
+  });
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
 export const getTeacherDirectory = asyncHandler(async (req, res) => {
   const teachers = await User.find({ role: "Teacher" })
     .select("name email department")

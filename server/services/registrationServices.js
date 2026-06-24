@@ -439,6 +439,37 @@ export const getTeacherPreselections = async (teacherId) => {
     .sort({ createdAt: -1 });
 };
 
+export const updateTeacherPreselection = async ({ teacherId, preselectionId, note }) => {
+  const invitation = await TeacherPreselection.findOne({
+    _id: preselectionId,
+    teacher: teacherId,
+    status: "pending",
+  });
+
+  if (!invitation) {
+    throw new ErrorHandler("Pending preselection invitation not found", 404);
+  }
+
+  invitation.note = note || "";
+  await invitation.save();
+  return invitation;
+};
+
+export const deleteTeacherPreselection = async ({ teacherId, preselectionId }) => {
+  const invitation = await TeacherPreselection.findOne({
+    _id: preselectionId,
+    teacher: teacherId,
+    status: "pending",
+  });
+
+  if (!invitation) {
+    throw new ErrorHandler("Pending preselection invitation not found", 404);
+  }
+
+  await TeacherPreselection.findByIdAndDelete(preselectionId);
+  return { message: "Preselection invitation cancelled successfully" };
+};
+
 const assignTeacherToProjectMembers = async ({ project, teacherId }) => {
   const teacher = await User.findById(teacherId);
   if (!teacher || teacher.role !== "Teacher") {
