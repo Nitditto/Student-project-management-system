@@ -6,6 +6,8 @@ import {
   getAvailableSupervisors,
   getSupervisor,
   requestSupervisor,
+  getMySupervisorRequests,
+  cancelMySupervisorRequest,
   getDashboardStats,
   getFeedback,
   downloadFile,
@@ -123,6 +125,20 @@ router.post(
   isAuthenticated,
   isAuthorized("Student"),
   requestSupervisor,
+);
+
+router.get(
+  "/my-supervisor-requests",
+  isAuthenticated,
+  isAuthorized("Student"),
+  getMySupervisorRequests,
+);
+
+router.put(
+  "/cancel-supervisor-request/:requestId",
+  isAuthenticated,
+  isAuthorized("Student"),
+  cancelMySupervisorRequest,
 );
 
 router.get(

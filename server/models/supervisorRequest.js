@@ -5,19 +5,16 @@ const supervisorRequestSchema = new mongoose.Schema(
     registrationPeriod: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "RegistrationPeriod",
-      required: true,
     },
 
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ProjectGroup",
-      required: true,
     },
 
     teacher: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
     project: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +24,6 @@ const supervisorRequestSchema = new mongoose.Schema(
     supervisor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
 
     note: {

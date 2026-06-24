@@ -118,7 +118,6 @@ const projectSchema = new mongoose.Schema(
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ProjectGroup",
-      default: null,
     },
 
     supervisor: {

@@ -179,6 +179,18 @@ export const requestSupervisor = asyncHandler(async (req, res, next) => {
     );
   }
 
+  const { SupervisorRequest } = await import("../models/supervisorRequest.js");
+  const pendingRequestsCount = await SupervisorRequest.countDocuments({
+    project: project._id,
+    status: "pending",
+  });
+  if (pendingRequestsCount >= 5) {
+    throw new ErrorHandler(
+      "You cannot have more than 5 pending supervisor requests at the same time. Please cancel an existing request first.",
+      400,
+    );
+  }
+
   const requestData = {
     student: studentId,
     supervisor: teacherId,
@@ -329,5 +341,56 @@ export const getMyCouncilInfo = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     council,
+  });
+});
+
+export const getMySupervisorRequests = asyncHandler(async (req, res, next) => {
+  const studentId = req.user._id;
+  
+  const project = await projectServices.getStudentProject(studentId);
+  if (!project) {
+    return res.status(200).json({
+      success: true,
+      data: { requests: [] },
+      message: "No project found",
+    });
+  }
+
+  const { SupervisorRequest } = await import("../models/supervisorRequest.js");
+  const requests = await SupervisorRequest.find({ project: project._id })
+    .populate("supervisor", "name email department experties")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: { requests },
+  });
+});
+
+export const cancelMySupervisorRequest = asyncHandler(async (req, res, next) => {
+  const { requestId } = req.params;
+  const studentId = req.user._id;
+
+  const { SupervisorRequest } = await import("../models/supervisorRequest.js");
+  const request = await SupervisorRequest.findById(requestId).populate("project");
+
+  if (!request) {
+    throw new ErrorHandler("Request not found", 404);
+  }
+
+  if (request.project?.student?.toString() !== studentId.toString()) {
+    throw new ErrorHandler("Only the group representative can cancel this request", 403);
+  }
+
+  if (request.status !== "pending") {
+    throw new ErrorHandler("Only pending requests can be cancelled", 400);
+  }
+
+  request.status = "cancelled";
+  await request.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Supervisor request cancelled successfully",
   });
 });
