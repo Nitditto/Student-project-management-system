@@ -2,9 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 
 globalThis.WebSocket = class {};
 
-const supabaseUrl = "https://hpdawrdhtdtybpxhozcz.supabase.co";
-const supabaseKey = "sb_secret_K_G4-3FD6aaHmOKjfGJQRA_8I9-aMBb";
-const bucketName = "Student_Management";
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+const bucketName = process.env.SUPABASE_BUCKET;
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
