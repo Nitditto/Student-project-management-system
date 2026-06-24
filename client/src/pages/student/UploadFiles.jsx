@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import {
   downloadFile,
@@ -29,6 +30,7 @@ import {
 const UploadFiles = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { project, files } = useSelector((state) => state.student);
   const { deadlines } = useSelector((state) => state.deadline);
@@ -117,7 +119,7 @@ const UploadFiles = () => {
               }`}
           >
             <FolderOpen className="w-4 h-4" />
-            Tài liệu chung (General Files)
+            {t("student.upload.tabGeneral")}
           </button>
           <button
             onClick={() => setActiveTab("submissions")}
@@ -127,7 +129,7 @@ const UploadFiles = () => {
               }`}
           >
             <Calendar className="w-4 h-4" />
-            Bài nộp (Deadline Submissions)
+            {t("student.upload.tabSubmissions")}
           </button>
         </div>
 
@@ -135,10 +137,9 @@ const UploadFiles = () => {
           <>
             <div className="card">
               <div className="card-header">
-                <h1 className="card-title">Upload Project Files</h1>
+                <h1 className="card-title">{t("student.upload.uploadTitle")}</h1>
                 <p className="card-subtitle">
-                  Upload your project documents including reports, presentations,
-                  and code files.
+                  {t("student.upload.uploadSub")}
                 </p>
               </div>
 
@@ -149,16 +150,16 @@ const UploadFiles = () => {
                     <FileText className="w-12 h-12 text-slate-400 mx-auto" />
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-slate-800">
-                    Report
+                    {t("student.upload.reportTitle")}
                   </h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Upload your project report (PDF, DOC)
+                    {t("student.upload.reportSub")}
                   </p>
                   <button
                     className="btn-outline cursor-pointer"
                     onClick={() => reportRef.current.click()}
                   >
-                    Choose File
+                    {t("student.upload.chooseFile")}
                   </button>
                   <input
                     type="file"
@@ -175,16 +176,16 @@ const UploadFiles = () => {
                     <Archive className="w-12 h-12 text-slate-400 mx-auto" />
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-slate-800">
-                    Presentation
+                    {t("student.upload.presTitle")}
                   </h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Upload your project presentation (PPT, PPTX, PDF)
+                    {t("student.upload.presSub")}
                   </p>
                   <button
                     className="btn-outline cursor-pointer"
                     onClick={() => presRef.current.click()}
                   >
-                    Choose File
+                    {t("student.upload.chooseFile")}
                   </button>
                   <input
                     type="file"
@@ -201,16 +202,16 @@ const UploadFiles = () => {
                     <FileCode className="w-12 h-12 text-slate-400 mx-auto" />
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-slate-800">
-                    Code Files
+                    {t("student.upload.codeTitle")}
                   </h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Upload your source code (ZIP, RAR)
+                    {t("student.upload.codeSub")}
                   </p>
                   <button
                     className="btn-outline cursor-pointer"
                     onClick={() => codeRef.current.click()}
                   >
-                    Choose File
+                    {t("student.upload.chooseFile")}
                   </button>
                   <input
                     type="file"
@@ -225,7 +226,7 @@ const UploadFiles = () => {
 
               <div className="flex justify-end mt-4">
                 <button id="upload-submit-btn" className="btn-primary" onClick={handleUpload}>
-                  Upload Selected Files
+                  {t("student.upload.uploadBtn")}
                 </button>
               </div>
             </div>
@@ -234,7 +235,7 @@ const UploadFiles = () => {
             {selectedFiles.length > 0 && (
               <div className="card">
                 <div className="card-header">
-                  <h2 className="card-title">Ready to Upload</h2>
+                  <h2 className="card-title">{t("student.upload.readyTitle")}</h2>
                 </div>
                 <div className="space-y-3">
                   {selectedFiles.map((file, index) => {
@@ -261,7 +262,7 @@ const UploadFiles = () => {
                           className="btn-danger btn-small"
                           onClick={() => removeSelected(file.name)}
                         >
-                          Remove
+                          {t("student.upload.removeBtn")}
                         </button>
                       </div>
                     );
@@ -273,14 +274,14 @@ const UploadFiles = () => {
             {/* General Uploaded Files list */}
             <div className="card">
               <div className="card-header">
-                <h2 className="card-title">Uploaded General Files</h2>
-                <p className="card-subtitle">Manage your shared resource and general files</p>
+                <h2 className="card-title">{t("student.upload.generalFilesTitle")}</h2>
+                <p className="card-subtitle">{t("student.upload.generalFilesSub")}</p>
               </div>
 
               {generalFiles.length === 0 ? (
                 <div className="text-center py-6">
                   <FilePlus className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500">No general files uploaded yet</p>
+                  <p className="text-slate-500">{t("student.upload.noGeneralFiles")}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -296,7 +297,7 @@ const UploadFiles = () => {
                             {file.originalName}
                           </p>
                           <div className="flex items-center space-x-4 text-slate-600">
-                            <span>{file.fileType || "File"}</span>
+                            <span>{file.fileType || t("student.upload.fileFallback")}</span>
                           </div>
                         </div>
                       </div>
@@ -306,7 +307,7 @@ const UploadFiles = () => {
                           className="btn-outline btn-small"
                           onClick={() => handleDownloadFile(file)}
                         >
-                          Download
+                          {t("student.upload.downloadBtn")}
                         </button>
                       </div>
                     </div>
@@ -320,8 +321,8 @@ const UploadFiles = () => {
           <div className="space-y-4">
             <div className="card">
               <div className="card-header">
-                <h2 className="card-title">Deadline Submissions Management</h2>
-                <p className="card-subtitle">Verify your submitted files and check supervisor feedback</p>
+                <h2 className="card-title">{t("student.upload.submissionsTitle")}</h2>
+                <p className="card-subtitle">{t("student.upload.submissionsSub")}</p>
               </div>
 
               {/* General Project Feedback Section */}
@@ -329,7 +330,7 @@ const UploadFiles = () => {
                 <div className="mb-6 mx-4 p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100">
                   <h3 className="text-sm font-extrabold text-purple-900 flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-purple-600" />
-                    Past General Feedback
+                    {t("student.upload.pastFeedback")}
                   </h3>
                   <div className="space-y-3">
                     {project.feedback.map((fb, idx) => (
@@ -339,7 +340,7 @@ const UploadFiles = () => {
                               fb.type === 'negative' ? 'bg-red-100 text-red-700' :
                                 'bg-blue-100 text-blue-700'
                             }`}>
-                            {fb.type === 'positive' ? 'Positive' : fb.type === 'negative' ? 'Needs Revision' : 'General'}
+                            {fb.type === 'positive' ? t("student.upload.feedbackPositive") : fb.type === 'negative' ? t("student.upload.feedbackRevision") : t("student.upload.feedbackGeneral")}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {new Date(fb.createdAt).toLocaleDateString()}
@@ -356,7 +357,7 @@ const UploadFiles = () => {
               {deadlines.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-100/50">
                   <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">No deadlines active for your project supervisor.</p>
+                  <p className="text-slate-500 font-medium">{t("student.upload.noDeadlines")}</p>
                 </div>
               ) : (
                 <div id="upload-deadlines-list" className="space-y-4">
@@ -374,26 +375,26 @@ const UploadFiles = () => {
                           </div>
 
                           <div className="flex items-center space-x-2 text-xs font-semibold">
-                            <span className="text-slate-500">Due: {new Date(dl.endDate).toLocaleDateString()}</span>
+                            <span className="text-slate-500">{t("student.upload.due", { date: new Date(dl.endDate).toLocaleDateString() })}</span>
 
                             {dl.submissionStatus === "SUBMITTED" && (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-0.5">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Submitted
+                                <CheckCircle2 className="w-3.5 h-3.5" /> {t("student.upload.statusSubmitted")}
                               </span>
                             )}
                             {dl.submissionStatus === "LATE" && (
                               <span className="px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-0.5">
-                                <AlertTriangle className="w-3.5 h-3.5 animate-pulse" /> Late
+                                <AlertTriangle className="w-3.5 h-3.5 animate-pulse" /> {t("student.upload.statusLate")}
                               </span>
                             )}
                             {dl.submissionStatus === "MISSED" && (
                               <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 flex items-center gap-0.5">
-                                <XCircle className="w-3.5 h-3.5" /> Missed
+                                <XCircle className="w-3.5 h-3.5" /> {t("student.upload.statusMissed")}
                               </span>
                             )}
                             {dl.submissionStatus === "PENDING" && (
                               <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
-                                <Clock className="w-3.5 h-3.5" /> Pending
+                                <Clock className="w-3.5 h-3.5" /> {t("student.upload.statusPending")}
                               </span>
                             )}
                           </div>
@@ -427,7 +428,7 @@ const UploadFiles = () => {
                                           className="btn-outline btn-small flex items-center space-x-1"
                                         >
                                           <Download className="w-3.5 h-3.5" />
-                                          <span>Download</span>
+                                          <span>{t("student.upload.downloadBtn")}</span>
                                         </button>
                                         <button
                                           onClick={() => {
@@ -448,7 +449,7 @@ const UploadFiles = () => {
                                           className="btn-primary btn-small flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 outline-none cursor-pointer"
                                         >
                                           <FileText className="w-3.5 h-3.5" />
-                                          <span>Phân tích học thuật</span>
+                                          <span>{t("student.upload.academicAnalysis")}</span>
                                         </button>
                                       </div>
                                     </div>
@@ -464,7 +465,7 @@ const UploadFiles = () => {
                                         <div>
                                           <p className="font-medium text-slate-800 text-sm">{file.fileName}</p>
                                           <p className="text-[10px] text-slate-400">
-                                            Submitted on: {new Date(file.uploadedAt || submission.submittedAt || submission.createdAt).toLocaleString()}
+                                            {t("student.upload.submittedOn")}: {new Date(file.uploadedAt || submission.submittedAt || submission.createdAt).toLocaleString()}
                                           </p>
                                         </div>
                                       </div>
@@ -476,7 +477,7 @@ const UploadFiles = () => {
                                           className="btn-outline btn-small flex items-center space-x-1"
                                         >
                                           <Eye className="w-3.5 h-3.5" />
-                                          <span>View File</span>
+                                          <span>{t("student.upload.viewFile")}</span>
                                         </a>
                                         <button
                                           onClick={() => {
@@ -497,14 +498,13 @@ const UploadFiles = () => {
                                           className="btn-primary btn-small flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 outline-none cursor-pointer"
                                         >
                                           <FileText className="w-3.5 h-3.5" />
-                                          <span>Phân tích học thuật</span>
+                                          <span>{t("student.upload.academicAnalysis")}</span>
                                         </button>
                                       </div>
                                     </div>
                                   ));
                                 }
 
-                                // 3. Fallback to single submission.fileName
                                 return (
                                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200/50">
                                     <div className="flex items-center space-x-3">
@@ -554,7 +554,7 @@ const UploadFiles = () => {
                           ) : (
                             <div className="flex items-center space-x-2 text-sm text-slate-500 bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
                               <HelpCircle className="w-4 h-4 text-slate-400" />
-                              <span>No files submitted for this deadline yet. Please submit on the deadlines notice page.</span>
+                              <span>{t("student.upload.noFilesSubmitted")}</span>
                             </div>
                           )}
 
@@ -563,7 +563,7 @@ const UploadFiles = () => {
                             <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-3">
                               <div className="flex items-center space-x-1 text-purple-900 font-bold text-sm">
                                 <MessageSquare className="w-4 h-4 text-purple-700" />
-                                <span>Teacher's Feedback Review</span>
+                                <span>{t("student.upload.teacherFeedbackTitle")}</span>
                               </div>
 
                               {submission.feedback.message && (
@@ -583,7 +583,7 @@ const UploadFiles = () => {
                                     className="inline-flex items-center space-x-1 text-xs font-bold text-purple-700 hover:text-purple-900"
                                   >
                                     <Download className="w-3 h-3" />
-                                    <span>Download Feedback File</span>
+                                    <span>{t("student.upload.downloadFeedbackBtn")}</span>
                                   </a>
                                 </div>
                               )}
@@ -606,23 +606,23 @@ const UploadFiles = () => {
           <div className="modal-content p-6 rounded-2xl bg-white shadow-xl max-w-sm w-full mx-4 border border-slate-200">
             <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
-              Chọn Milestone Đánh Giá
+              {t("student.upload.milestoneModalTitle")}
             </h3>
             <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Rubric đánh giá chuẩn đầu ra (CLO) khác nhau theo từng giai đoạn. Vui lòng chọn đúng milestone để nhận kết quả phân tích chính xác nhất.
+              {t("student.upload.milestoneModalDesc")}
             </p>
             
             <div className="space-y-3 mb-5">
-              <label className="label text-xs">Milestone:</label>
+              <label className="label text-xs">{t("student.upload.milestoneLabel")}</label>
               <select
                 value={selectedMilestone}
                 onChange={(e) => setSelectedMilestone(e.target.value)}
                 className="input text-xs cursor-pointer"
               >
-                <option value="M1">M1 - Đề xuất đề tài (Proposal Outline)</option>
-                <option value="M2">M2 - Báo cáo giữa kỳ (Midterm Progress)</option>
-                <option value="M3">M3 - Nhật ký & Tiến độ (Logbook & Progress)</option>
-                <option value="M4">M4 - Báo cáo chung cuộc (Final Thesis/Report)</option>
+                <option value="M1">{t("student.upload.m1Option")}</option>
+                <option value="M2">{t("student.upload.m2Option")}</option>
+                <option value="M3">{t("student.upload.m3Option")}</option>
+                <option value="M4">{t("student.upload.m4Option")}</option>
               </select>
             </div>
 
@@ -631,7 +631,7 @@ const UploadFiles = () => {
                 onClick={() => setShowMilestoneModal(false)}
                 className="btn-outline btn-small cursor-pointer"
               >
-                Hủy
+                {t("student.upload.cancelBtn")}
               </button>
               <button
                 onClick={() => {
@@ -640,7 +640,7 @@ const UploadFiles = () => {
                 }}
                 className="btn-primary btn-small bg-blue-600 hover:bg-blue-700 cursor-pointer"
               >
-                Bắt đầu phân tích
+                {t("student.upload.startAnalysisBtn")}
               </button>
             </div>
           </div>
