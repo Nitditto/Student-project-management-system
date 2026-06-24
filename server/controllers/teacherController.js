@@ -16,6 +16,7 @@ import {
 import { ensureProjectEditable } from "../services/workflowProjectServices.js";
 import * as registrationServices from "../services/registrationServices.js";
 import { getProjectMemberIds } from "../utils/workflowHelpers.js";
+import { getOrCache, invalidateCache } from "../config/cache.js";
 
 export const getTeacherDashboardStats = asyncHandler(async (req, res) => {
   const teacherId = req.user._id;
@@ -90,7 +91,7 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
   const teacherId = req.user._id;
   const request = await requestServices.acceptRequest(requestId, teacherId);
   if (!request) return next(new ErrorHandler("Request not found", 404));
-
+  
   // 1. Cập nhật học sinh
   await User.findByIdAndUpdate(request.student._id, {
     supervisor: teacherId,
@@ -126,7 +127,7 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
     subject: "Your Supervisor Request has been Accepted",
     message,
   });
-
+  await invalidateCache(`teacher:assigned_students:${teacherId}`);
   res.status(200).json({
     success: true,
     message: "Request accepted successfully",
@@ -181,7 +182,9 @@ export const rejectRequest = asyncHandler(async (req, res, next) => {
 
 export const getAssignedStudents = asyncHandler(async (req, res) => {
   const teacherId = req.user._id;
-  const students = await User.find({ supervisor: teacherId })
+  const cacheKey = `teacher:assigned_students:${teacherId}`;
+  const data = await getOrCache(cacheKey, async () => {
+    const students = await User.find({ supervisor: teacherId })
     .sort({ createdAt: -1 })
     .populate({
       path: "project",
@@ -192,12 +195,12 @@ export const getAssignedStudents = asyncHandler(async (req, res) => {
     });
   const total = await User.countDocuments({ supervisor: teacherId });
 
+  return { students, total };
+  }, 5 * 60)
+
   res.status(200).json({
     success: true,
-    data: {
-      students,
-      total,
-    },
+    data,
   });
 });
 

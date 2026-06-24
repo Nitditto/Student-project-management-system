@@ -1,12 +1,4 @@
 services:
-
-  mongo:
-    image: mongodb/mongodb-community-server:latest
-    container_name: mongo_db
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-
   client:
     build: ./client
     ports:
@@ -29,7 +21,7 @@ services:
     env_file:
       - ./server/.env
     depends_on:
-      - mongo
+      - redis
     volumes:
       - ./server:/server
       - /server/node_modules
@@ -39,12 +31,16 @@ services:
     image: ngrok/ngrok:latest
     container_name: ngrok
     command: http client:5173
-    environment:
-      NGROK_AUTHTOKEN: 3DPMjz7bOsjVehQBlKKhSZn1478_3X1mqWKCKBjqYcCakwXya
+    env_file:
+      - ./server/.env
     ports:
       - "4040:4040"
     depends_on:
       - client
 
-volumes:
-  mongo_data:
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
