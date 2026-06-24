@@ -31,6 +31,7 @@ import {
   ensureTeacherOwnsProject,
   requireProjectByUser,
 } from "./workflowProjectServices.js";
+import { uploadToSupabase, buildStoragePath } from "./supabaseService.js";
 
 const SCORE_ROLE_LABELS = {
   supervisor: "supervisor",
@@ -42,19 +43,25 @@ const SCORE_ROLE_LABELS = {
   student: "student",
 };
 
-const normalizeEvidenceFiles = (
+const uploadEvidenceFiles = async (
   files = [],
   uploadedBy,
   defaultKind = "supporting-file",
 ) =>
-  (files || []).map((file) => ({
-    kind: defaultKind,
-    label: file.originalname,
-    fileUrl: file.path,
-    originalName: file.originalname,
-    uploadedBy,
-    uploadedAt: new Date(),
-  }));
+  Promise.all(
+    (files || []).map(async (file) => {
+      const destPath = buildStoragePath("assessments", uploadedBy.toString(), file.originalname);
+      const publicUrl = await uploadToSupabase(file.buffer, file.mimetype, destPath);
+      return {
+        kind: defaultKind,
+        label: file.originalname,
+        fileUrl: publicUrl,
+        originalName: file.originalname,
+        uploadedBy,
+        uploadedAt: new Date(),
+      };
+    })
+  );
 
 const appendEvidenceRefs = (target, refs = []) => {
   target.push(...refs);
@@ -484,7 +491,7 @@ export const submitTeacherMilestoneSubmission = async ({
       buildSubmissionIdentity(submission).startsWith(identityPrefix),
   );
 
-  const evidenceRefs = normalizeEvidenceFiles(
+  const evidenceRefs = await uploadEvidenceFiles(
     files,
     teacherId,
     `${milestoneCode.toLowerCase()}-file`,
@@ -584,7 +591,7 @@ export const updateTeacherMilestoneSubmission = async ({
       Array.isArray(cloEntries) && cloEntries.length > 0
         ? normalizeCloEntries(cloEntries)
         : null;
-    const evidenceRefs = normalizeEvidenceFiles(
+    const evidenceRefs = await uploadEvidenceFiles(
       files,
       teacherId,
       "m6-review-file",
@@ -633,7 +640,7 @@ export const updateTeacherMilestoneSubmission = async ({
     if (Array.isArray(cloEntries) && cloEntries.length > 0) {
       submission.cloEntries = normalizeCloEntries(cloEntries);
     }
-    const evidenceRefs = normalizeEvidenceFiles(
+    const evidenceRefs = await uploadEvidenceFiles(
       files,
       teacherId,
       `${milestoneCode.toLowerCase()}-file`,
@@ -689,7 +696,7 @@ export const submitStudentPeerEvaluation = async ({
     throw new ErrorHandler("Student assessment row not found", 404);
   }
 
-  const evidenceRefs = normalizeEvidenceFiles(
+  const evidenceRefs = await uploadEvidenceFiles(
     files,
     studentId,
     "peer-evaluation",

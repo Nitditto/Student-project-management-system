@@ -17,14 +17,21 @@ import {
   toIdString,
 } from "../utils/workflowHelpers.js";
 import * as projectServices from "./projectServices.js";
+import { uploadToSupabase, buildStoragePath } from "./supabaseService.js";
 
-const buildEvidenceFiles = (files = []) =>
-  files.map((file) => ({
-    fileType: file.mimetype,
-    fileUrl: file.path,
-    originalName: file.originalname,
-    uploadedAt: new Date(),
-  }));
+const uploadEvidenceFiles = async (files = [], sessionId) =>
+  Promise.all(
+    files.map(async (file) => {
+      const destPath = buildStoragePath("attendance", sessionId, file.originalname);
+      const publicUrl = await uploadToSupabase(file.buffer, file.mimetype, destPath);
+      return {
+        fileType: file.mimetype,
+        fileUrl: publicUrl,
+        originalName: file.originalname,
+        uploadedAt: new Date(),
+      };
+    })
+  );
 
 const populateSessionQuery = () =>
   AttendanceSession.find()
@@ -421,7 +428,7 @@ export const requestLeave = async ({
     reason: reason || "",
     note: note || "",
     requestedAt: new Date(),
-    evidenceFiles: buildEvidenceFiles(files),
+    evidenceFiles: await uploadEvidenceFiles(files, sessionId),
   };
 
   await session.save();

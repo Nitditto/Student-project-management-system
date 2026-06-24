@@ -3,6 +3,7 @@ import { Message } from '../models/message.js';
 import { Project } from '../models/project.js';
 import { User } from '../models/user.js';
 import ErrorHandler from '../middleware/error.js';
+import { uploadToSupabase, buildStoragePath } from '../services/supabaseService.js';
 
 export const getChatHistory = async (req, res, next) => {
     try {
@@ -70,7 +71,8 @@ export const saveMessage = async (req, res, next) => {
         let fileType = null;
 
         if (req.file) {
-            fileUrl = `/uploads/temp/${req.file.filename}`;
+            const destPath = buildStoragePath("messages", sender, req.file.originalname);
+            fileUrl = await uploadToSupabase(req.file.buffer, req.file.mimetype, destPath);
             fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'document';
         }
 

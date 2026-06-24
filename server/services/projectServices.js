@@ -32,17 +32,25 @@ export const addFilesToProject = async (projectId, files) => {
   if (!project) {
     throw new ErrorHandler("Project not found", 404);
   }
-  const fileMetaData = files.map((file) => ({
-    fileType: file.mimetype,
-    fileUrl: file.path,
-    originalName: file.originalname,
-    uploadAt: new Date(),
-  }));
+
+  const fileMetaData = await Promise.all(
+    files.map(async (file) => {
+      const destPath = buildStoragePath("projects", projectId, file.originalname);
+      const publicUrl = await uploadToSupabase(file.buffer, file.mimetype, destPath);
+      return {
+        fileType: file.mimetype,
+        fileUrl: publicUrl,
+        originalName: file.originalname,
+        uploadedAt: new Date(),
+      };
+    })
+  );
 
   project.files.push(...fileMetaData);
   await project.save();
   return project;
 };
+
 export const getAllProjects = async () => {
   const projects = await Project.find()
     .populate("student", "name email")

@@ -1,8 +1,7 @@
-import fs from "fs";
 import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
 import { generateEmbedding, generateTeacherSummary } from "../services/geminiService.js";
-import { parseDocument } from "../utils/documentParser.js";
+import { parseDocumentBuffer } from "../utils/documentParser.js";
 
 // Helper to calculate dot product (cosine similarity since Gemini embeddings are normalized)
 const calculateCosineSimilarity = (vecA, vecB) => {
@@ -34,7 +33,7 @@ export const analyzeProposal = async (req, res, next) => {
   try {
     // 1. Extract text from file if uploaded
     if (req.file) {
-      fileText = await parseDocument(req.file.path);
+      fileText = await parseDocumentBuffer(req.file.buffer, req.file.originalname);
     }
 
     const cleanTitle = title.trim();
@@ -226,16 +225,7 @@ export const analyzeProposal = async (req, res, next) => {
       .slice(0, 4);
     }
 
-    // 3. Clean up uploaded temp file if any
-    if (req.file && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.warn("Failed to delete temp file:", err.message);
-      }
-    }
-
-    // 4. Return results
+    // 3. Return results
     return res.status(200).json({
       success: true,
       isAIPowered,
@@ -246,14 +236,6 @@ export const analyzeProposal = async (req, res, next) => {
     });
 
   } catch (error) {
-    // Clean up file if error occurs
-    if (req.file && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.warn("Failed to delete temp file:", err.message);
-      }
-    }
     next(error);
   }
 };

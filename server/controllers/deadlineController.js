@@ -5,6 +5,7 @@ import { Submission } from "../models/submission.js";
 import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
 import * as notificationServices from "../services/notificationServices.js";
+import { uploadToSupabase, buildStoragePath } from "../services/supabaseService.js";
 
 const findStudentProject = (studentId) =>
   Project.findOne({
@@ -279,15 +280,19 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Please upload at least one file", 400));
   }
 
-  // Decode Vietnamese accents in originalnames from latin1 to utf8
-  const filesList = req.files.map((file) => {
-    const originalNameDecoded = Buffer.from(file.originalname, "latin1").toString("utf8");
-    return {
-      fileUrl: `/uploads/temp/${file.filename}`,
-      fileName: originalNameDecoded,
-      uploadedAt: new Date(),
-    };
-  });
+  // Upload each file to Supabase and build filesList
+  const filesList = await Promise.all(
+    req.files.map(async (file) => {
+      const originalNameDecoded = Buffer.from(file.originalname, "latin1").toString("utf8");
+      const destPath = buildStoragePath("submissions", project._id.toString(), originalNameDecoded);
+      const publicUrl = await uploadToSupabase(file.buffer, file.mimetype, destPath);
+      return {
+        fileUrl: publicUrl,
+        fileName: originalNameDecoded,
+        uploadedAt: new Date(),
+      };
+    })
+  );
 
   // Find existing submission or create new
   let submission = await Submission.findOne({ deadlineId, groupId: project._id });
@@ -591,8 +596,10 @@ export const submitSubmissionFeedback = asyncHandler(async (req, res, next) => {
   };
 
   if (req.file) {
-    feedbackData.fileUrl = `/uploads/temp/${req.file.filename}`;
-    feedbackData.fileName = req.file.originalname;
+    const originalNameDecoded = Buffer.from(req.file.originalname, "latin1").toString("utf8");
+    const destPath = buildStoragePath("feedback", `${deadlineId}-${groupId}`, originalNameDecoded);
+    feedbackData.fileUrl = await uploadToSupabase(req.file.buffer, req.file.mimetype, destPath);
+    feedbackData.fileName = originalNameDecoded;
   }
 
   submission.feedback = feedbackData;
