@@ -8,19 +8,17 @@ const __dirname = path.dirname(__filename);
 
 export const streamDownload = async (filePath, res, originalName) => {
   try {
-    // ── Supabase (or any external) public URL ────────────────────────────────
     if (filePath && (filePath.startsWith("http://") || filePath.startsWith("https://"))) {
       const response = await fetch(filePath);
       if (!response.ok) {
         throw new ErrorHandler("Failed to fetch file from cloud storage", response.status);
       }
-      
       const contentType = response.headers.get("content-type");
       if (contentType) {
         res.setHeader("Content-Type", contentType);
       }
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(originalName || "download")}"`);
-      
+
       const { Readable } = await import("stream");
       if (response.body) {
         Readable.fromWeb(response.body).pipe(res);

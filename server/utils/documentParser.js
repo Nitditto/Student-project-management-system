@@ -15,10 +15,38 @@ export const parseDocument = async (filePath) => {
   let ext;
 
   try {
-    if (filePath && (filePath.startsWith("http://") || filePath.startsWith("https://"))) {
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
       const response = await fetch(filePath);
       if (!response.ok) {
         throw new Error(`Failed to fetch file from remote URL: ${filePath}`);
+      }
+      buffer = Buffer.from(await response.arrayBuffer());
+      ext = filePath.split("?")[0].split(".").pop().toLowerCase();
+    } else {
+      if (!filePath || !fs.existsSync(filePath)) {
+        console.warn(`File path empty or does not exist: ${filePath}`);
+        return "";
+      }
+      buffer = fs.readFileSync(filePath);
+      ext = filePath.split(".").pop().toLowerCase();
+    }
+
+    if (ext === "pdf") {
+      try {
+        if (typeof pdf === "function") {
+          const data = await pdf(buffer);
+          return data.text || "";
+        } else if (pdf && typeof pdf.PDFParse === "function") {
+          const parser = new pdf.PDFParse({ data: buffer });
+          const result = await parser.getText();
+          await parser.destroy().catch(() => {});
+          return result.text || "";
+        } else {
+          throw new Error("No valid PDF parse constructor or function found.");
+        }
+      } catch (pdfErr) {
+        console.warn(`[AI Parser] pdf-parse failed for ${filePath}. Falling back to raw text. Error: ${pdfErr.message}`);
+        return buffer.toString("utf-8");
       }
       buffer = Buffer.from(await response.arrayBuffer());
       ext = filePath.split("?")[0].split(".").pop().toLowerCase();
