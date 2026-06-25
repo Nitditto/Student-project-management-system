@@ -117,7 +117,7 @@ const UploadFiles = () => {
               }`}
           >
             <FolderOpen className="w-4 h-4" />
-            Tài liệu chung (General Files)
+            Tài liệu chung 
           </button>
           <button
             onClick={() => setActiveTab("submissions")}
@@ -127,7 +127,7 @@ const UploadFiles = () => {
               }`}
           >
             <Calendar className="w-4 h-4" />
-            Bài nộp (Deadline Submissions)
+            Bài nộp 
           </button>
         </div>
 
