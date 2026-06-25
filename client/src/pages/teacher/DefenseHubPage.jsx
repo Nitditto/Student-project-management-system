@@ -207,6 +207,7 @@ const DefenseHubPage = () => {
   const [reviewerForms, setReviewerForms] = useState({});
   const [reviewerAssignments, setReviewerAssignments] = useState({});
   const [assessmentTab, setAssessmentTab] = useState("M1");
+  const [expandedCouncils, setExpandedCouncils] = useState({});
   const [assessmentSummaries, setAssessmentSummaries] = useState({});
   const [selectedAssessmentProjectId, setSelectedAssessmentProjectId] =
     useState("");
@@ -278,6 +279,53 @@ const DefenseHubPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!councils || !authUser) return;
+    const newScoreForms = {};
+    const newReviewerForms = {};
+    const newReviewerAssignments = {};
+
+    councils.forEach((council) => {
+      (council.projects || []).forEach((projectItem) => {
+        const key = `${council._id}-${projectItem.project?._id}`;
+        
+        // Find current teacher's score entry
+        const myScoreEntry = (projectItem.scores || []).find(
+          (s) => {
+            const tId = s.teacher?._id || s.teacher;
+            return tId === authUser._id;
+          }
+        );
+        
+        newScoreForms[key] = {
+          score: myScoreEntry ? myScoreEntry.score : "",
+          comment: myScoreEntry ? myScoreEntry.comment : "",
+          chairComment: projectItem.chairComment || "",
+        };
+
+        newReviewerForms[key] = {
+          summary: projectItem.reviewerForm?.summary || "",
+          strengths: projectItem.reviewerForm?.strengths || "",
+          concerns: projectItem.reviewerForm?.concerns || "",
+          recommendation: projectItem.reviewerForm?.recommendation || "",
+        };
+
+        const secretary = council.members?.find((m) => m.role === "secretary")?.teacher;
+        const defaultReviewerId = secretary?._id || secretary || "";
+        const assignedReviewerId = projectItem.reviewer?._id || projectItem.reviewer || "";
+        newReviewerAssignments[key] = {
+          reviewerId: assignedReviewerId || defaultReviewerId,
+          reviewerWeight: projectItem.reviewerWeight || 1.5,
+        };
+      });
+    });
+
+    setScoreForms(newScoreForms);
+    setReviewerForms(newReviewerForms);
+    setReviewerAssignments(newReviewerAssignments);
+  }, [councils, authUser]);
+
 
   useEffect(() => {
     const intervalId = setInterval(async () => {
@@ -535,23 +583,48 @@ const DefenseHubPage = () => {
     }));
   };
 
-  const submitReviewerFormAction = async (councilId, projectId) => {
+  const handleDownloadReviewerPdf = async (councilId, projectId, isAssignedReviewer, projectTitle) => {
     const key = `${councilId}-${projectId}`;
     try {
-      await axiosInstance.post(
-        `/teacher/councils/${councilId}/projects/${projectId}/reviewer-form`,
-        reviewerForms[key] || {},
-      );
-      toast.success("Reviewer report exported to PDF");
+      if (isAssignedReviewer) {
+        await axiosInstance.post(
+          `/teacher/councils/${councilId}/projects/${projectId}/reviewer-form`,
+          reviewerForms[key] || {},
+        );
+      }
+
+      const downloadUrl = `/teacher/councils/${councilId}/projects/${projectId}/reviewer-form/download`;
+      const response = await axiosInstance.get(downloadUrl, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      const cleanedTitle = projectTitle ? projectTitle.replace(/[^a-zA-Z0-9-_]/g, "_") : projectId;
+      link.setAttribute("download", `Reviewer_Report_${cleanedTitle}.pdf`);
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Reviewer report downloaded successfully");
       await loadData();
     } catch (error) {
+      console.error(error);
       toast.error(
-        error.response?.data?.message || "Failed to export reviewer report",
+        error.response?.data?.message || "Failed to download reviewer report PDF",
       );
     }
   };
 
   const finalizeScore = async (councilId, projectId) => {
+    const isConfirmed = window.confirm("Bạn có chắc chắn muốn khóa điểm cuối cùng? Sau khi khóa sẽ không thể thay đổi.");
+    if (!isConfirmed) return;
+
     const key = `${councilId}-${projectId}`;
     try {
       await axiosInstance.post(
@@ -1779,19 +1852,47 @@ const DefenseHubPage = () => {
           </p>
         </div>
         <div className="space-y-4">
-          {councils.map((council) => (
-            <div
-              key={council._id}
-              className="rounded-lg border border-slate-200 p-4"
-            >
-              <div className="mb-4">
-                <p className="font-semibold text-slate-800">{council.name}</p>
-                <p className="text-sm text-slate-500">
-                  {formatCouncilSchedule(council.defenseDate, council.room)}
-                </p>
-              </div>
+          {councils.map((council) => {
+            const isExpanded = !!expandedCouncils[council._id];
+            return (
+              <div
+                key={council._id}
+                className="rounded-lg border border-slate-200 p-4 bg-white shadow-sm hover:border-slate-300 transition-all duration-200"
+              >
+                <div
+                  className="flex items-center justify-between cursor-pointer select-none"
+                  onClick={() =>
+                    setExpandedCouncils((prev) => ({
+                      ...prev,
+                      [council._id]: !prev[council._id],
+                    }))
+                  }
+                >
+                  <div>
+                    <p className="font-semibold text-slate-800 text-base">{council.name}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      {formatCouncilSchedule(council.defenseDate, council.room)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      {council.projects?.length || 0} Đề tài
+                    </span>
+                    {isExpanded ? (
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
 
-              {(council.projects || []).map((projectItem) => {
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    {(council.projects || []).map((projectItem) => {
                 const key = `${council._id}-${projectItem.project?._id}`;
                 const secretary = council.members?.find((m) => m.role === "secretary")?.teacher;
                 const defaultReviewerId = secretary?._id || secretary || "";
@@ -1953,11 +2054,7 @@ const DefenseHubPage = () => {
                           className="input min-h-20"
                           placeholder="Reviewer summary"
                           disabled={!isAssignedReviewer}
-                          value={
-                            reviewerForms[key]?.summary !== undefined
-                              ? reviewerForms[key].summary
-                              : (projectItem.reviewerForm?.summary || "")
-                          }
+                          value={reviewerForms[key]?.summary || ""}
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1970,11 +2067,7 @@ const DefenseHubPage = () => {
                           className="input min-h-20"
                           placeholder="Project strengths"
                           disabled={!isAssignedReviewer}
-                          value={
-                            reviewerForms[key]?.strengths !== undefined
-                              ? reviewerForms[key].strengths
-                              : (projectItem.reviewerForm?.strengths || "")
-                          }
+                          value={reviewerForms[key]?.strengths || ""}
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1987,11 +2080,7 @@ const DefenseHubPage = () => {
                           className="input min-h-20"
                           placeholder="Concerns or issues"
                           disabled={!isAssignedReviewer}
-                          value={
-                            reviewerForms[key]?.concerns !== undefined
-                              ? reviewerForms[key].concerns
-                              : (projectItem.reviewerForm?.concerns || "")
-                          }
+                          value={reviewerForms[key]?.concerns || ""}
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -2004,11 +2093,7 @@ const DefenseHubPage = () => {
                           className="input min-h-20"
                           placeholder="Recommendation"
                           disabled={!isAssignedReviewer}
-                          value={
-                            reviewerForms[key]?.recommendation !== undefined
-                              ? reviewerForms[key].recommendation
-                              : (projectItem.reviewerForm?.recommendation || "")
-                          }
+                          value={reviewerForms[key]?.recommendation || ""}
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -2018,25 +2103,20 @@ const DefenseHubPage = () => {
                           }
                         />
                         <div className="flex gap-2">
-                          <button
-                            className="btn-outline"
-                            disabled={!isAssignedReviewer}
-                            onClick={() =>
-                              submitReviewerFormAction(
-                                council._id,
-                                projectItem.project?._id,
-                              )
-                            }
-                          >
-                            Export Reviewer PDF
-                          </button>
-                          {projectItem.reviewerForm?.pdfUrl && (
-                            <a
-                              href={`${axiosInstance.defaults.baseURL}/teacher/councils/${council._id}/projects/${projectItem.project?._id}/reviewer-form/download`}
-                              className="btn-outline inline-flex"
+                          {(isAssignedReviewer || projectItem.reviewerForm?.pdfUrl) && (
+                            <button
+                              className="btn-outline"
+                              onClick={() =>
+                                handleDownloadReviewerPdf(
+                                  council._id,
+                                  projectItem.project?._id,
+                                  isAssignedReviewer,
+                                  projectItem.project?.groupName || projectItem.project?.title
+                                )
+                              }
                             >
                               Download Reviewer PDF
-                            </a>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -2044,8 +2124,11 @@ const DefenseHubPage = () => {
                   </div>
                 );
               })}
-            </div>
-          ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {councils.length === 0 && (
             <p className="text-slate-500">You are not in any council yet.</p>
           )}

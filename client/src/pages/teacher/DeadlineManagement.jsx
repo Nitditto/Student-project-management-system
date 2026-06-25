@@ -47,6 +47,22 @@ const DeadlineManagement = () => {
     requiredQaKinds: [],
   });
 
+  const [selectedMilestone, setSelectedMilestone] = useState("");
+
+  const handleMilestoneChange = (e) => {
+    const val = e.target.value;
+    setSelectedMilestone(val);
+    if (val === "M1") {
+      setFormData(prev => ({ ...prev, title: "Báo cáo Đề cương M1" }));
+    } else if (val === "M2") {
+      setFormData(prev => ({ ...prev, title: "Báo cáo Giữa kỳ M2" }));
+    } else if (val === "M3") {
+      setFormData(prev => ({ ...prev, title: "Nhật ký & Tiến độ M3" }));
+    } else if (val === "M4") {
+      setFormData(prev => ({ ...prev, title: "Báo cáo Chung cuộc M4" }));
+    }
+  };
+
   useEffect(() => {
     dispatch(fetchTeacherDeadlines());
     dispatch(fetchTeacherMatrix());
@@ -70,6 +86,19 @@ const DeadlineManagement = () => {
         requiredQaKinds: deadline.requiredQaKinds || [],
       });
 
+      const titleLower = deadline.title.toLowerCase();
+      if (titleLower.includes("proposal") || titleLower.includes("đề cương") || titleLower.includes("m1")) {
+        setSelectedMilestone("M1");
+      } else if (titleLower.includes("midterm") || titleLower.includes("giữa kỳ") || titleLower.includes("m2")) {
+        setSelectedMilestone("M2");
+      } else if (titleLower.includes("logbook") || titleLower.includes("tiến độ") || titleLower.includes("m3")) {
+        setSelectedMilestone("M3");
+      } else if (titleLower.includes("final") || titleLower.includes("chung cuộc") || titleLower.includes("m4")) {
+        setSelectedMilestone("M4");
+      } else {
+        setSelectedMilestone("");
+      }
+
       if (deadline.assignedGroups && deadline.assignedGroups.length > 0) {
         setTargetType("specific");
         setSelectedGroups(deadline.assignedGroups.map(g => g._id || g));
@@ -87,6 +116,7 @@ const DeadlineManagement = () => {
         endDate: "",
         requiredQaKinds: [],
       });
+      setSelectedMilestone("");
       setTargetType("all");
       setSelectedGroups([]);
     }
@@ -319,8 +349,29 @@ const DeadlineManagement = () => {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Title
+                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5 font-bold">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  Cột mốc (Milestone Target)
+                </label>
+                <select
+                  value={selectedMilestone}
+                  onChange={handleMilestoneChange}
+                  className="input w-full cursor-pointer border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Tự nhập / Không phân loại --</option>
+                  <option value="M1">M1 - Đề xuất đề tài (Proposal Outline)</option>
+                  <option value="M2">M2 - Báo cáo giữa kỳ (Midterm Progress)</option>
+                  <option value="M3">M3 - Nhật ký & Tiến độ (Logbook & Progress)</option>
+                  <option value="M4">M4 - Báo cáo chung cuộc (Final Thesis/Report)</option>
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Lựa chọn cột mốc để tự động định dạng tiêu đề chuẩn. Tiêu đề bắt buộc cần có từ khóa <span className="font-bold text-slate-700">M1, M2, M3, M4</span> (hoặc tương đương như Đề cương, Giữa kỳ, Nhật ký/Tiến độ) để hệ thống nhận diện đúng khi chấm điểm học phần và phân tích học thuật.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1 font-bold">
+                  Tiêu đề (Title)
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

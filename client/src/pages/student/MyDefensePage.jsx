@@ -102,6 +102,34 @@ const MyDefensePage = () => {
     }
   }, []);
 
+  const handleDownloadReviewerPdf = async (councilId, projectId, projectTitle) => {
+    try {
+      const downloadUrl = `/student/councils/${councilId}/projects/${projectId}/reviewer-form/download`;
+      const response = await axiosInstance.get(downloadUrl, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      const cleanedTitle = projectTitle ? projectTitle.replace(/[^a-zA-Z0-9-_]/g, "_") : projectId;
+      link.setAttribute("download", `Reviewer_Report_${cleanedTitle}.pdf`);
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Reviewer report downloaded successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error.response?.data?.message || "Failed to download reviewer report PDF",
+      );
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -634,12 +662,18 @@ const MyDefensePage = () => {
                     Weighted average score: {councilProject.weightedAverage ?? "N/A"}
                   </p>
                   {councilProject.reviewerForm?.pdfUrl && (
-                    <a
-                      href={`${axiosInstance.defaults.baseURL}/student/councils/${council._id}/projects/${project._id}/reviewer-form/download`}
-                      className="btn-outline inline-flex"
+                    <button
+                      onClick={() =>
+                        handleDownloadReviewerPdf(
+                          council._id,
+                          project._id,
+                          project.groupName || project.title
+                        )
+                      }
+                      className="btn-outline"
                     >
                       Download Reviewer PDF
-                    </a>
+                    </button>
                   )}
                 </div>
               )}

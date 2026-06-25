@@ -230,6 +230,16 @@ const CouncilsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isQaExpanded, setIsQaExpanded] = useState(false);
+  const [isCloRatesExpanded, setIsCloRatesExpanded] = useState(false);
+  const [isWarningsExpanded, setIsWarningsExpanded] = useState(false);
+  const [expandedCouncils, setExpandedCouncils] = useState({});
+
+  const toggleCouncilExpand = (id) => {
+    setExpandedCouncils((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   // TABS State
   const [activeTab, setActiveTab] = useState("list"); // 'list', 'scheduler', 'grid'
@@ -1240,7 +1250,7 @@ const CouncilsPage = () => {
                   chứng và các đề tài cần lưu ý về QA.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="rounded-lg bg-slate-50 p-4">
                   <p className="text-sm text-slate-500">Tổng số đánh giá</p>
                   <p className="text-xl font-semibold text-slate-800">
@@ -1259,80 +1269,108 @@ const CouncilsPage = () => {
                     {qaDashboard.passRate}%
                   </p>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">
-                    Hoàn thiện minh chứng QA
-                  </p>
-                  <p className="text-xl font-semibold text-slate-800">
-                    {qaDashboard.averageQaCompleteness}%
-                  </p>
-                </div>
+          
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <div className="rounded-lg border border-slate-200 p-4">
-                  <p className="mb-3 font-medium text-slate-700">
-                    Tỷ lệ đạt chuẩn đầu ra (CLO)
-                  </p>
-                  <div className="space-y-2">
-                    {(qaDashboard.cloAchievementRates || []).map((item) => (
-                      <div
-                        key={item.cloCode}
-                        className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                      >
-                        <span className="font-medium text-slate-700">
-                          {item.cloCode}
-                        </span>
-                        <span className="text-sm text-slate-500">
-                          {item.achievementRate}% ({item.achievedProjects}/
-                          {item.totalProjects})
-                        </span>
-                      </div>
-                    ))}
+                  <div
+                    className="flex items-center justify-between cursor-pointer select-none mb-3"
+                    onClick={() => setIsCloRatesExpanded(!isCloRatesExpanded)}
+                  >
+                    <p className="font-medium text-slate-700">
+                      Tỷ lệ đạt chuẩn đầu ra (CLO)
+                    </p>
+                    <div className="text-slate-400 hover:text-slate-600 rounded p-1">
+                      {isCloRatesExpanded ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
+                  {isCloRatesExpanded && (
+                    <div className="space-y-2">
+                      {(qaDashboard.cloAchievementRates || []).map((item) => (
+                        <div
+                          key={item.cloCode}
+                          className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
+                        >
+                          <span className="font-medium text-slate-700">
+                            {item.cloCode}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            {item.achievementRate}% ({item.achievedProjects}/
+                            {item.totalProjects})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-slate-200 p-4">
-                  <p className="mb-3 font-medium text-slate-700">
-                    Đề tài cần cập nhật minh chứng QA
-                  </p>
-                  <div className="space-y-2">
-                    {displayedProjectWarnings.map((item) => (
-                      <div
-                        key={item.projectId}
-                        className="rounded-lg bg-amber-50 p-3"
-                      >
-                        <p className="font-medium text-slate-800">
-                          {item.projectName}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          CLO chưa đạt:{" "}
-                          {item.redClos.length
-                            ? item.redClos.join(", ")
-                            : "None"}{" "}
-                          | Độ hoàn thiện QA: {item.qaCompleteness}%
-                        </p>
-                        {item.missingItems.length > 0 && (
-                          <p className="text-sm text-amber-700">
-                            Minh chứng thiếu: {item.missingItems.join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                    {(qaDashboard.projectWarnings || []).length === 0 && (
-                      <p className="text-slate-500">Không có cảnh báo QA.</p>
-                    )}
-                    {(qaDashboard.projectWarnings || []).length > 5 && (
-                      <button
-                        className="text-indigo-600 hover:text-indigo-700 font-medium text-sm mt-2 block w-full text-center py-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
-                        onClick={() => setIsQaExpanded(!isQaExpanded)}
-                      >
-                        {isQaExpanded
-                          ? "Thu gọn"
-                          : `Xem tất cả (${qaDashboard.projectWarnings.length})`}
-                      </button>
-                    )}
+                  <div
+                    className="flex items-center justify-between cursor-pointer select-none mb-3"
+                    onClick={() => setIsWarningsExpanded(!isWarningsExpanded)}
+                  >
+                    <p className="font-medium text-slate-700">
+                      Đề tài cần cập nhật minh chứng QA
+                    </p>
+                    <div className="text-slate-400 hover:text-slate-600 rounded p-1">
+                      {isWarningsExpanded ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
+                  {isWarningsExpanded && (
+                    <div className="space-y-2">
+                      {displayedProjectWarnings.map((item) => (
+                        <div
+                          key={item.projectId}
+                          className="rounded-lg bg-amber-50 p-3"
+                        >
+                          <p className="font-medium text-slate-800">
+                            {item.projectName}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            CLO chưa đạt:{" "}
+                            {item.redClos.length
+                              ? item.redClos.join(", ")
+                              : "None"}
+                          </p>
+                          {item.missingItems.length > 0 && (
+                            <p className="text-sm text-amber-700">
+                              Minh chứng thiếu: {item.missingItems.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      {(qaDashboard.projectWarnings || []).length === 0 && (
+                        <p className="text-slate-500">Không có cảnh báo QA.</p>
+                      )}
+                      {(qaDashboard.projectWarnings || []).length > 5 && (
+                        <button
+                          className="text-indigo-600 hover:text-indigo-700 font-medium text-sm mt-2 block w-full text-center py-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+                          onClick={() => setIsQaExpanded(!isQaExpanded)}
+                        >
+                          {isQaExpanded
+                            ? "Thu gọn"
+                            : `Xem tất cả (${qaDashboard.projectWarnings.length})`}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1419,6 +1457,7 @@ const CouncilsPage = () => {
                   conflict.teachers.size > 0 ||
                   conflict.projects.size > 0 ||
                   (conflict.supervisors && conflict.supervisors.size > 0));
+              const isExpanded = !!expandedCouncils[council._id];
 
               return (
                 <div
@@ -1470,7 +1509,10 @@ const CouncilsPage = () => {
                   )}
 
                   <div className="p-6">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4">
+                    <div
+                      className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4 cursor-pointer select-none"
+                      onClick={() => toggleCouncilExpand(council._id)}
+                    >
                       <div>
                         <div className="flex items-center gap-2">
                           <h2 className="card-title">{council.name}</h2>
@@ -1479,6 +1521,9 @@ const CouncilsPage = () => {
                               BẢN NHÁP
                             </span>
                           )}
+                          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            {council.projects?.length || 0} Đề tài
+                          </span>
                         </div>
                         <p className="card-subtitle">
                           {formatCouncilSchedule(
@@ -1492,7 +1537,7 @@ const CouncilsPage = () => {
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap items-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="btn-outline"
                           onClick={() => startEditingCouncil(council)}
@@ -1505,10 +1550,26 @@ const CouncilsPage = () => {
                         >
                           Xóa hội đồng
                         </button>
+                        <button
+                          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                          onClick={() => toggleCouncilExpand(council._id)}
+                        >
+                          {isExpanded ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-slate-100">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                       <div>
                         <p className="font-medium text-slate-700 mb-2">
                           Thành viên hội đồng
@@ -1614,7 +1675,7 @@ const CouncilsPage = () => {
                               thái: {projectItem.status}
                             </p>
                             {projectItem.assessmentSummary && (
-                              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg bg-slate-50 p-3">
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
                                 <div>
                                   <p className="text-xs uppercase text-slate-500">
                                     Điểm nhóm
@@ -1630,17 +1691,6 @@ const CouncilsPage = () => {
                                       .teamPassStatus === "pass"
                                       ? "ĐẠT"
                                       : "CHƯA ĐẠT"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-xs uppercase text-slate-500">
-                                    Độ hoàn thiện QA
-                                  </p>
-                                  <p className="font-semibold text-slate-800">
-                                    {projectItem.assessmentSummary
-                                      .qaEvidenceSummary?.completenessPercent ||
-                                      0}
-                                    %
                                   </p>
                                 </div>
                                 <div>
@@ -1670,7 +1720,9 @@ const CouncilsPage = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
               );
             })}
 
