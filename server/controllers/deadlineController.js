@@ -431,8 +431,8 @@ export const getTeacherMatrix = asyncHandler(async (req, res, next) => {
   // 1. Get all deadlines for this teacher
   const deadlines = await Deadline.find({ teacherId }).sort({ endDate: 1 });
 
-  // 2. Get all projects supervised by this teacher
-  const projects = await Project.find({ supervisor: teacherId, status: "approved" }).populate("student members", "name email");
+  // 2. Get all projects supervised by this teacher (excluding rejected ones)
+  const projects = await Project.find({ supervisor: teacherId, status: { $ne: "rejected" } }).populate("student members", "name email");
 
   // 3. Get all submissions for these projects
   const projectIds = projects.map(p => p._id);
@@ -490,8 +490,8 @@ export const getDeadlineSubmissions = asyncHandler(async (req, res, next) => {
     return next(new ErrorHandler("Deadline not found", 404));
   }
 
-  // Find all groups assigned to this deadline
-  let projectQuery = { supervisor: teacherId, status: "approved" };
+  // Find all groups assigned to this deadline (excluding rejected ones)
+  let projectQuery = { supervisor: teacherId, status: { $ne: "rejected" } };
   if (deadline.assignedGroups && deadline.assignedGroups.length > 0) {
     projectQuery._id = { $in: deadline.assignedGroups };
   }

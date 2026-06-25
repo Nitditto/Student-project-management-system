@@ -18,7 +18,7 @@ export const initCronJobs = async () => {
   cron.schedule("0 2 * * *", async () => {
     try {
       console.log("Running evaluator cron job...");
-      const projects = await Project.find({ status: "approved" });
+      const projects = await Project.find({ status: { $in: ["approved", "in_progress"] } });
 
       for (const project of projects) {
         if (!project.supervisor) continue;
