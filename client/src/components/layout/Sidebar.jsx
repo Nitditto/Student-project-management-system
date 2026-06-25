@@ -1,91 +1,93 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const Sidebar = ({ open, setOpen, userRole }) => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const getNavigationItems = () => {
     switch (userRole) {
       case "Student":
         return [
-          { name: "Home", path: "/student", icon: "home" },
+          { name: "sidebar.home", path: "/student", icon: "home" },
           {
-            name: "Project Registration",
+            name: "sidebar.projectRegistration",
             path: "/student/submit-proposal",
             icon: "document",
           },
           {
-            name: "Upload Files",
+            name: "sidebar.uploadFiles",
             path: "/student/upload-files",
             icon: "upload",
           },
           {
-            name: "My Deadlines",
+            name: "sidebar.myDeadlines",
             path: "/student/deadlines",
             icon: "calendar",
           },
           {
-            name: "Supervisor Flow",
+            name: "sidebar.supervisorFlow",
             path: "/student/supervisor",
             icon: "user",
           },
           {
-            name: "Defense & Attendance",
+            name: "sidebar.defenseAttendance",
             path: "/student/defense",
             icon: "calendar",
           },
         ];
       case "Teacher":
         return [
-          { name: "Home", path: "/teacher", icon: "home" },
+          { name: "sidebar.home", path: "/teacher", icon: "home" },
           {
-            name: "Teacher Preselect",
+            name: "sidebar.teacherPreselect",
             path: "/teacher/preselect",
             icon: "users",
           },
           {
-            name: "Pending Requests",
+            name: "sidebar.pendingRequests",
             path: "/teacher/pending-requests",
             icon: "clock",
           },
           {
-            name: "My Supervision",
+            name: "sidebar.mySupervision",
             path: "/teacher/assigned-students",
             icon: "users",
           },
           {
-            name: "Deadline Management",
+            name: "sidebar.deadlineManagement",
             path: "/teacher/deadlines",
             icon: "calendar",
           },
           {
-            name: "Defense Hub",
+            name: "sidebar.defenseHub",
             path: "/teacher/defense",
             icon: "calendar",
           },
-          { name: "Files", path: "/teacher/files", icon: "folder" },
+          { name: "sidebar.files", path: "/teacher/files", icon: "folder" },
         ];
       case "Admin":
         return [
-          { name: "Home", path: "/admin", icon: "home" },
-          { name: "Manage Students", path: "/admin/students", icon: "users" },
+          { name: "sidebar.home", path: "/admin", icon: "home" },
+          { name: "sidebar.manageStudents", path: "/admin/students", icon: "users" },
           {
-            name: "Manage Teachers",
+            name: "sidebar.manageTeachers",
             path: "/admin/teachers",
             icon: "academic",
           },
           {
-            name: "Assign Supervisor",
+            name: "sidebar.assignSupervisor",
             path: "/admin/assign-supervisor",
             icon: "link",
           },
           {
-            name: "Registration Settings",
+            name: "sidebar.registrationSettings",
             path: "/admin/registration-settings",
             icon: "check",
           },
-          { name: "Deadlines", path: "/admin/deadlines", icon: "calendar" },
-          { name: "Projects", path: "/admin/projects", icon: "folder" },
-          { name: "Councils", path: "/admin/councils", icon: "academic" },
+          { name: "sidebar.deadlines", path: "/admin/deadlines", icon: "calendar" },
+          { name: "sidebar.projects", path: "/admin/projects", icon: "folder" },
+          { name: "sidebar.councils", path: "/admin/councils", icon: "academic" },
         ];
       default:
         return [];
@@ -382,7 +384,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
                     className={`ml-3 font-medium transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0 lg:opacity-0"
                       } ${open ? "block" : "hidden lg:hidden"}`}
                   >
-                    {item.name}
+                    {t(item.name)}
                   </span>
                 </NavLink>
               );
@@ -481,7 +483,7 @@ const Sidebar = ({ open, setOpen, userRole }) => {
                   <div className="flex-shrink-0">
                     {getIcon(item.icon, isActive)}
                   </div>
-                  <span className="ml-3 font-medium">{item.name}</span>
+                  <span className="ml-3 font-medium">{t(item.name)}</span>
                 </NavLink>
               );
             })}

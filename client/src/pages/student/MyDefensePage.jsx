@@ -4,36 +4,12 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import RubricTable from "../../components/assessment/RubricTable";
+import { useTranslation } from "react-i18next";
 import {
   buildRubricPayload,
   createRubricEntries,
   formatAssessmentScore,
 } from "../../lib/assessment";
-
-const formatDateTime = (value) => {
-  if (!value) return "N/A";
-  return new Date(value).toLocaleString("vi-VN");
-};
-
-const getVietnameseDayOfWeek = (dateValue) => {
-  if (!dateValue) return "";
-  const d = new Date(dateValue);
-  if (isNaN(d.getTime())) return "";
-  const day = d.getDay();
-  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-  return days[day];
-};
-
-const formatCouncilSchedule = (defenseDate, room) => {
-  if (!defenseDate) return "Chưa xếp lịch";
-  const d = new Date(defenseDate);
-  if (isNaN(d.getTime())) return "Lịch không hợp lệ";
-  const dayName = getVietnameseDayOfWeek(d);
-  const dateStr = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const timeStr = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  const roomInfo = room ? `Phòng: ${room}` : "Chưa xếp phòng";
-  return `${dayName}, ngày ${dateStr} vào lúc ${timeStr} | ${roomInfo}`;
-};
 
 const statusClassMap = {
   present: "bg-green-100 text-green-800",
@@ -42,13 +18,8 @@ const statusClassMap = {
   pending: "bg-yellow-100 text-yellow-800",
 };
 
-const checkInMethodLabelMap = {
-  qr: "QR scan",
-  code: "teacher code",
-  manual: "manual confirmation",
-};
-
 const MyDefensePage = () => {
+  const { t, i18n } = useTranslation();
   const { authUser } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -69,6 +40,44 @@ const MyDefensePage = () => {
   const [qrCheckInError, setQrCheckInError] = useState("");
   const processedQrTokenRef = useRef(null);
   const qrToken = searchParams.get("token");
+
+  const formatDateTime = (value) => {
+    if (!value) return "N/A";
+    return new Date(value).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US");
+  };
+
+  const getDayOfWeekStr = (dateValue) => {
+    if (!dateValue) return "";
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return "";
+    const day = d.getDay();
+    const days = [
+      t("student.defense.sun"),
+      t("student.defense.mon"),
+      t("student.defense.tue"),
+      t("student.defense.wed"),
+      t("student.defense.thu"),
+      t("student.defense.fri"),
+      t("student.defense.sat")
+    ];
+    return days[day];
+  };
+
+  const formatCouncilSchedule = (defenseDate, room) => {
+    if (!defenseDate) return t("student.defense.notScheduled");
+    const d = new Date(defenseDate);
+    if (isNaN(d.getTime())) return t("student.defense.invalidSchedule");
+    const dayName = getDayOfWeekStr(d);
+    const dateStr = d.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeStr = d.toLocaleTimeString(i18n.language === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" });
+    const roomInfo = room ? t("student.defense.room", { room }) : t("student.defense.noRoomAssigned");
+    
+    if (i18n.language === "vi") {
+      return `${dayName}, ngày ${dateStr} vào lúc ${timeStr} | ${roomInfo}`;
+    } else {
+      return `${dayName}, ${dateStr} at ${timeStr} | ${roomInfo}`;
+    }
+  };
 
   const clearQrTokenFromUrl = useCallback(() => {
     const nextParams = new URLSearchParams(searchParams);
@@ -295,7 +304,7 @@ const MyDefensePage = () => {
   };
 
   if (loading) {
-    return <div className="card">Loading defense workspace...</div>;
+    return <div className="card">{t("student.supervisor.loading")}</div>;
   }
 
   const project = scheduleBoard?.project || attendanceBoard?.project || councilBoard?.project;
@@ -312,50 +321,50 @@ const MyDefensePage = () => {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-sky-600 to-cyan-600 rounded-lg p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">Defense Schedule, Attendance, and Council Result</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("student.defense.headerTitle")}</h1>
         <p className="text-sky-100">
-          Follow the team defense slot, personal attendance records, and the final council outcome.
+          {t("student.defense.headerDesc")}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card">
-          <p className="text-sm text-slate-500">Team / Project</p>
+          <p className="text-sm text-slate-500">{t("student.defense.teamProject")}</p>
           <p className="font-semibold text-slate-800">
-            {project?.groupName || project?.title || "No project"}
+            {project?.groupName || project?.title || t("student.defense.noProject")}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">Current Defense Slot</p>
+          <p className="text-sm text-slate-500">{t("student.defense.currDefenseSlot")}</p>
           <p className="font-semibold text-slate-800">
-            {selectedSchedule?.startAt ? formatDateTime(selectedSchedule.startAt) : "Not selected"}
+            {selectedSchedule?.startAt ? formatDateTime(selectedSchedule.startAt) : t("student.defense.notSelected")}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">Attendance Rate</p>
+          <p className="text-sm text-slate-500">{t("student.defense.attendanceRate")}</p>
           <p className="font-semibold text-slate-800">
             {summary ? `${summary.attendanceRate}%` : "0%"}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">Final Defense Score</p>
+          <p className="text-sm text-slate-500">{t("student.defense.finalScore")}</p>
           <p className="font-semibold text-slate-800">
-            {project?.defenseFinalScore ?? "Not finalized"}
+            {project?.defenseFinalScore ?? t("student.defense.notFinalized")}
           </p>
         </div>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Section A. Team Defense Slot Selection</h2>
+          <h2 className="card-title">{t("student.defense.secATitle")}</h2>
           <p className="card-subtitle">
-            Only the group representative can pick or reschedule the slot for the whole team.
+            {t("student.defense.secASub")}
           </p>
         </div>
 
         {!isLeader && (
           <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 text-slate-700">
-            Representative: <strong>{project?.student?.name}</strong>. You can view the slot but cannot change it.
+            {t("student.defense.repViewOnly", { name: project?.student?.name })}
           </div>
         )}
 
@@ -363,24 +372,22 @@ const MyDefensePage = () => {
           <div className="space-y-3">
             <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
               <p className="font-semibold text-slate-800">
-                Selected slot: {formatDateTime(selectedSchedule.startAt)} -{" "}
-                {formatDateTime(selectedSchedule.endAt)}
+                {t("student.defense.selectedSlot", { start: formatDateTime(selectedSchedule.startAt), end: formatDateTime(selectedSchedule.endAt) })}
               </p>
               <p className="text-sm text-slate-600">
-                Location: {selectedSchedule.location || "Not set"} | Mode:{" "}
-                {selectedSchedule.mode || "N/A"}
+                {t("student.defense.slotDetail", { location: selectedSchedule.location || t("student.defense.notSelected"), mode: selectedSchedule.mode || "N/A" })}
               </p>
             </div>
             {isLeader && (
               <>
                 <textarea
                   className="input min-h-24 w-full"
-                  placeholder="Reason for reschedule"
+                  placeholder={t("student.defense.rescheduleReason")}
                   value={rescheduleReason}
                   onChange={(event) => setRescheduleReason(event.target.value)}
                 />
                 <button className="btn-outline" onClick={handleReschedule}>
-                  Release Current Slot For Reschedule
+                  {t("student.defense.releaseSlotBtn")}
                 </button>
               </>
             )}
@@ -392,13 +399,13 @@ const MyDefensePage = () => {
                 <div className="flex flex-col gap-1 mb-3">
                   <h3 className="font-semibold text-slate-800">{schedule.title}</h3>
                   <p className="text-sm text-slate-500">
-                    Pick deadline: {formatDateTime(schedule.pickDeadline)} | Reschedule locked {schedule.rescheduleWindowHours} hours before defense
+                    {t("student.defense.pickDeadlineInfo", { date: formatDateTime(schedule.pickDeadline), hours: schedule.rescheduleWindowHours })}
                   </p>
                 </div>
                 <div className="space-y-2">
                   {(schedule.slots || []).length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      No visible slot left. The system may already auto-assign after the deadline.
+                      {t("student.defense.noSlotsLeft")}
                     </p>
                   ) : (
                     schedule.slots.map((slot) => (
@@ -411,7 +418,7 @@ const MyDefensePage = () => {
                             {formatDateTime(slot.startAt)} - {formatDateTime(slot.endAt)}
                           </p>
                           <p className="text-sm text-slate-500">
-                            {slot.location || "No location"} | {slot.mode}
+                            {slot.location || t("student.defense.noRoomAssigned")} | {slot.mode}
                           </p>
                         </div>
                         {isLeader ? (
@@ -419,10 +426,10 @@ const MyDefensePage = () => {
                             className="btn-primary"
                             onClick={() => handlePickSlot(schedule._id, slot._id)}
                           >
-                            Representative Picks This Slot
+                            {t("student.defense.pickSlotBtn")}
                           </button>
                         ) : (
-                          <span className="text-sm text-slate-500">Representative action only</span>
+                          <span className="text-sm text-slate-500">{t("student.defense.repActionOnly")}</span>
                         )}
                       </div>
                     ))
@@ -437,7 +444,7 @@ const MyDefensePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Section B. Personal Attendance Record</h2>
+            <h2 className="card-title">{t("student.defense.secBTitle")}</h2>
             <p className="card-subtitle">{summary?.formula}</p>
           </div>
 
@@ -445,8 +452,8 @@ const MyDefensePage = () => {
             <div className="mb-4 rounded-lg bg-cyan-50 border border-cyan-200 p-3 text-cyan-800">
               <p>
                 {qrCheckInStatus === "error"
-                  ? qrCheckInError || "QR attendance confirmation failed."
-                  : "Processing the QR attendance confirmation for your signed-in student account."}
+                  ? qrCheckInError || t("student.defense.qrFailed")
+                  : t("student.defense.qrProcessing")}
               </p>
               {qrCheckInStatus === "error" && authUser?._id && (
                 <button
@@ -457,7 +464,7 @@ const MyDefensePage = () => {
                     handleQrCheckIn(qrToken, processedKey);
                   }}
                 >
-                  Retry QR Check-in
+                  {t("student.defense.qrRetry")}
                 </button>
               )}
             </div>
@@ -465,19 +472,19 @@ const MyDefensePage = () => {
 
           {summary?.warning && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-red-700">
-              Warning: your attendance rate is below 70%.
+              {t("student.defense.attendanceWarning")}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-sm text-slate-500">Total Sessions</p>
+              <p className="text-sm text-slate-500">{t("student.defense.totalSessions")}</p>
               <p className="text-xl font-semibold text-slate-800">
                 {summary?.totalSessions || 0}
               </p>
             </div>
             <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-sm text-slate-500">Present + Excused</p>
+              <p className="text-sm text-slate-500">{t("student.defense.presentExcused")}</p>
               <p className="text-xl font-semibold text-slate-800">
                 {(summary?.presentSessions || 0) + (summary?.excusedSessions || 0)}
               </p>
@@ -507,7 +514,13 @@ const MyDefensePage = () => {
                     <span
                       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClassMap[status] || statusClassMap.pending}`}
                     >
-                      {status}
+                      {status === "present"
+                        ? t("student.defense.statusPresent")
+                        : status === "absent"
+                          ? t("student.defense.statusAbsent")
+                          : status === "excused"
+                            ? t("student.defense.statusExcused")
+                            : t("student.defense.statusPending")}
                     </span>
                   </div>
 
@@ -515,24 +528,30 @@ const MyDefensePage = () => {
                     <div className="mt-3 flex flex-col gap-3 md:flex-row">
                       <input
                         className="input"
-                        placeholder="Enter 6-digit teacher code if QR scan is unavailable"
+                        placeholder={t("student.defense.codePlaceholder")}
                         value={codeInputs[session._id] || ""}
                         onChange={(event) => updateCodeField(session._id, event.target.value)}
                       />
                       <button className="btn-primary" onClick={() => handleCheckIn(session._id)}>
-                        Confirm With Code
+                        {t("student.defense.confirmCodeBtn")}
                       </button>
                     </div>
                   )}
 
                   {status === "present" && (
                     <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                      Attendance confirmed
+                      {t("student.defense.attendanceConfirmed")}
                       {myRecord?.checkedInAt
-                        ? ` at ${formatDateTime(myRecord.checkedInAt)}`
+                        ? ` ${t("student.defense.at", "at")} ${formatDateTime(myRecord.checkedInAt)}`
                         : ""}
                       {myRecord?.checkInMethod
-                        ? ` via ${checkInMethodLabelMap[myRecord.checkInMethod] || myRecord.checkInMethod}`
+                        ? ` ${t("student.defense.via")} ${
+                            myRecord.checkInMethod === "qr"
+                              ? t("student.defense.methodQr")
+                              : myRecord.checkInMethod === "code"
+                                ? t("student.defense.methodCode")
+                                : t("student.defense.methodManual")
+                          }`
                         : ""}
                       .
                     </div>
@@ -540,16 +559,16 @@ const MyDefensePage = () => {
 
                   {status === "excused" && (
                     <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                      This session was marked as excused. No further check-in is required.
+                      {t("student.defense.excusedInfo")}
                     </div>
                   )}
 
                   {canRequestLeave && (
                     <div className="mt-4 rounded-lg bg-slate-50 p-3 space-y-3">
-                      <p className="font-medium text-slate-700">Request Leave For This Session</p>
+                      <p className="font-medium text-slate-700">{t("student.defense.requestLeave")}</p>
                       <input
                         className="input"
-                        placeholder="Leave reason"
+                        placeholder={t("student.defense.leaveReason")}
                         value={form.reason || ""}
                         onChange={(event) =>
                           updateLeaveField(session._id, "reason", event.target.value)
@@ -557,7 +576,7 @@ const MyDefensePage = () => {
                       />
                       <textarea
                         className="input min-h-20"
-                        placeholder="Additional note"
+                        placeholder={t("student.defense.leaveNote")}
                         value={form.note || ""}
                         onChange={(event) =>
                           updateLeaveField(session._id, "note", event.target.value)
@@ -575,7 +594,7 @@ const MyDefensePage = () => {
                         }
                       />
                       <button className="btn-outline" onClick={() => handleLeaveRequest(session._id)}>
-                        Submit Leave Request
+                        {t("student.defense.submitLeaveBtn")}
                       </button>
                     </div>
                   )}
@@ -583,18 +602,18 @@ const MyDefensePage = () => {
               );
             })}
             {(!attendanceBoard?.sessions || attendanceBoard.sessions.length === 0) && (
-              <p className="text-slate-500">No attendance session yet.</p>
+              <p className="text-slate-500">{t("student.defense.noSessions")}</p>
             )}
           </div>
         </div>
 
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Section C. Defense Council Result</h2>
+            <h2 className="card-title">{t("student.defense.secCTitle")}</h2>
           </div>
 
           {!council ? (
-            <p className="text-slate-500">This project has not been assigned to a defense council yet.</p>
+            <p className="text-slate-500">{t("student.defense.noCouncilAssigned")}</p>
           ) : (
             <div className="space-y-4">
               <div className="rounded-lg bg-slate-50 p-4">
@@ -605,7 +624,7 @@ const MyDefensePage = () => {
               </div>
 
               <div>
-                <p className="mb-2 font-medium text-slate-700">Council Members</p>
+                <p className="mb-2 font-medium text-slate-700">{t("student.defense.councilMembers")}</p>
                 <div className="space-y-2">
                   {(council.members || []).map((member) => (
                     <div
@@ -616,7 +635,7 @@ const MyDefensePage = () => {
                         <p className="font-medium text-slate-800">{member.teacher?.name}</p>
                         <p className="text-sm text-slate-500 capitalize">{member.role}</p>
                       </div>
-                      <span className="text-sm text-slate-500">Weight {member.weight}</span>
+                      <span className="text-sm text-slate-500">{t("student.defense.weight", { weight: member.weight })}</span>
                     </div>
                   ))}
                 </div>
@@ -625,20 +644,22 @@ const MyDefensePage = () => {
               {councilProject && (
                 <div className="rounded-lg border border-slate-200 p-4 space-y-3">
                   <p className="font-medium text-slate-800">
-                    Reviewer: {councilProject.reviewer?.name || "Waiting for chairman assignment"}
+                    {councilProject.reviewer?.name 
+                      ? t("student.defense.reviewer", { name: councilProject.reviewer.name }) 
+                      : t("student.defense.waitingChairman")}
                   </p>
                   <p className="text-sm text-slate-500">
-                    Council scoring status: {councilProject.status}
+                    {t("student.defense.councilScoringStatus", { status: councilProject.status })}
                   </p>
                   <p className="font-semibold text-slate-800">
-                    Weighted average score: {councilProject.weightedAverage ?? "N/A"}
+                    {t("student.defense.weightedAverageScore", { score: councilProject.weightedAverage ?? "N/A" })}
                   </p>
                   {councilProject.reviewerForm?.pdfUrl && (
                     <a
                       href={`${axiosInstance.defaults.baseURL}/student/councils/${council._id}/projects/${project._id}/reviewer-form/download`}
                       className="btn-outline inline-flex"
                     >
-                      Download Reviewer PDF
+                      {t("student.defense.downloadReviewerPdf")}
                     </a>
                   )}
                 </div>
@@ -650,35 +671,35 @@ const MyDefensePage = () => {
 
       <div className="card space-y-4">
         <div className="card-header">
-          <h2 className="card-title">Section D. CLO Assessment and QA Evidence</h2>
+          <h2 className="card-title">{t("student.defense.secDTitle")}</h2>
           <p className="card-subtitle">
-            Track milestone progress, final CLO status, and submit your peer / ICS package for M6.
+            {t("student.defense.secDSub")}
           </p>
         </div>
 
         {!assessmentSummary ? (
-          <p className="text-slate-500">CLO assessment has not been initialized for this project yet.</p>
+          <p className="text-slate-500">{t("student.defense.noAssessment")}</p>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Team score</p>
+                <p className="text-sm text-slate-500">{t("student.defense.teamScore")}</p>
                 <p className="font-semibold text-slate-800">
                   {formatAssessmentScore(assessmentSummary.teamFinalScore, "/10")}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Team result</p>
+                <p className="text-sm text-slate-500">{t("student.defense.teamResult")}</p>
                 <p className="font-semibold text-slate-800">{assessmentSummary.teamPassStatus}</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">My final score</p>
+                <p className="text-sm text-slate-500">{t("student.defense.myFinalScore")}</p>
                 <p className="font-semibold text-slate-800">
                   {formatAssessmentScore(myAssessment?.officialFinalScore, "/10")}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">QA completeness</p>
+                <p className="text-sm text-slate-500">{t("student.defense.qaCompleteness")}</p>
                 <p className="font-semibold text-slate-800">
                   {assessmentSummary.qaEvidenceSummary?.completenessPercent || 0}%
                 </p>
@@ -686,7 +707,7 @@ const MyDefensePage = () => {
             </div>
 
             <div className="rounded-lg border border-slate-200 p-4">
-              <p className="mb-3 font-medium text-slate-700">Milestone Timeline</p>
+              <p className="mb-3 font-medium text-slate-700">{t("student.defense.milestoneTimeline")}</p>
               <div className="space-y-2">
                 {(assessmentSummary.milestones || []).map((milestone) => (
                   <div
@@ -698,7 +719,7 @@ const MyDefensePage = () => {
                         {milestone.code}. {milestone.label}
                       </p>
                       <p className="text-sm text-slate-500">
-                        Component: {formatAssessmentScore(milestone.componentScore5, "/5")} /{" "}
+                        {t("student.defense.score", "Component")}: {formatAssessmentScore(milestone.componentScore5, "/5")} /{" "}
                         {formatAssessmentScore(milestone.componentScore10, "/10")}
                       </p>
                     </div>
@@ -709,7 +730,7 @@ const MyDefensePage = () => {
             </div>
 
             <div className="rounded-lg border border-slate-200 p-4">
-              <p className="mb-3 font-medium text-slate-700">Final CLO Status</p>
+              <p className="mb-3 font-medium text-slate-700">{t("student.defense.finalCloStatus")}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {(assessmentSummary.cloResults || []).map((item) => (
                   <div key={item.cloCode} className="rounded-lg bg-slate-50 p-3">
@@ -724,21 +745,21 @@ const MyDefensePage = () => {
 
             <div className="rounded-lg border border-slate-200 p-4 space-y-4">
               <div>
-                <p className="font-medium text-slate-700">M6 Peer / ICS Submission</p>
+                <p className="font-medium text-slate-700">{t("student.defense.m6Title")}</p>
                 <p className="text-sm text-slate-500">
-                  Submit your individual evidence for teamwork, communication, and innovation CLOs.
+                  {t("student.defense.m6Sub")}
                 </p>
               </div>
 
               <RubricTable
                 entries={peerForm.entries}
                 onChange={updatePeerEntry}
-                title="My M6 CLO Rubric"
+                title={t("student.defense.m6RubricTitle")}
               />
 
               <textarea
                 className="input min-h-24"
-                placeholder="Overall peer / ICS note"
+                placeholder={t("student.defense.peerNotePlaceholder")}
                 value={peerForm.overallComment}
                 onChange={(event) =>
                   setPeerForm((current) => ({ ...current, overallComment: event.target.value }))
@@ -758,18 +779,18 @@ const MyDefensePage = () => {
 
               <div className="flex flex-wrap gap-2">
                 <button className="btn-primary" onClick={submitPeerEvaluation}>
-                  Submit M6 Peer / ICS
+                  {t("student.defense.submitM6Btn")}
                 </button>
                 <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                  Current status: {myAssessment?.peerSubmission?.approvalStatus || "not submitted"}
+                  {t("student.defense.currStatus", { status: myAssessment?.peerSubmission?.approvalStatus || t("student.defense.notSubmitted") })}
                 </span>
               </div>
             </div>
 
             <div className="rounded-lg border border-slate-200 p-4">
-              <p className="mb-2 font-medium text-slate-700">Missing QA Evidence</p>
+              <p className="mb-2 font-medium text-slate-700">{t("student.defense.missingQaEvidence")}</p>
               <p className="text-sm text-slate-500">
-                {assessmentSummary.qaEvidenceSummary?.missingItems?.join(", ") || "No missing evidence items"}
+                {assessmentSummary.qaEvidenceSummary?.missingItems?.join(", ") || t("student.defense.noMissingEvidence")}
               </p>
             </div>
           </>

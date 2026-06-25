@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import AddStudent from "../../components/modal/AddStudent";
 import {
   createStudent,
@@ -19,6 +20,7 @@ import {
 import { toggleStudentModal } from "../../store/slices/popupSlice";
 
 const ManageStudents = () => {
+  const { t } = useTranslation();
   const { users, projects } = useSelector((state) => state.admin);
   const { isCreateStudentModalOpen } = useSelector((state) => state.popup);
   const [showModal, setShowModal] = useState(false);
@@ -132,9 +134,9 @@ const ManageStudents = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row items-start justify-between md:items-center">
             <div className="">
-              <h1 className="card-title">Manage Students</h1>
+              <h1 className="card-title">{t("admin.students.title")}</h1>
               <p className="card-subtitle">
-                Add, edit, and manage student accounts
+                {t("admin.students.subtitle")}
               </p>
             </div>
             <button
@@ -142,7 +144,7 @@ const ManageStudents = () => {
               onClick={() => dispatch(toggleStudentModal())}
             >
               <Plus className="w-5 h-5" />
-              <span>Add New Student</span>
+              <span>{t("admin.students.addNew")}</span>
             </button>
           </div>
         </div>
@@ -156,7 +158,7 @@ const ManageStudents = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  Total Students
+                  {t("admin.students.total")}
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {students.length}
@@ -172,7 +174,7 @@ const ManageStudents = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  Completed Projects
+                  {t("admin.students.completed")}
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {
@@ -191,7 +193,9 @@ const ManageStudents = () => {
                 <TriangleAlert className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-slate-600">Unassigned</p>
+                <p className="text-sm font-medium text-slate-600">
+                  {t("admin.students.unassigned")}
+                </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {students.filter((student) => !student.supervisor).length}
                 </p>
@@ -208,11 +212,11 @@ const ManageStudents = () => {
                 htmlFor=""
                 className="block text-sm font-medium text-slate-700 mb-2"
               >
-                Search Students
+                {t("admin.students.searchLabel")}
               </label>
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder={t("admin.students.searchPlaceholder")}
                 className="input-field w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -220,14 +224,14 @@ const ManageStudents = () => {
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Filter Status
+                {t("admin.students.filterDept")}
               </label>
               <select
                 className="input-field w-full"
                 value={filterDepartment}
                 onChange={(e) => setFilterDepartment(e.target.value)}
               >
-                <option value="all">All Departments</option>
+                <option value="all">{t("admin.students.allDepts")}</option>
                 {departments.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
@@ -241,7 +245,7 @@ const ManageStudents = () => {
         {/* Students table */}
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-slate-900">Students List</h2>
+            <h2 className="font-semibold text-slate-900">{t("admin.students.listTitle")}</h2>
           </div>
           <div className="overflow-x-auto">
             {filteredStudents && filteredStudents.length > 0 ? (
@@ -249,19 +253,19 @@ const ManageStudents = () => {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Student Info
+                      {t("admin.students.colInfo")}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Department & Year
+                      {t("admin.students.colDept")}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Supervisor
+                      {t("admin.students.colSupervisor")}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Project Title
+                      {t("admin.students.colProject")}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Actions
+                      {t("admin.students.colActions")}
                     </th>
                   </tr>
                 </thead>
@@ -304,18 +308,13 @@ const ManageStudents = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {student.supervisor ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-green-800 bg-green-100 text-xs font-medium">
-                              {/* {
-                                users?.find(
-                                  (user) => user._id === student.supervisor,
-                                )?.name
-                              } */}
                               {student.supervisor.name || student.supervisor}
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-red-800 bg-red-100 text-xs font-medium">
                               {student.projectStatus === "rejected"
-                                ? "Rejected"
-                                : "Not Assigned"}
+                                ? t("student.supervisor.statusRejected")
+                                : t("student.supervisor.notAssigned")}
                             </span>
                           )}
                         </td>
@@ -334,13 +333,13 @@ const ManageStudents = () => {
                               className="text-blue-600 hover:text-blue-900"
                               onClick={() => handleEdit(student)}
                             >
-                              Edit
+                              {t("admin.students.edit")}
                             </button>
                             <button
                               className="text-red-600 hover:text-red-900"
                               onClick={() => handleDelete(student)}
                             >
-                              Delete
+                              {t("admin.students.delete")}
                             </button>
                           </div>
                         </td>
@@ -352,7 +351,7 @@ const ManageStudents = () => {
             ) : (
               filteredStudents.length === 0 && (
                 <div className="text-center py-8 text-slate-500">
-                  No students found matching your criteria
+                  {t("admin.assign.noStudents")}
                 </div>
               )
             )}
@@ -364,7 +363,7 @@ const ManageStudents = () => {
               <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-slate-900">
-                    Edit Student
+                    {t("admin.students.editTitle")}
                   </h3>
                   <button
                     onClick={handleCloseModal}
@@ -376,7 +375,7 @@ const ManageStudents = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Full Name
+                      {t("admin.students.fullName")}
                     </label>
                     <input
                       type="text"
@@ -389,7 +388,7 @@ const ManageStudents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Email
+                      {t("admin.students.email")}
                     </label>
                     <input
                       type="email"
@@ -402,7 +401,7 @@ const ManageStudents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Department
+                      {t("admin.students.department")}
                     </label>
                     <select
                       required
@@ -412,7 +411,7 @@ const ManageStudents = () => {
                       }
                       className="input-field w-full p-2 border-b border-slate-600 focus:outline-none"
                     >
-                      <option value="">Select Department</option>
+                      <option value="">{t("admin.students.selectDept")}</option>
                       <option value="Computer Science">Computer Science</option>
                       <option value="Software Engineering">
                         Software Engineering
@@ -441,10 +440,10 @@ const ManageStudents = () => {
                       onClick={handleCloseModal}
                       className="btn-danger"
                     >
-                      Cancel
+                      {t("admin.students.cancel")}
                     </button>
                     <button type="submit" className="btn-primary">
-                      Update Student
+                      {t("admin.students.update")}
                     </button>
                   </div>
                 </form>
@@ -463,21 +462,18 @@ const ManageStudents = () => {
 
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    Delete Student
+                    {t("admin.students.deleteTitle")}
                   </h3>
                   <p className="text-sm text-slate-500 mb-4">
-                    Are you sure you want to delete{" "}
-                    <span className="">
-                      {studentToDelete.name}? This action cannot be undone
-                    </span>
+                    {t("admin.students.deleteConfirm", { name: studentToDelete.name })}
                   </p>
 
                   <div className="flex justify-center space-x-3">
                     <button className="btn-secondary" onClick={cancelDelete}>
-                      Cancel
+                      {t("admin.students.cancel")}
                     </button>
                     <button className="btn-danger" onClick={confirmDelete}>
-                      Delete
+                      {t("admin.students.delete")}
                     </button>
                   </div>
                 </div>
