@@ -185,9 +185,14 @@ const PendingRequests = () => {
                           {lm.accepting ? "Accepting..." : "Accept"}
                         </button>
                         <button
-                          className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 bg-red-600 hover:bg-red-700 text-white`}
+                          className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                            canAccept
+                              ? "bg-red-600 hover:bg-red-700 text-white"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
                           onClick={() => handleReject(req)}
-                          disabled={lm.rejecting}
+                          disabled={lm.rejecting || !canAccept}
+                          title={!canAccept ? "Project must be approved and have no supervisor assigned" : ""}
                         >
                           {lm.rejecting ? "Rejecting..." : "Reject"}
                         </button>
