@@ -577,10 +577,25 @@ const DefenseHubPage = () => {
 
   const assignReviewer = async (councilId, projectId) => {
     const key = `${councilId}-${projectId}`;
+    const council = councils.find((c) => c._id === councilId);
+    const projectItem = council?.projects?.find((p) => p.project?._id === projectId);
+    const secretary = council?.members?.find((m) => m.role === "secretary")?.teacher;
+    const defaultReviewerId = secretary?._id || secretary || "";
+    const currentReviewerId = projectItem?.reviewer?._id || projectItem?.reviewer || defaultReviewerId;
+
+    const payload = {
+      reviewerId: reviewerAssignments[key]?.reviewerId !== undefined 
+        ? reviewerAssignments[key].reviewerId 
+        : currentReviewerId,
+      reviewerWeight: reviewerAssignments[key]?.reviewerWeight !== undefined
+        ? Number(reviewerAssignments[key].reviewerWeight)
+        : 1.5
+    };
+
     try {
       await axiosInstance.post(
         `/teacher/councils/${councilId}/projects/${projectId}/reviewer`,
-        reviewerAssignments[key] || {},
+        payload,
       );
       toast.success("Reviewer assigned by chairman");
       await loadData();
@@ -1778,6 +1793,18 @@ const DefenseHubPage = () => {
 
               {(council.projects || []).map((projectItem) => {
                 const key = `${council._id}-${projectItem.project?._id}`;
+                const secretary = council.members?.find((m) => m.role === "secretary")?.teacher;
+                const defaultReviewerId = secretary?._id || secretary || "";
+                const assignedReviewerId = projectItem.reviewer?._id || projectItem.reviewer || "";
+                const displayReviewerId = reviewerAssignments[key]?.reviewerId !== undefined
+                  ? reviewerAssignments[key].reviewerId
+                  : (assignedReviewerId || defaultReviewerId);
+
+                const isAssignedReviewer = projectItem.reviewer && (
+                  projectItem.reviewer._id
+                    ? projectItem.reviewer._id === authUser?._id
+                    : projectItem.reviewer === authUser?._id
+                );
                 return (
                   <div
                     key={projectItem.project?._id}
@@ -1803,7 +1830,7 @@ const DefenseHubPage = () => {
                         </p>
                         <select
                           className="input"
-                          value={reviewerAssignments[key]?.reviewerId || ""}
+                          value={displayReviewerId}
                           onChange={(event) =>
                             updateReviewerAssignment(
                               key,
@@ -1813,9 +1840,12 @@ const DefenseHubPage = () => {
                           }
                         >
                           <option value="">Select reviewer teacher</option>
-                          {teachers.map((teacher) => (
-                            <option key={teacher._id} value={teacher._id}>
-                              {teacher.name}
+                          {(council.members || []).map((member) => (
+                            <option
+                              key={member.teacher?._id || member.teacher}
+                              value={member.teacher?._id || member.teacher}
+                            >
+                              {member.teacher?.name} ({member.role === "chairman" ? "Chủ tịch" : member.role === "secretary" ? "Thư ký" : "Ủy viên"})
                             </option>
                           ))}
                         </select>
@@ -1922,7 +1952,12 @@ const DefenseHubPage = () => {
                         <textarea
                           className="input min-h-20"
                           placeholder="Reviewer summary"
-                          value={reviewerForms[key]?.summary || ""}
+                          disabled={!isAssignedReviewer}
+                          value={
+                            reviewerForms[key]?.summary !== undefined
+                              ? reviewerForms[key].summary
+                              : (projectItem.reviewerForm?.summary || "")
+                          }
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1934,7 +1969,12 @@ const DefenseHubPage = () => {
                         <textarea
                           className="input min-h-20"
                           placeholder="Project strengths"
-                          value={reviewerForms[key]?.strengths || ""}
+                          disabled={!isAssignedReviewer}
+                          value={
+                            reviewerForms[key]?.strengths !== undefined
+                              ? reviewerForms[key].strengths
+                              : (projectItem.reviewerForm?.strengths || "")
+                          }
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1946,7 +1986,12 @@ const DefenseHubPage = () => {
                         <textarea
                           className="input min-h-20"
                           placeholder="Concerns or issues"
-                          value={reviewerForms[key]?.concerns || ""}
+                          disabled={!isAssignedReviewer}
+                          value={
+                            reviewerForms[key]?.concerns !== undefined
+                              ? reviewerForms[key].concerns
+                              : (projectItem.reviewerForm?.concerns || "")
+                          }
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1958,7 +2003,12 @@ const DefenseHubPage = () => {
                         <textarea
                           className="input min-h-20"
                           placeholder="Recommendation"
-                          value={reviewerForms[key]?.recommendation || ""}
+                          disabled={!isAssignedReviewer}
+                          value={
+                            reviewerForms[key]?.recommendation !== undefined
+                              ? reviewerForms[key].recommendation
+                              : (projectItem.reviewerForm?.recommendation || "")
+                          }
                           onChange={(event) =>
                             updateReviewerForm(
                               key,
@@ -1970,6 +2020,7 @@ const DefenseHubPage = () => {
                         <div className="flex gap-2">
                           <button
                             className="btn-outline"
+                            disabled={!isAssignedReviewer}
                             onClick={() =>
                               submitReviewerFormAction(
                                 council._id,
