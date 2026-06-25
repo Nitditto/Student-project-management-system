@@ -1,11 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
-import { useTranslation } from "react-i18next";
 import { axiosInstance } from "../../lib/axios";
 import { Lock, Unlock, Users, Merge, X } from "lucide-react";
 
 const RegistrationSettingsPage = () => {
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -75,10 +73,10 @@ const RegistrationSettingsPage = () => {
         payload.groupEditLockDate = null;
       }
       await axiosInstance.put("/admin/registration-settings", payload);
-      toast.success(t("admin.reg.toastSaveSuccess"));
+      toast.success("Registration settings updated");
       await loadData();
     } catch (error) {
-      toast.error(error.response?.data?.message || t("admin.reg.toastSaveFailed"));
+      toast.error(error.response?.data?.message || "Failed to update registration settings");
     } finally {
       setSaving(false);
     }
@@ -96,7 +94,7 @@ const RegistrationSettingsPage = () => {
 
   const handleForceMerge = async () => {
     if (mergeForm.studentIds.length === 0) {
-      return toast.warning(t("admin.reg.toastSelectOne"));
+      return toast.warning("Select at least one student");
     }
     
     setMergeLoading(true);
@@ -107,12 +105,12 @@ const RegistrationSettingsPage = () => {
         description: mergeForm.description,
         supervisorId: mergeForm.supervisorId || undefined,
       });
-      toast.success(t("admin.reg.toastMergeSuccess"));
+      toast.success("Students successfully merged into a new project");
       setShowMergeModal(false);
       setMergeForm({ studentIds: [], title: "", description: "", supervisorId: "" });
       await loadData(); // Reload to remove them from orphans list
     } catch (error) {
-      toast.error(error.response?.data?.message || t("admin.reg.toastMergeFailed"));
+      toast.error(error.response?.data?.message || "Failed to force merge students");
     } finally {
       setMergeLoading(false);
     }
@@ -128,9 +126,9 @@ const RegistrationSettingsPage = () => {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-lg p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">{t("admin.reg.title")}</h1>
+          <h1 className="text-2xl font-bold mb-2">Project Registration Settings</h1>
           <p className="text-slate-200">
-            {t("admin.reg.subtitle")}
+            Configure group mode, phase toggles, and administrative locks.
           </p>
         </div>
         <button
@@ -138,7 +136,7 @@ const RegistrationSettingsPage = () => {
           className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20"
         >
           <Merge className="w-5 h-5" />
-          {t("admin.reg.forceMergeBtn")}
+          Force Merge Students
         </button>
       </div>
 
@@ -148,14 +146,14 @@ const RegistrationSettingsPage = () => {
           <div>
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               {isLocked ? <Lock className="w-5 h-5 text-red-500" /> : <Unlock className="w-5 h-5 text-green-500" />}
-              {t("admin.reg.lockTitle")}
+              Global Group Edit Lock
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              {t("admin.reg.lockSubtitle")}
+              When locked, students and teachers cannot modify group memberships (no kicking, transferring, splitting, or adding members).
             </p>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isLocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {isLocked ? t("admin.reg.locked") : t("admin.reg.unlocked")}
+            {isLocked ? 'Currently Locked' : 'Currently Unlocked'}
           </span>
         </div>
 
@@ -168,16 +166,16 @@ const RegistrationSettingsPage = () => {
                 checked={form.groupEditLocked}
                 onChange={(e) => updateField("groupEditLocked", e.target.checked)}
               />
-              <span className="font-semibold text-slate-800">{t("admin.reg.manualLock")}</span>
+              <span className="font-semibold text-slate-800">Manual Lock Override</span>
             </label>
             <p className="text-sm text-slate-500 mt-1 pl-8">
-              {t("admin.reg.manualLockDesc")}
+              Immediately freeze all groups across the system, regardless of the date below.
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-800 mb-1">
-              {t("admin.reg.autoLockDate")}
+              Auto-Lock Date (Optional)
             </label>
             <input
               type="datetime-local"
@@ -186,7 +184,7 @@ const RegistrationSettingsPage = () => {
               onChange={(e) => updateField("groupEditLockDate", e.target.value)}
             />
             <p className="text-sm text-slate-500 mt-1">
-              {t("admin.reg.autoLockDesc")}
+              Groups will automatically lock after this date and time. Leave blank for manual control only.
             </p>
           </div>
         </div>
@@ -194,9 +192,9 @@ const RegistrationSettingsPage = () => {
 
       <div className="card space-y-6">
         <div className="card-header">
-          <h2 className="card-title">{t("admin.reg.policyTitle")}</h2>
+          <h2 className="card-title">Registration Policy</h2>
           <p className="card-subtitle">
-            {t("admin.reg.policySubtitle")}
+            These settings define the end-to-end registration flow for the whole semester.
           </p>
         </div>
 
@@ -210,9 +208,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">{t("admin.reg.allowGroups")}</p>
+              <p className="font-medium text-slate-800">Allow Group Projects</p>
               <p className="text-sm text-slate-500">
-                {t("admin.reg.allowGroupsDesc")}
+                When off, every project is individual and group invitations are disabled.
               </p>
             </div>
           </label>
@@ -226,9 +224,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">{t("admin.reg.openSubmission")}</p>
+              <p className="font-medium text-slate-800">Open Proposal Submission</p>
               <p className="text-sm text-slate-500">
-                {t("admin.reg.openSubmissionDesc")}
+                Students can only create a project proposal when this switch is on.
               </p>
             </div>
           </label>
@@ -242,9 +240,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">{t("admin.reg.enablePreselect")}</p>
+              <p className="font-medium text-slate-800">Enable Teacher Preselection</p>
               <p className="text-sm text-slate-500">
-                {t("admin.reg.enablePreselectDesc")}
+                Teachers can invite a student leader first, then the leader accepts or rejects.
               </p>
             </div>
           </label>
@@ -256,9 +254,9 @@ const RegistrationSettingsPage = () => {
               onChange={(event) => updateField("freePickOpen", event.target.checked)}
             />
             <div>
-              <p className="font-medium text-slate-800">{t("admin.reg.openFreePick")}</p>
+              <p className="font-medium text-slate-800">Open Free-Pick Supervisor Phase</p>
               <p className="text-sm text-slate-500">
-                {t("admin.reg.openFreePickDesc")}
+                Group representatives can browse all supervisors and send requests directly.
               </p>
             </div>
           </label>
@@ -266,7 +264,7 @@ const RegistrationSettingsPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="label">{t("admin.reg.minSize")}</label>
+            <label className="label">Minimum Group Size</label>
             <input
               className="input"
               type="number"
@@ -276,7 +274,7 @@ const RegistrationSettingsPage = () => {
             />
           </div>
           <div>
-            <label className="label">{t("admin.reg.maxSize")}</label>
+            <label className="label">Maximum Group Size</label>
             <input
               className="input"
               type="number"
@@ -288,22 +286,23 @@ const RegistrationSettingsPage = () => {
         </div>
 
         <div>
-          <label className="label">{t("admin.reg.notes")}</label>
+          <label className="label">Policy Notes Shown To Users</label>
           <textarea
             className="input min-h-24"
             value={form.notes || ""}
             onChange={(event) => updateField("notes", event.target.value)}
-            placeholder={t("admin.reg.notesPlaceholder")}
+            placeholder="Example: Group representative handles proposal, supervisor request, and defense slot selection."
           />
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 border border-slate-200">
-          {t("admin.reg.capacityNote")}
+          Teacher capacity is still configured per teacher account in `Manage Teachers`.
+          The system checks the whole group size against the selected teacher's remaining capacity.
         </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">
           <button className="btn-primary" onClick={saveSettings} disabled={saving}>
-            {saving ? `${t("student.proposal.submitting")}...` : t("admin.reg.saveSettings")}
+            {saving ? "Saving..." : "Save All Settings"}
           </button>
         </div>
       </div>
@@ -315,7 +314,7 @@ const RegistrationSettingsPage = () => {
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Merge className="w-6 h-6 text-blue-600" />
-                {t("admin.reg.modalMergeTitle")}
+                Force Merge Students
               </h2>
               <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowMergeModal(false)}>
                 <X className="w-6 h-6" />
@@ -324,18 +323,18 @@ const RegistrationSettingsPage = () => {
 
             <div className="overflow-y-auto pr-2 pb-4 space-y-6">
               <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100">
-                {t("admin.reg.mergeIntro")}
+                Select orphan students (students without a project) and forcibly group them together. The first student selected will become the leader.
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
-                  <span>{t("admin.reg.selectStudents", { count: orphanStudents.length })}</span>
-                  <span className="text-blue-600 font-normal">{t("admin.reg.selectedCount", { count: mergeForm.studentIds.length })}</span>
+                  <span>1. Select Students ({orphanStudents.length} Available)</span>
+                  <span className="text-blue-600 font-normal">{mergeForm.studentIds.length} Selected</span>
                 </label>
                 <div className="border border-slate-200 rounded-lg max-h-48 overflow-y-auto p-2 bg-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {orphanStudents.length === 0 && (
                     <div className="col-span-full text-center py-4 text-slate-500 text-sm">
-                      {t("admin.reg.noOrphans")}
+                      No unassigned students available.
                     </div>
                   )}
                   {orphanStudents.map((student) => (
@@ -367,18 +366,18 @@ const RegistrationSettingsPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  {t("admin.reg.projDetails")}
+                  2. Project Details
                 </label>
                 <div className="space-y-3">
                   <input
                     type="text"
-                    placeholder={t("admin.reg.projTitlePlaceholder")}
+                    placeholder="Project / Group Title (e.g. Admin Assigned Project)"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={mergeForm.title}
                     onChange={(e) => setMergeForm({ ...mergeForm, title: e.target.value })}
                   />
                   <textarea
-                    placeholder={t("admin.reg.projDescPlaceholder")}
+                    placeholder="Brief description..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     rows="2"
                     value={mergeForm.description}
@@ -389,14 +388,14 @@ const RegistrationSettingsPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  {t("admin.reg.assignSupervisor")}
+                  3. Assign Supervisor (Optional)
                 </label>
                 <select
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                   value={mergeForm.supervisorId}
                   onChange={(e) => setMergeForm({ ...mergeForm, supervisorId: e.target.value })}
                 >
-                  <option value="">{t("admin.reg.noSupervisorOption")}</option>
+                  <option value="">-- No Supervisor (Leave Pending) --</option>
                   {teachers.map(t => (
                     <option key={t._id} value={t._id}>{t.name} ({t.department})</option>
                   ))}
@@ -409,14 +408,14 @@ const RegistrationSettingsPage = () => {
                 className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors"
                 onClick={() => setShowMergeModal(false)}
               >
-                {t("admin.students.cancel")}
+                Cancel
               </button>
               <button
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 disabled={mergeForm.studentIds.length === 0 || mergeLoading}
                 onClick={handleForceMerge}
               >
-                {mergeLoading ? `${t("student.proposal.submitting")}...` : t("admin.reg.mergeConfirm", { count: mergeForm.studentIds.length })}
+                {mergeLoading ? "Processing..." : `Merge ${mergeForm.studentIds.length} Student(s)`}
               </button>
             </div>
           </div>

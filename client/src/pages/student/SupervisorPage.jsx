@@ -3,10 +3,8 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import { X, Search } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const SupervisorPage = () => {
-  const { t } = useTranslation();
   const { authUser } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(true);
   const [setup, setSetup] = useState(null);
@@ -95,7 +93,7 @@ const SupervisorPage = () => {
 
   const openRequest = (supervisor) => {
     if (pendingRequestsCount >= 5) {
-      toast.warning(t("student.supervisor.toastLimitReached"));
+      toast.warning("You have reached the limit of 5 pending requests. Please cancel a request first.");
       return;
     }
     setSelectedSupervisor(supervisor);
@@ -109,12 +107,9 @@ const SupervisorPage = () => {
         teacherId: selectedSupervisor._id,
         message:
           requestMessage ||
-          t("student.supervisor.requestMsgTemplate", {
-            group: project?.groupName || project?.title,
-            teacher: selectedSupervisor.name,
-          }),
+          `${project?.groupName || project?.title} requests ${selectedSupervisor.name} to supervise the project.`,
       });
-      toast.success(t("student.supervisor.toastRequestSent"));
+      toast.success("Supervisor request sent");
       setShowRequestModal(false);
       await loadData();
     } catch (error) {
@@ -123,14 +118,18 @@ const SupervisorPage = () => {
   };
 
   const handleCancelRequest = async (requestId) => {
-    if (!window.confirm(t("student.supervisor.confirmCancel"))) {
+    if (
+      !window.confirm(
+        "Are you sure you want to cancel this supervisor request?",
+      )
+    ) {
       return;
     }
     try {
       await axiosInstance.put(
         `/student/cancel-supervisor-request/${requestId}`,
       );
-      toast.success(t("student.supervisor.toastRequestCancelled"));
+      toast.success("Request cancelled successfully");
       await loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to cancel request");
@@ -142,7 +141,7 @@ const SupervisorPage = () => {
       await axiosInstance.post(
         `/student/preselections/${preselectionId}/${action}`,
       );
-      toast.success(t("student.supervisor.toastPreselectionUpdate", { action }));
+      toast.success(`Preselection ${action}ed`);
       await loadData();
     } catch (error) {
       toast.error(
@@ -152,43 +151,44 @@ const SupervisorPage = () => {
   };
 
   if (loading) {
-    return <div className="card">{t("student.supervisor.loading")}</div>;
+    return <div className="card">Loading supervisor workflow...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-violet-600 to-indigo-700 rounded-lg p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">
-          {t("student.supervisor.workflowTitle")}
+          Supervisor Selection Workflow
         </h1>
         <p className="text-violet-100">
-          {t("student.supervisor.workflowDesc")}
+          Group representative handles preselection acceptance or free-pick
+          request for the whole team.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card">
-          <p className="text-sm text-slate-500">{t("student.supervisor.projectGroupLabel")}</p>
+          <p className="text-sm text-slate-500">Project / Group</p>
           <p className="font-semibold text-slate-800">
-            {project?.groupName || project?.title || t("student.supervisor.noProject")}
+            {project?.groupName || project?.title || "No project yet"}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">{t("student.supervisor.repLabel")}</p>
+          <p className="text-sm text-slate-500">Representative</p>
           <p className="font-semibold text-slate-800">
             {project?.student?.name || "N/A"}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">{t("student.supervisor.phaseLabel")}</p>
+          <p className="text-sm text-slate-500">Current Phase</p>
           <p className="font-semibold text-slate-800">
-            {settings?.freePickOpen ? t("student.supervisor.freePickOpen") : t("student.supervisor.preselectionFirst")}
+            {settings?.freePickOpen ? "Free-pick open" : "Preselection first"}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">{t("student.supervisor.assignedSupervisor")}</p>
+          <p className="text-sm text-slate-500">Assigned Supervisor</p>
           <p className="font-semibold text-slate-800">
-            {project?.supervisor?.name || t("student.supervisor.notAssigned")}
+            {project?.supervisor?.name || "Not assigned"}
           </p>
         </div>
       </div>
@@ -196,10 +196,11 @@ const SupervisorPage = () => {
       {!project && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.supervisor.proposalReqTitle")}</h2>
+            <h2 className="card-title">Project Proposal Required</h2>
           </div>
           <p className="text-slate-600">
-            {t("student.supervisor.proposalReqDesc")}
+            Create the project proposal first. Only then can the representative
+            accept a preselection or send a supervisor request.
           </p>
         </div>
       )}
@@ -207,10 +208,12 @@ const SupervisorPage = () => {
       {project && !isLeader && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.supervisor.repOnlyTitle")}</h2>
+            <h2 className="card-title">Representative-only Action</h2>
           </div>
           <p className="text-slate-600">
-            {t("student.supervisor.repOnlyDesc", { name: project.student?.name })}
+            You are a group member. The representative{" "}
+            <strong>{project.student?.name}</strong> handles supervisor
+            procedures for the whole team.
           </p>
         </div>
       )}
@@ -218,9 +221,9 @@ const SupervisorPage = () => {
       {project && isLeader && !hasSupervisor && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.supervisor.preselectionTitle")}</h2>
+            <h2 className="card-title">Teacher Preselection Invitations</h2>
             <p className="card-subtitle">
-              {t("student.supervisor.preselectionSub")}
+              Use this section first when free-pick is still closed.
             </p>
           </div>
 
@@ -246,20 +249,20 @@ const SupervisorPage = () => {
                     className="btn-primary"
                     onClick={() => respondPreselection(item._id, "accept")}
                   >
-                    {t("student.supervisor.acceptPreselectionBtn")}
+                    Accept Preselection
                   </button>
                   <button
                     className="btn-outline"
                     onClick={() => respondPreselection(item._id, "reject")}
                   >
-                    {t("student.proposal.rejectBtn")}
+                    Reject
                   </button>
                 </div>
               </div>
             ))}
             {pendingPreselections.length === 0 && (
               <p className="text-slate-500">
-                {t("student.supervisor.noPendingPreselections")}
+                No pending preselection invitations.
               </p>
             )}
           </div>
@@ -270,14 +273,15 @@ const SupervisorPage = () => {
         <div className="card">
           <div className="card-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="card-title">{t("student.supervisor.sentRequestsTitle")}</h2>
+              <h2 className="card-title">Sent Supervisor Requests</h2>
               <p className="card-subtitle">
-                {t("student.supervisor.sentRequestsSub")}
+                History of supervisor requests sent by your group. You can cancel
+                pending requests.
               </p>
             </div>
             <div className="flex items-center">
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${pendingRequestsCount >= 5 ? 'bg-red-100 text-red-800 border-red-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
-                {t("student.supervisor.pendingCount", { count: pendingRequestsCount })}
+                Pending: {pendingRequestsCount}/5
               </span>
             </div>
           </div>
@@ -290,7 +294,7 @@ const SupervisorPage = () => {
               >
                 <div>
                   <p className="font-semibold text-slate-800">
-                    {request.supervisor?.name || t("student.supervisor.unknownTeacher")}
+                    {request.supervisor?.name || "Unknown Teacher"}
                   </p>
                   <p className="text-sm text-slate-500">
                     {request.supervisor?.email || ""} -{" "}
@@ -298,12 +302,12 @@ const SupervisorPage = () => {
                   </p>
                   {request.message && (
                     <p className="mt-2 text-sm text-slate-600 bg-slate-50 p-2 rounded italic">
-                      {t("student.supervisor.requestMsg", { message: request.message })}
+                      Message: "{request.message}"
                     </p>
                   )}
                   {request.status === "rejected" && request.rejectionReason && (
                     <p className="mt-2 text-sm text-red-650 bg-red-50 p-2 rounded italic">
-                      {t("student.supervisor.rejectReason", { reason: request.rejectionReason })}
+                      Rejection Reason: "{request.rejectionReason}"
                     </p>
                   )}
                 </div>
@@ -319,27 +323,21 @@ const SupervisorPage = () => {
                             : "bg-slate-100 text-slate-800"
                     }`}
                   >
-                    {request.status === "pending"
-                      ? t("student.supervisor.statusPending")
-                      : request.status === "approved"
-                        ? t("student.supervisor.statusApproved")
-                        : request.status === "rejected"
-                          ? t("student.supervisor.statusRejected")
-                          : request.status}
+                    {request.status}
                   </span>
                   {request.status === "pending" && (
                     <button
                       className="btn-outline text-red-600 border-red-200 hover:bg-red-50 px-3 py-1.5 text-xs"
                       onClick={() => handleCancelRequest(request._id)}
                     >
-                      {t("student.supervisor.cancelRequestBtn")}
+                      Cancel Request
                     </button>
                   )}
                 </div>
               </div>
             ))}
             {myRequests.length === 0 && (
-              <p className="text-slate-500">{t("student.supervisor.noRequests")}</p>
+              <p className="text-slate-500">No supervisor requests sent yet.</p>
             )}
           </div>
         </div>
@@ -348,21 +346,24 @@ const SupervisorPage = () => {
       {project && isLeader && !hasSupervisor && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.supervisor.openRequestTitle")}</h2>
+            <h2 className="card-title">Open Supervisor Request Phase</h2>
             <p className="card-subtitle">
-              {t("student.supervisor.openRequestSub")}
+              This section is enabled only after admin opens the free-pick
+              phase.
             </p>
           </div>
 
           {!canFreePick ? (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-800">
-              {t("student.supervisor.freePickClosedMsg")}
+              Free-pick is currently closed. Wait for teacher preselection or
+              ask admin to open the supervisor request phase.
             </div>
           ) : (
             <div className="space-y-6">
               {pendingRequestsCount >= 5 && (
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-800 text-sm">
-                  {t("student.supervisor.limitNotice")}
+                  <strong>Notice:</strong> You have reached the maximum limit of 5 pending supervisor requests. 
+                  To invite another lecturer, you must first cancel one of your existing pending requests in the "Sent Supervisor Requests" section above.
                 </div>
               )}
               {/* Search & Filter Bar */}
@@ -370,14 +371,14 @@ const SupervisorPage = () => {
                 {/* Search query */}
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-                    {t("student.supervisor.searchLabel")}
+                    Search Teacher
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
                       className="input pl-9 w-full"
-                      placeholder={t("student.supervisor.searchPlaceholder")}
+                      placeholder="Search by name, department, or expertise..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -387,14 +388,14 @@ const SupervisorPage = () => {
                 {/* Department dropdown */}
                 <div className="w-full md:w-52">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-                    {t("student.supervisor.deptLabel")}
+                    Department
                   </label>
                   <select
                     className="input w-full"
                     value={selectedDept}
                     onChange={(e) => setSelectedDept(e.target.value)}
                   >
-                    <option value="all">{t("student.supervisor.allDepts")}</option>
+                    <option value="all">All Departments</option>
                     {departments.map((dept) => (
                       <option key={dept} value={dept}>
                         {dept}
@@ -416,7 +417,7 @@ const SupervisorPage = () => {
                     htmlFor="onlyAvailable"
                     className="text-sm font-medium text-slate-700 cursor-pointer select-none"
                   >
-                    {t("student.supervisor.availableOnly")}
+                    Available only
                   </label>
                 </div>
               </div>
@@ -424,7 +425,7 @@ const SupervisorPage = () => {
               {/* Grid of Supervisors */}
               {filteredSupervisors.length === 0 ? (
                 <div className="py-8 text-center text-slate-500 border border-dashed border-slate-200 rounded-lg">
-                  {t("student.supervisor.noMatchedSupervisors")}
+                  No supervisors matched your search filters.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -445,17 +446,18 @@ const SupervisorPage = () => {
                             {supervisor.department}
                           </p>
                           <p className="mt-2 text-sm text-slate-600">
-                            {t("student.supervisor.expertiseLabel", { experties: (supervisor.experties || []).join(", ") || "N/A" })}
+                            Expertise:{" "}
+                            {(supervisor.experties || []).join(", ") || "N/A"}
                           </p>
                           <p className="mt-2 text-sm text-slate-600">
-                            {t("student.supervisor.capacityLabel", { count: assignedCount, max: maxCapacity })}
+                            Capacity: {assignedCount}/{maxCapacity} students
                           </p>
                         </div>
                         <button
                           className="btn-primary mt-4 w-full"
                           onClick={() => openRequest(supervisor)}
                         >
-                          {t("student.supervisor.sendRequestBtn")}
+                          Send Team Request
                         </button>
                       </div>
                     );
@@ -470,7 +472,7 @@ const SupervisorPage = () => {
       {project?.supervisor && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.supervisor.assignedSupervisor")}</h2>
+            <h2 className="card-title">Assigned Supervisor</h2>
           </div>
           <div className="space-y-2">
             <p className="font-semibold text-slate-800">
@@ -488,7 +490,7 @@ const SupervisorPage = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-800">
-                  {t("student.supervisor.modalTitle")}
+                  Team Supervisor Request
                 </h3>
                 <button
                   onClick={() => setShowRequestModal(false)}
@@ -512,7 +514,7 @@ const SupervisorPage = () => {
                   value={requestMessage}
                   onChange={(event) => setRequestMessage(event.target.value)}
                   className="input min-h-[120px]"
-                  placeholder={t("student.supervisor.modalPlaceholder")}
+                  placeholder="Explain why your team wants this teacher to supervise the project."
                 />
 
                 <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
@@ -520,13 +522,13 @@ const SupervisorPage = () => {
                     onClick={() => setShowRequestModal(false)}
                     className="btn-outline"
                   >
-                    {t("student.supervisor.cancelBtn")}
+                    Cancel
                   </button>
                   <button
                     onClick={sendSupervisorRequest}
                     className="btn-primary"
                   >
-                    {t("student.supervisor.sendRequestBtn")}
+                    Send Team Request
                   </button>
                 </div>
               </div>

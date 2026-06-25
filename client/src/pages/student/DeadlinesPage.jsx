@@ -3,10 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchStudentDeadlines } from "../../store/slices/deadlineSlice";
 import DeadlineCard from "../../components/deadlines/DeadlineCard";
 import { CalendarClock, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const DeadlinesPage = () => {
-  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const { deadlines, loading } = useSelector((state) => state.deadline);
   
@@ -110,10 +108,10 @@ const DeadlinesPage = () => {
           <div>
             <h1 className="card-title flex items-center">
               <CalendarClock className="w-6 h-6 mr-2 text-blue-600" />
-              {t("student.deadlines.headerTitle")}
+              My Deadlines
             </h1>
             <p className="card-subtitle">
-              {t("student.deadlines.subtitle")}
+              Manage your project submissions and track your progress
             </p>
           </div>
         </div>
@@ -129,7 +127,7 @@ const DeadlinesPage = () => {
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          {t("student.deadlines.listTab")}
+          Danh sách Hạn chót
         </button>
         <button
           onClick={() => setActiveTab("calendar")}
@@ -139,7 +137,7 @@ const DeadlinesPage = () => {
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          {t("student.deadlines.calendarTab")}
+          Lịch Báo Cáo
         </button>
       </div>
 
@@ -148,11 +146,11 @@ const DeadlinesPage = () => {
         <div className="space-y-6">
           {/* Progress Card */}
           <div className="card border-t-4 border-t-blue-500">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">{t("student.deadlines.progressTitle")}</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Submission Progress</h3>
             
             <div className="mb-2 flex justify-between items-center">
               <span className="text-sm font-medium text-slate-700">
-                {t("student.deadlines.completedOf", { completed, total })}
+                {completed} of {total} completed
               </span>
               <span className={`text-sm font-bold ${isAtRisk ? 'text-red-600' : 'text-blue-600'}`}>
                 {percent}%
@@ -169,12 +167,12 @@ const DeadlinesPage = () => {
             {isAtRisk ? (
               <div className="flex items-start text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mt-4">
                 <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
-                <p>{t("student.deadlines.atRiskWarning")}</p>
+                <p><strong>Warning:</strong> Your completion rate is below 40%. You are at risk of being forbidden from defending your project.</p>
               </div>
             ) : total > 0 && percent === 100 ? (
               <div className="flex items-center text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 mt-4">
                 <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0" />
-                <p>{t("student.deadlines.completedSuccess")}</p>
+                <p>Great job! You have submitted all required assignments.</p>
               </div>
             ) : null}
           </div>
@@ -193,8 +191,8 @@ const DeadlinesPage = () => {
           ) : deadlines.length === 0 ? (
             <div className="card text-center py-12">
               <CalendarClock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-1">{t("student.deadlines.noDeadlinesFound")}</h3>
-              <p className="text-slate-500">{t("student.deadlines.noDeadlinesDesc")}</p>
+              <h3 className="text-lg font-medium text-slate-900 mb-1">No Deadlines Found</h3>
+              <p className="text-slate-500">You don't have any pending deadlines for your project yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
@@ -214,7 +212,7 @@ const DeadlinesPage = () => {
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
-                {t("student.deadlines.calendarTab")}
+                Lịch Báo Cáo
               </h3>
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 shadow-sm">
                 <button 
@@ -224,7 +222,7 @@ const DeadlinesPage = () => {
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <span className="text-sm font-bold text-slate-700 min-w-[120px] text-center capitalize">
-                  {currentMonth.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { month: "long", year: "numeric" })}
+                  {currentMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}
                 </span>
                 <button 
                   onClick={handleNextMonth} 
@@ -237,13 +235,13 @@ const DeadlinesPage = () => {
 
             {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-              <div>{t("student.deadlines.mon")}</div>
-              <div>{t("student.deadlines.tue")}</div>
-              <div>{t("student.deadlines.wed")}</div>
-              <div>{t("student.deadlines.thu")}</div>
-              <div>{t("student.deadlines.fri")}</div>
-              <div>{t("student.deadlines.sat")}</div>
-              <div>{t("student.deadlines.sun")}</div>
+              <div>Thứ 2</div>
+              <div>Thứ 3</div>
+              <div>Thứ 4</div>
+              <div>Thứ 5</div>
+              <div>Thứ 6</div>
+              <div>Thứ 7</div>
+              <div>Chủ nhật</div>
             </div>
 
             {/* Days grid */}
@@ -282,7 +280,7 @@ const DeadlinesPage = () => {
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md self-start ${
                       isToday ? "bg-blue-600 text-white font-bold" : "text-slate-500 font-semibold bg-slate-50"
                     }`}>
-                      {dayObj.date.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US", { day: "2-digit", month: "2-digit" })}
+                      {dayObj.date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}
                     </span>
 
                     {hasDeadlines && (
@@ -294,13 +292,13 @@ const DeadlinesPage = () => {
                           } else if (dl.isOverdue || dl.submissionStatus === "MISSED") {
                             badgeBg = "bg-rose-50 text-rose-800 border-rose-200";
                           }
-                          const dueTime = dl.endDate ? new Date(dl.endDate).toLocaleTimeString(i18n.language === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                          const dueTime = dl.endDate ? new Date(dl.endDate).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
                           const badgeText = dueTime ? `${dueTime} - ${dl.title}` : dl.title;
                           return (
                             <div 
                               key={dl._id} 
                               className={`text-[10px] font-semibold px-2 py-0.5 rounded border truncate text-left w-full ${badgeBg}`}
-                              title={`${dl.title} (${t("student.upload.due", { date: dueTime })})`}
+                              title={`${dl.title} (Hạn chót: ${dueTime})`}
                             >
                               {badgeText}
                             </div>
@@ -308,7 +306,7 @@ const DeadlinesPage = () => {
                         })}
                         {dayDeadlines.length > 3 && (
                           <div className="text-[9px] text-slate-400 font-bold pl-1.5">
-                            {t("student.deadlines.otherDeadlines", { count: dayDeadlines.length - 3 })}
+                            + {dayDeadlines.length - 3} hạn chót khác
                           </div>
                         )}
                       </div>
@@ -325,19 +323,19 @@ const DeadlinesPage = () => {
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-blue-500" />
-                  {t("student.deadlines.dateTitle", { date: selectedDate.toLocaleDateString(i18n.language === "vi" ? "vi-VN" : "en-US"), count: displayedDeadlines.length })}
+                  Hạn chót ngày {selectedDate.toLocaleDateString("vi-VN")} ({displayedDeadlines.length} mục)
                 </h4>
                 <button 
                   onClick={() => setSelectedDate(null)}
                   className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
                 >
-                  {t("student.deadlines.closeFilter")}
+                  Đóng bộ lọc
                 </button>
               </div>
 
               {displayedDeadlines.length === 0 ? (
                 <p className="text-slate-500 text-sm text-center py-4">
-                  {t("student.deadlines.noDeadlinesOnDate")}
+                  Không có hạn chót nào trong ngày này.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

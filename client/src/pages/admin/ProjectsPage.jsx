@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { useTranslation } from "react-i18next";
 import {
   approveProject,
   rejectProject,
@@ -22,7 +21,6 @@ import {
 import { downloadProjectFile } from "../../store/slices/projectSlice";
 
 const ProjectsPage = () => {
-  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSupervisor, setFilterSupervisor] = useState("all");
@@ -127,49 +125,41 @@ const ProjectsPage = () => {
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
-      }
+    }
   };
 
   const handleStatusChange = async (projectId, newStatus) => {
     if (newStatus === "approved") {
-      dispatch(approveProject(projectId)).then((res) => {
-        if (approveProject.fulfilled.match(res)) {
-          toast.success(t("admin.projects.toastApprove"));
-        }
-      });
+      dispatch(approveProject(projectId));
     } else if (newStatus === "rejected") {
-      dispatch(rejectProject(projectId)).then((res) => {
-        if (rejectProject.fulfilled.match(res)) {
-          toast.success(t("admin.projects.toastReject"));
-        }
-      });
+      dispatch(rejectProject(projectId));
     }
   };
 
   const projectStats = [
     {
-      title: t("admin.projects.total"),
+      title: "Total Projects",
       value: projects.length,
       bg: "bg-blue-100",
       iconColor: "text-blue-600",
       Icon: Folder,
     },
     {
-      title: t("admin.projects.pending"),
+      title: "Pending Review",
       value: projects.filter((p) => p.status === "pending").length,
       bg: "bg-orange-100",
       iconColor: "text-orange-600",
       Icon: AlertTriangle,
     },
     {
-      title: t("admin.projects.completed"),
+      title: "Completed",
       value: projects.filter((p) => p.status === "completed").length,
       bg: "bg-green-100",
       iconColor: "text-green-600",
       Icon: CheckCircle2,
     },
     {
-      title: t("admin.projects.rejected"),
+      title: "Rejected",
       value: projects.filter((p) => p.status === "rejected").length,
       bg: "bg-red-100",
       iconColor: "text-red-600",
@@ -183,9 +173,9 @@ const ProjectsPage = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row items-start justify-between md:items-center">
             <div className="">
-              <h1 className="card-title">{t("admin.projects.title")}</h1>
+              <h1 className="card-title">All Projects</h1>
               <p className="card-subtitle">
-                {t("admin.projects.subtitle")}
+                View and manage all student projects across the platform
               </p>
             </div>
             <button
@@ -193,7 +183,7 @@ const ProjectsPage = () => {
               onClick={() => setIsReportsOpen(true)}
             >
               <FileDown className="w-5 h-5" />
-              <span>{t("admin.projects.downloadReports")}</span>
+              <span>Download Reports</span>
             </button>
           </div>
         </div>
@@ -227,12 +217,12 @@ const ProjectsPage = () => {
                 className="block text-sm font-medium text-slate-700 mb-2 
               "
               >
-                {t("admin.projects.searchLabel")}
+                Search Projects
               </label>
               <input
                 type="text"
                 className="input w-full"
-                placeholder={t("admin.projects.searchPlaceholder")}
+                placeholder="Search by title or student name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -242,18 +232,18 @@ const ProjectsPage = () => {
                 className="block text-sm font-medium text-slate-700 mb-2 
               "
               >
-                {t("admin.projects.filterStatus")}
+                Filter by Status
               </label>
               <select
                 className="input w-full"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
-                <option value="all">{t("admin.projects.allProjects")}</option>
-                <option value="pending">{t("admin.projects.pendingReview")}</option>
-                <option value="approved">{t("admin.projects.approved")}</option>
-                <option value="completed">{t("admin.projects.completedProjects")}</option>
-                <option value="rejected">{t("admin.projects.rejectedProjects")}</option>
+                <option value="all">All Projects</option>
+                <option value="pending">Pending Projects</option>
+                <option value="approved">Approved Projects</option>
+                <option value="completed">Completed Projects</option>
+                <option value="rejected">Rejected Projects</option>
               </select>
             </div>
 
@@ -262,14 +252,14 @@ const ProjectsPage = () => {
                 className="block text-sm font-medium text-slate-700 mb-2 
               "
               >
-                {t("admin.projects.filterSupervisor")}
+                Filter Supervisor
               </label>
               <select
                 className="input w-full"
                 value={filterSupervisor}
                 onChange={(e) => setFilterSupervisor(e.target.value)}
               >
-                <option value="all">{t("admin.projects.allSupervisors")}</option>
+                <option value="all">All Supervisors</option>
                 {supervisor.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -283,29 +273,29 @@ const ProjectsPage = () => {
         {/* Projects Table */}
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("admin.projects.listTitle")}</h2>
+            <h2 className="card-title">Projects Overview</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colDetails")}
+                    Project Details
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colStudent")}
+                    Student
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colSupervisor")}
+                    Supervisor
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colDeadline")}
+                    Deadline
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colStatus")}
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    {t("admin.projects.colActions")}
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -344,7 +334,7 @@ const ProjectsPage = () => {
                             {project.supervisor?.name}
                           </span>
                         ) : (
-                          t("student.supervisor.notAssigned")
+                          "Unassigned"
                         )}
                       </div>
                     </td>
@@ -358,7 +348,7 @@ const ProjectsPage = () => {
                       <span
                         className={`inline-flex capitalize items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}
                       >
-                        {project.status === "pending" ? t("student.supervisor.statusPending") : project.status === "approved" ? t("student.supervisor.statusApproved") : project.status === "rejected" ? t("student.supervisor.statusRejected") : project.status}
+                        {project.status}
                       </span>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
@@ -373,7 +363,7 @@ const ProjectsPage = () => {
                           }}
                           className="btn-primary"
                         >
-                          {t("admin.projects.view")}
+                          View
                         </button>
                         {project.status === "pending" && (
                           <>
@@ -383,7 +373,7 @@ const ProjectsPage = () => {
                                 handleStatusChange(project._id, "approved")
                               }
                             >
-                              {t("admin.projects.approve")}
+                              Approve
                             </button>
                             <button
                               className="btn-danger"
@@ -391,7 +381,7 @@ const ProjectsPage = () => {
                                 handleStatusChange(project._id, "rejected")
                               }
                             >
-                              {t("admin.projects.reject")}
+                              Reject
                             </button>
                           </>
                         )}
@@ -404,7 +394,7 @@ const ProjectsPage = () => {
           </div>
           {filteredProjects.length === 0 && (
             <div className="text-center py-8 text-slate-500">
-              {t("admin.assign.noStudents")}
+              No projects found matching your criteria
             </div>
           )}
         </div>
@@ -415,7 +405,7 @@ const ProjectsPage = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {t("admin.projects.modalTitle")}
+                  Project Details
                 </h3>
                 <button
                   onClick={() => setShowViewModal(false)}
@@ -427,26 +417,26 @@ const ProjectsPage = () => {
 
               <div className="space-y-4">
                 <div className="">
-                  <label className="label">{t("student.db.title")}</label>
+                  <label className="label">Title</label>
                   <div className="input bg-slate-50">
                     {currentProject?.title || "-"}
                   </div>
                 </div>
                 <div className="">
-                  <label className="label">{t("admin.projects.desc")}</label>
+                  <label className="label">Description</label>
                   <div className="input bg-slate-50">
                     {currentProject?.description || "-"}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="">
-                    <label className="label">{t("admin.projects.student")}</label>
+                    <label className="label">Student</label>
                     <div className="input bg-slate-50">
                       {currentProject?.student?.name || "-"}
                     </div>
                   </div>
                   <div className="">
-                    <label className="label">{t("admin.projects.colSupervisor")}</label>
+                    <label className="label">Supervisor</label>
                     <div className="input bg-slate-50">
                       {currentProject?.supervisor?.name || "-"}
                     </div>
@@ -455,13 +445,13 @@ const ProjectsPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="">
-                    <label className="label">{t("student.db.status")}</label>
+                    <label className="label">Status</label>
                     <div className="input bg-slate-50">
                       {currentProject?.status}
                     </div>
                   </div>
                   <div className="">
-                    <label className="label">{t("admin.projects.colDeadline")}</label>
+                    <label className="label">Deadline</label>
                     <div className="input bg-slate-50">
                       {currentProject?.deadline
                         ? new Date(currentProject.deadline).toLocaleDateString()
@@ -471,10 +461,10 @@ const ProjectsPage = () => {
                 </div>
 
                 <div className="">
-                  <label className="label">{t("admin.projects.files")}</label>
+                  <label className="label">Files</label>
                   {(currentProject.files || []).length === 0 ? (
                     <div className="text-slate-500 text-sm">
-                      {t("admin.projects.noFiles")}
+                      No files uploaded
                     </div>
                   ) : (
                     <ul className="list-disc list-inside text-sm text-slate-700">
@@ -491,13 +481,13 @@ const ProjectsPage = () => {
           </div>
         )}
 
-        {/* Reports modal */}
+        {/* View modal */}
         {isReportsOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {t("admin.db.allFiles")}
+                  All Files
                 </h3>
                 <button
                   onClick={() => setIsReportsOpen(false)}
@@ -510,14 +500,14 @@ const ProjectsPage = () => {
                 <input
                   type="text"
                   className="input w-full"
-                  placeholder={t("admin.db.searchFilesPlaceholder")}
+                  placeholder="Search by file name, project title or student name"
                   value={reportSearch}
                   onChange={(e) => setReportSearch(e.target.value)}
                 />
               </div>
               {filteredFiles.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
-                  {t("admin.db.noFilesFound")}
+                  No files found.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -538,7 +528,7 @@ const ProjectsPage = () => {
                         onClick={() => handleDownloadFile(file)}
                         className="btn-outline btn-small whitespace-nowrap ml-4"
                       >
-                        {t("admin.db.download")}
+                        Download
                       </button>
                     </div>
                   ))}

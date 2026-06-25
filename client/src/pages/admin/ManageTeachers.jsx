@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useTranslation } from "react-i18next";
 import AddTeacher from "../../components/modal/AddTeacher";
 import { getAllUsers, updateTeacher, deleteTeacher } from "../../store/slices/adminSlice";
 import { toggleTeacherModal } from "../../store/slices/popupSlice";
@@ -24,7 +23,6 @@ const getTeacherCapacity = (teacher, fallback = 36) => {
 };
 
 const ManageTeachers = () => {
-  const { t } = useTranslation();
   const { users } = useSelector((state) => state.admin);
   const { isCreateTeacherModalOpen } = useSelector((state) => state.popup);
   const [showModal, setShowModal] = useState(false);
@@ -165,9 +163,9 @@ const ManageTeachers = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row items-start justify-between md:items-center">
             <div className="">
-              <h1 className="card-title">{t("admin.teachers.title")}</h1>
+              <h1 className="card-title">Manage Teachers</h1>
               <p className="card-subtitle">
-                {t("admin.teachers.subtitle")}
+                Add, edit, and manage teacher accounts
               </p>
             </div>
             <button
@@ -175,7 +173,7 @@ const ManageTeachers = () => {
               onClick={() => dispatch(toggleTeacherModal())}
             >
               <Plus className="w-5 h-5" />
-              <span>{t("admin.teachers.addNew")}</span>
+              <span>Add New Teacher</span>
             </button>
           </div>
         </div>
@@ -189,7 +187,7 @@ const ManageTeachers = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("admin.teachers.total")}
+                  Total Teachers
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {teachers.length}
@@ -205,7 +203,7 @@ const ManageTeachers = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("admin.teachers.assignedStudents")}
+                  Assigned Students
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {teachers.reduce(
@@ -224,7 +222,7 @@ const ManageTeachers = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("admin.teachers.depts")}
+                  Departments
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {departments.length}
@@ -242,11 +240,11 @@ const ManageTeachers = () => {
                 htmlFor=""
                 className="block text-sm font-medium text-slate-700 mb-2"
               >
-                {t("admin.teachers.searchLabel")}
+                Search Teachers
               </label>
               <input
                 type="text"
-                placeholder={t("admin.teachers.searchPlaceholder")}
+                placeholder="Search by name or email..."
                 className="input-field w-full"
                 value={searchTerm}
                 onChange={(e) => {
@@ -257,7 +255,7 @@ const ManageTeachers = () => {
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                {t("admin.teachers.filterDept")}
+                Filter Department
               </label>
               <select
                 className="input-field w-full"
@@ -267,7 +265,7 @@ const ManageTeachers = () => {
                   setCurrentPage(1);
                 }}
               >
-                <option value="all">{t("admin.students.allDepts")}</option>
+                <option value="all">All Departments</option>
                 {departments.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
@@ -277,7 +275,7 @@ const ManageTeachers = () => {
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                {t("admin.teachers.filterCapacity")}
+                Filter Capacity
               </label>
               <select
                 className="input-field w-full"
@@ -287,9 +285,9 @@ const ManageTeachers = () => {
                   setCurrentPage(1);
                 }}
               >
-                <option value="all">{t("admin.teachers.allCapacity")}</option>
-                <option value="available">{t("admin.teachers.availAdvisor")}</option>
-                <option value="full">{t("admin.teachers.fullCapacity")}</option>
+                <option value="all">All Capacity</option>
+                <option value="available">Available Advisor</option>
+                <option value="full">Full Capacity</option>
               </select>
             </div>
           </div>
@@ -298,7 +296,7 @@ const ManageTeachers = () => {
         {/* Teachers table */}
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-slate-900">{t("admin.teachers.listTitle")}</h2>
+            <h2 className="font-semibold text-slate-900">Teachers List</h2>
           </div>
           <div className="overflow-x-auto">
             {filteredTeachers && filteredTeachers.length > 0 ? (
@@ -306,19 +304,19 @@ const ManageTeachers = () => {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      {t("admin.teachers.colInfo")}
+                      Teacher Info
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      {t("admin.teachers.colDept")}
+                      Department
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      {t("admin.teachers.colExpertise")}
+                      Expertise
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      {t("admin.teachers.colJoin")}
+                      Join Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      {t("admin.students.colActions")}
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -369,13 +367,13 @@ const ManageTeachers = () => {
                               className="text-blue-600 hover:text-blue-900"
                               onClick={() => handleEdit(teacher)}
                             >
-                              {t("admin.students.edit")}
+                              Edit
                             </button>
                             <button
                               className="text-red-600 hover:text-red-900"
                               onClick={() => handleDelete(teacher)}
                             >
-                              {t("admin.students.delete")}
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -387,7 +385,7 @@ const ManageTeachers = () => {
             ) : (
               filteredTeachers.length === 0 && (
                 <div className="text-center py-8 text-slate-500">
-                  {t("admin.assign.noStudents")}
+                  No teachers found matching your criteria
                 </div>
               )
             )}
@@ -397,11 +395,9 @@ const ManageTeachers = () => {
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-lg">
               <span className="text-sm text-slate-500">
-                {t("admin.teachers.showing", {
-                  start: (currentPage - 1) * itemsPerPage + 1,
-                  end: Math.min(currentPage * itemsPerPage, filteredTeachers.length),
-                  total: filteredTeachers.length
-                })}
+                Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến{" "}
+                <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, filteredTeachers.length)}</span> trong số{" "}
+                <span className="font-semibold text-slate-700">{filteredTeachers.length}</span> giảng viên
               </span>
 
               <div className="flex items-center gap-1">
@@ -438,13 +434,13 @@ const ManageTeachers = () => {
             </div>
           )}
 
-          {/* Edit Teacher Modal */}
+          {/* Edit Student Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-slate-900">
-                    {t("admin.teachers.editTitle")}
+                    Edit Teacher
                   </h3>
                   <button
                     onClick={handleCloseModal}
@@ -456,7 +452,7 @@ const ManageTeachers = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {t("admin.students.fullName")}
+                      Full Name
                     </label>
                     <input
                       type="text"
@@ -469,7 +465,7 @@ const ManageTeachers = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {t("admin.students.email")}
+                      Email
                     </label>
                     <input
                       type="email"
@@ -482,7 +478,7 @@ const ManageTeachers = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {t("admin.students.department")}
+                      Department
                     </label>
                     <select
                       required
@@ -492,7 +488,7 @@ const ManageTeachers = () => {
                       }
                       className="input-field w-full p-2 border-b border-slate-600 focus:outline-none"
                     >
-                      <option value="">{t("admin.students.selectDept")}</option>
+                      <option value="">Select Department</option>
                       <option value="Computer Science">Computer Science</option>
                       <option value="Software Engineering">
                         Software Engineering
@@ -518,7 +514,7 @@ const ManageTeachers = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {t("admin.teachers.expertise")}
+                      Expertise
                     </label>
                     <select
                       required
@@ -528,7 +524,7 @@ const ManageTeachers = () => {
                       }
                       className="input-field w-full p-2 border-b border-slate-600 focus:outline-none"
                     >
-                      <option value="">{t("admin.teachers.selectExpertise")}</option>
+                      <option value="">Select Area of Expertise</option>
                       <option value="Artificial Intelligence">
                         Artificial Intelligence
                       </option>
@@ -571,7 +567,7 @@ const ManageTeachers = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {t("admin.teachers.maxStudents")}
+                      Max Students
                     </label>
                     <input
                       type="number"
@@ -595,10 +591,10 @@ const ManageTeachers = () => {
                       onClick={handleCloseModal}
                       className="btn-danger"
                     >
-                      {t("admin.students.cancel")}
+                      Cancel
                     </button>
                     <button type="submit" className="btn-primary">
-                      {t("admin.teachers.update")}
+                      Update Teacher
                     </button>
                   </div>
                 </form>
@@ -617,18 +613,21 @@ const ManageTeachers = () => {
 
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    {t("admin.teachers.deleteTitle")}
+                    Delete Teacher
                   </h3>
                   <p className="text-sm text-slate-500 mb-4">
-                    {t("admin.teachers.deleteConfirm", { name: teacherToDelete.name })}
+                    Are you sure you want to delete{" "}
+                    <span className="">
+                      {teacherToDelete.name}? This action cannot be undone
+                    </span>
                   </p>
 
                   <div className="flex justify-center space-x-3">
                     <button className="btn-secondary" onClick={cancelDelete}>
-                      {t("admin.students.cancel")}
+                      Cancel
                     </button>
                     <button className="btn-danger" onClick={confirmDelete}>
-                      {t("admin.students.delete")}
+                      Delete
                     </button>
                   </div>
                 </div>

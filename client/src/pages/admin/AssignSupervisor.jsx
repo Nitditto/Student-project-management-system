@@ -7,7 +7,6 @@ import {
   getAllUsers,
 } from "../../store/slices/adminSlice";
 import { AlertTriangle, CheckCircle, Users } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const getTeacherCapacity = (teacher, fallback = 10) => {
   if (typeof teacher?.maxStudent === "number") return teacher.maxStudent;
@@ -27,7 +26,6 @@ const getTeacherCapacity = (teacher, fallback = 10) => {
 };
 
 const AssignSupervisor = () => {
-  const { t } = useTranslation();
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -96,12 +94,16 @@ const AssignSupervisor = () => {
   const handleAssign = async (studentId, projectStatus, projectId) => {
     const supervisorId = selectedSupervisor[projectId];
     if (!studentId || !supervisorId) {
-      toast.error(t("admin.assign.toastSelectFirst"));
+      toast.error("Please select a supervisor first");
       return;
     }
+    // if (projectStatus === "rejected" || projectStatus === "pending") {
+    //   toast.error("Cannot assign supervisor to a rejected or pending project");
+    //   return;
+    // }
 
     if (projectStatus === "rejected") {
-      toast.error(t("admin.assign.toastCantAssign"));
+      toast.error("Cannot assign supervisor to a rejected project");
       return;
     }
     setPendingFor(projectId);
@@ -111,7 +113,7 @@ const AssignSupervisor = () => {
     setPendingFor(null);
 
     if (assignSupervisorThunk.fulfilled.match(res)) {
-      toast.success(t("admin.assign.toastSuccess"));
+      // toast.success("Supervisor assigned successfully");
       setSelectedSupervisor((prev) => {
         const newState = { ...prev };
         delete newState[projectId];
@@ -120,27 +122,27 @@ const AssignSupervisor = () => {
       dispatch(getAllUsers());
       dispatch(getAllProjects());
     } else {
-      toast.error(t("admin.assign.toastFailed"));
+      toast.error("Failed to assign supervisor");
     }
   };
 
   const dashboardCards = [
     {
-      title: t("admin.assign.cardAssigned"),
+      title: "Assigned Students",
       value: studentProjects.filter((r) => !!r.supervisor).length,
       icon: CheckCircle,
       bg: "bg-green-100",
       color: "text-green-600",
     },
     {
-      title: t("admin.assign.cardUnassigned"),
+      title: "Unassigned Students",
       value: studentProjects.filter((r) => !r.supervisor).length,
       icon: AlertTriangle,
       bg: "bg-red-100",
       color: "text-red-600",
     },
     {
-      title: t("admin.assign.cardAvailable"),
+      title: "Available Teachers",
       value: teachers.filter((t) => t.capacityLeft > 0).length,
       icon: Users,
       bg: "bg-blue-100",
@@ -150,13 +152,13 @@ const AssignSupervisor = () => {
 
   // TABLE HEADER
   const headers = [
-    t("admin.assign.colStudent"),
-    t("admin.assign.colProject"),
-    t("admin.assign.colSupervisor"),
-    t("admin.assign.colDeadline"),
-    t("admin.assign.colUpdated"),
-    t("admin.assign.colAssign"),
-    t("admin.assign.colActions"),
+    "Student",
+    "Project Title",
+    "Supervisor",
+    "Deadline",
+    "Updated",
+    "Assign Supervisor",
+    "Actions",
   ];
 
   const Badge = ({ color, children }) => (
@@ -172,9 +174,9 @@ const AssignSupervisor = () => {
       <div className="space-y-6">
         <div className="card">
           <div className="card-header">
-            <h1 className="card-title">{t("admin.assign.title")}</h1>
+            <h1 className="card-title">Assign Supervisor</h1>
             <p className="card-subtitle">
-              {t("admin.assign.subtitle")}
+              Manage supervisor assignments for students and projects
             </p>
           </div>
         </div>
@@ -183,28 +185,28 @@ const AssignSupervisor = () => {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                {t("admin.assign.searchStudents")}
+                Search Students
               </label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input-field w-full"
-                placeholder={t("admin.assign.searchPlaceholder")}
+                placeholder="Search by student name or project title..."
               />
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                {t("admin.assign.filterStatus")}
+                Filter Status
               </label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="input-field w-full"
               >
-                <option value="all">{t("admin.assign.allStudents")}</option>
-                <option value="assigned">{t("admin.assign.assigned")}</option>
-                <option value="unassigned">{t("admin.assign.unassigned")}</option>
+                <option value="all">All Students</option>
+                <option value="assigned">Assigned</option>
+                <option value="unassigned">Unassigned</option>
               </select>
             </div>
           </div>
@@ -212,7 +214,7 @@ const AssignSupervisor = () => {
 
         <div className="card">
           <div>
-            <h2 className="card-title">{t("admin.assign.studentAssignments")}</h2>
+            <h2 className="card-title">Student Assignments</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -269,6 +271,11 @@ const AssignSupervisor = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
+                        // disabled={
+                        //     !!row.supervisor ||
+                        //     row.status === "rejected" ||
+                        //     !row.isApproved
+                        //   }
                         disabled={!!row.supervisor}
                         className="input-field w-full"
                         value={selectedSupervisor[row.projectId] || ""}
@@ -276,12 +283,12 @@ const AssignSupervisor = () => {
                           handleSupervisorSelect(row.projectId, e.target.value)
                         }
                       >
-                        <option value="">{t("admin.assign.selectSupervisor")}</option>
+                        <option value="">Select Supervisor</option>
                         {teachers
                           .filter((teacher) => teacher.capacityLeft > 0)
                           .map((teacher) => (
                             <option key={teacher._id} value={teacher._id}>
-                              {teacher.name} ({t("admin.assign.slotsLeft", {count: teacher.capacityLeft})})
+                              {teacher.name} ({teacher.capacityLeft} slots left)
                             </option>
                           ))}
                       </select>
@@ -296,14 +303,20 @@ const AssignSupervisor = () => {
                         disabled={
                           pendingFor === row.projectId ||
                           !!row.supervisor ||
+                          // row.status === "rejected" ||
+                          // !row.isApproved ||
                           !selectedSupervisor[row.projectId]
                         }
                       >
                         {pendingFor === row.projectId
-                          ? t("admin.assign.assigning")
+                          ? "Assigning..."
                           : row.supervisor
-                            ? t("admin.assign.assigned")
-                            : t("admin.assign.assign")}
+                            ? "Assigned"
+                            : // : row.status === "rejected"
+                              //   ? "Rejected"
+                              //   : !row.isApproved
+                              //     ? "Not Approved"
+                              "Assign"}
                       </button>
                     </td>
                   </tr>
@@ -313,7 +326,7 @@ const AssignSupervisor = () => {
 
             {filtered.length === 0 && (
               <div className="text-center py-8 text-slate-500">
-                {t("admin.assign.noStudents")}
+                No students found matching your criteria
               </div>
             )}
           </div>

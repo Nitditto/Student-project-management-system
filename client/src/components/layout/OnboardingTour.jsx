@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, X, Play } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
-const getStepsForPage = (pathname, role, t) => {
+const getStepsForPage = (pathname, role) => {
   const isStudent = role === "Student";
   const isTeacher = role === "Teacher";
 
@@ -12,33 +11,33 @@ const getStepsForPage = (pathname, role, t) => {
     return [
       {
         target: "#proposal-form-container",
-        title: t("tour.proposal.step1.title"),
-        content: t("tour.proposal.step1.content"),
+        title: "📝 Đăng Ký Đề Tài Mới",
+        content: "Đây là biểu mẫu đăng ký đề tài tốt nghiệp của bạn. Hãy điền đầy đủ các thông tin cần thiết và gửi yêu cầu phê duyệt đến Bộ môn.",
       },
       {
         target: "#proposal-title-input",
-        title: t("tour.proposal.step2.title"),
-        content: t("tour.proposal.step2.content"),
+        title: "🏷️ Tên Đề Tài Đồ Án",
+        content: "Nhập tên đề tài chính xác bằng Tiếng Việt. Nên ghi rõ ràng, ngắn gọn và thể hiện được mục tiêu chính của sản phẩm.",
       },
       {
         target: "#proposal-desc-input",
-        title: t("tour.proposal.step3.title"),
-        content: t("tour.proposal.step3.content"),
+        title: "📖 Mô Tả Chi Tiết Đề Tài",
+        content: "Trình bày tóm tắt nội dung nghiên cứu, công nghệ áp dụng, các phân hệ chức năng cốt lõi và kết quả dự kiến đạt được.",
       },
       {
         target: "#proposal-file-input",
-        title: t("tour.proposal.step4.title"),
-        content: t("tour.proposal.step4.content"),
+        title: "📎 File Đính Kèm Đề Cương",
+        content: "Nếu đã lập sẵn đề cương chi tiết (bản PDF hoặc DOCX), bạn có thể tải đính kèm lên đây để giảng viên tiện đọc và nhận xét.",
       },
       {
         target: "#proposal-realtime-assistant",
-        title: t("tour.proposal.step5.title"),
-        content: t("tour.proposal.step5.content"),
+        title: "🤖 Trợ Lý Đối Chiếu Thời Gian Thực",
+        content: "Một tính năng khoa học và độc đáo: Ngay khi bạn nhập mô tả hoặc tải file lên, hệ thống sẽ chạy đối chiếu nhanh để phát hiện trùng lặp đề tài và gợi ý danh sách giảng viên hướng dẫn có chuyên môn phù hợp nhất!",
       },
       {
         target: "#proposal-submit-btn",
-        title: t("tour.proposal.step6.title"),
-        content: t("tour.proposal.step6.content"),
+        title: "🚀 Gửi Yêu Cầu Phê Duyệt",
+        content: "Bấm nút này để tạo đề xuất đề tài tốt nghiệp. Giảng viên hướng dẫn sẽ nhận được thông báo xét duyệt ngay lập tức.",
       },
     ];
   }
@@ -48,28 +47,28 @@ const getStepsForPage = (pathname, role, t) => {
     return [
       {
         target: "#upload-tabs-wrapper",
-        title: t("tour.upload.step1.title"),
-        content: t("tour.upload.step1.content"),
+        title: "📂 Phân Loại Tài Liệu",
+        content: "Sử dụng Tab để phân loại: 'Tài liệu chung' dùng để chia sẻ file tài nguyên chung cho nhóm và GV, còn 'Bài nộp' dùng để nộp các báo cáo cột mốc chấm điểm.",
       },
       {
         target: "#upload-dropzones-grid",
-        title: t("tour.upload.step2.title"),
-        content: t("tour.upload.step2.content"),
+        title: "📤 Khu Vực Tải File",
+        content: "Kéo thả hoặc nhấp để chọn tải lên báo cáo thuyết minh (PDF/DOCX), slide trình chiếu (PPT) hoặc mã nguồn dự án (ZIP). Hệ thống hỗ trợ file lớn lên tới 50MB.",
       },
       {
         target: "#upload-submit-btn",
-        title: t("tour.upload.step3.title"),
-        content: t("tour.upload.step3.content"),
+        title: "✔️ Lưu Tài Liệu",
+        content: "Sau khi chọn file, nhấp nút này để chính thức lưu trữ file vào thư mục tài liệu chung của nhóm đồ án.",
       },
       {
         target: "#upload-deadlines-list",
-        title: t("tour.upload.step4.title"),
-        content: t("tour.upload.step4.content"),
+        title: "📅 Theo Dõi Cột Mốc Học Phần",
+        content: "Xem danh sách các cột mốc bắt buộc (M1 - M4). Hệ thống hiển thị rõ ràng ngày hết hạn và trạng thái bài nộp (Đã nộp, Nộp trễ, Chưa nộp).",
       },
       {
         target: "#upload-analysis-btn-first",
-        title: t("tour.upload.step5.title"),
-        content: t("tour.upload.step5.content"),
+        title: "🔍 Phân Tích Học Thuật Báo Cáo",
+        content: "Với mỗi báo cáo cột mốc đã nộp, nhấp vào đây để xem kết quả kiểm tra trùng lặp văn bản, dự đoán điểm số và xem các khuyến nghị sửa đổi.",
       },
     ];
   }
@@ -79,23 +78,23 @@ const getStepsForPage = (pathname, role, t) => {
     return [
       {
         target: "#analysis-plagiarism-card",
-        title: t("tour.analysis.step1.title"),
-        content: t("tour.analysis.step1.content"),
+        title: "🛡️ Bộ Đo Trùng Lặp (Plagiarism Meter)",
+        content: "Hệ thống đối chiếu và hiển thị mức độ trùng lặp. Bạn có thể xem chi tiết các câu bị nghi ngờ sao chép cùng đường dẫn trực tiếp tới đề tài nguồn để chỉnh sửa cách diễn đạt.",
       },
       {
         target: "#analysis-score-card",
-        title: t("tour.analysis.step2.title"),
-        content: t("tour.analysis.step2.content"),
+        title: "🏆 Ước Tính Điểm Số Đạt Được",
+        content: "Dự đoán điểm số hệ 10 và tự động quy đổi sang GPA hệ 4 cùng Điểm chữ (A, B, C...) tương ứng theo quy chuẩn học thuật của nhà trường.",
       },
       {
         target: "#analysis-clo-breakdown",
-        title: t("tour.analysis.step3.title"),
-        content: t("tour.analysis.step3.content"),
+        title: "📈 Đánh Giá Chuẩn Đầu Ra (CLO)",
+        content: "Xem mức độ hoàn thành chuẩn đầu ra học phần đồ án theo thang 5 bậc kèm theo các diễn giải phân tích logic.",
       },
       {
         target: "#analysis-suggestions-card",
-        title: t("tour.analysis.step4.title"),
-        content: t("tour.analysis.step4.content"),
+        title: "💡 Đề Xuất Cải Thiện Báo Cáo",
+        content: "Tóm tắt các điểm mạnh đã đạt được và liệt kê chi tiết các thiếu sót cần bổ sung (định dạng, trích dẫn nguồn) để bạn tối ưu hóa điểm số đồ án.",
       },
     ];
   }
@@ -105,13 +104,13 @@ const getStepsForPage = (pathname, role, t) => {
     return [
       {
         target: "#main-content-container",
-        title: t("tour.pending.step1.title"),
-        content: t("tour.pending.step1.content"),
+        title: "📥 Danh Sách Yêu Cầu Hướng Dẫn",
+        content: "Nơi hiển thị các đề tài do sinh viên đăng ký đề xuất mong muốn bạn làm Giảng viên hướng dẫn (GVHD).",
       },
       {
         target: "#main-content-container",
-        title: t("tour.pending.step2.title"),
-        content: t("tour.pending.step2.content"),
+        title: "📝 Phê Duyệt & Phản Hồi",
+        content: "Bạn có thể đọc đề cương chi tiết của sinh viên và nhấp Approve để nhận hướng dẫn hoặc Reject kèm phản hồi góp ý để sinh viên chỉnh sửa lại.",
       },
     ];
   }
@@ -120,59 +119,59 @@ const getStepsForPage = (pathname, role, t) => {
   return role === "Teacher" ? [
     {
       target: "#sidebar-container",
-      title: t("tour.teacherHome.step1.title"),
-      content: t("tour.teacherHome.step1.content"),
+      title: "🧭 Menu Quản Lý (Sidebar)",
+      content: "Thanh menu chính của giảng viên: truy cập trang chủ, xét duyệt yêu cầu hướng dẫn (Pending Requests), quản lý nhóm hướng dẫn (My Supervision) và chấm điểm phản biện.",
     },
     {
       target: "#navbar-help",
-      title: t("tour.teacherHome.step2.title"),
-      content: t("tour.teacherHome.step2.content"),
+      title: "💡 Hướng Dẫn Nghiệp Vụ",
+      content: "Trung tâm tra cứu nhanh quy trình học thuật, các câu hỏi thường gặp hoặc xem chi tiết sổ tay hướng dẫn chấm điểm & phản biện.",
     },
     {
       target: "#navbar-notifications",
-      title: t("tour.teacherHome.step3.title"),
-      content: t("tour.teacherHome.step3.content"),
+      title: "🔔 Thông Báo Nghiệp Vụ",
+      content: "Cảnh báo tự động khi sinh viên nộp báo cáo cột mốc, yêu cầu duyệt đề tài mới, hoặc thông tin phân công lịch hội đồng bảo vệ.",
     },
     {
       target: "#navbar-profile",
-      title: t("tour.teacherHome.step4.title"),
-      content: t("tour.teacherHome.step4.content"),
+      title: "👤 Hồ Sơ Giảng Viên",
+      content: "Cập nhật thông tin liên hệ cá nhân, cấu hình bảo mật tài khoản và đăng xuất ứng dụng.",
     },
     {
       target: "#main-content-container",
-      title: t("tour.teacherHome.step5.title"),
-      content: t("tour.teacherHome.step5.content"),
+      title: "📊 Bảng Điều Khiển Học Thuật",
+      content: "Trang chủ hiển thị biểu đồ phân tích bài nộp cột mốc, danh sách sinh viên hướng dẫn và các hạn nộp bài của khoa.",
     },
   ] : [
     {
       target: "#sidebar-container",
-      title: t("tour.studentHome.step1.title"),
-      content: t("tour.studentHome.step1.content"),
+      title: "🧭 Menu Điều Hướng (Sidebar)",
+      content: "Đây là thanh điều hướng chính. Bạn có thể chuyển nhanh giữa Dashboard, trang Đăng ký đề tài, tải lên báo cáo Cột mốc (Upload Files) và xem Lịch bảo vệ tốt nghiệp.",
     },
     {
       target: "#navbar-qr-scanner",
-      title: t("tour.studentHome.step2.title"),
-      content: t("tour.studentHome.step2.content"),
+      title: "📷 Điểm Danh Nhanh bằng QR",
+      content: "Chức năng dành riêng cho sinh viên: Bấm vào đây để mở camera và quét mã QR Code điểm danh nhanh trong phòng họp định kỳ với GV hướng dẫn.",
     },
     {
       target: "#navbar-help",
-      title: t("tour.studentHome.step3.title"),
-      content: t("tour.studentHome.step3.content"),
+      title: "💡 Trung Tâm Trợ Giúp & Hướng Dẫn",
+      content: "Xem nhanh quy trình 7 bước đồ án tốt nghiệp, giải đáp các thắc mắc (Q&A) phổ biến và truy cập sổ tay hướng dẫn chi tiết dành cho bạn.",
     },
     {
       target: "#navbar-notifications",
-      title: t("tour.studentHome.step4.title"),
-      content: t("tour.studentHome.step4.content"),
+      title: "🔔 Chuông Thông Báo",
+      content: "Nơi nhận các tin nhắn tự động quan trọng như: nhắc nhở hạn nộp báo cáo, lịch họp nhóm từ giảng viên hướng dẫn hoặc điểm số mới.",
     },
     {
       target: "#navbar-profile",
-      title: t("tour.studentHome.step5.title"),
-      content: t("tour.studentHome.step5.content"),
+      title: "👤 Tài Khoản Cá Nhân",
+      content: "Xem thông tin cá nhân của bạn, thay đổi cấu hình cài đặt hệ thống hoặc thực hiện đăng xuất an toàn.",
     },
     {
       target: "#main-content-container",
-      title: t("tour.studentHome.step6.title"),
-      content: t("tour.studentHome.step6.content"),
+      title: "📊 Bảng Điều Khiển Trung Tâm",
+      content: "Khu vực hiển thị biểu đồ tiến trình công việc, các cột mốc deadline và thông tin tổng quan của đề tài tốt nghiệp bạn đăng ký.",
     },
   ];
 };
@@ -194,13 +193,12 @@ const isElementVisible = (element) => {
 const OnboardingTour = ({ userRole, isOpen, onClose }) => {
   const location = useLocation();
   const pathname = location.pathname;
-  const { t } = useTranslation();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [coords, setCoords] = useState(null);
   const resizeTimeoutRef = useRef(null);
 
-  const steps = getStepsForPage(pathname, userRole, t);
+  const steps = getStepsForPage(pathname, userRole);
 
   const updateCoordinates = () => {
     if (!isOpen || currentStep >= steps.length) return;
@@ -377,7 +375,7 @@ const OnboardingTour = ({ userRole, isOpen, onClose }) => {
                 onClick={() => setCurrentStep((prev) => prev + 1)}
                 className="btn-primary py-1.5 px-3 text-xs flex items-center gap-0.5"
               >
-                {t("tour.btn.next")}
+                Tiếp theo
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             ) : (
@@ -385,7 +383,7 @@ const OnboardingTour = ({ userRole, isOpen, onClose }) => {
                 onClick={handleEndTour}
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 text-xs rounded-xl flex items-center gap-0.5 shadow-sm transition-all"
               >
-                {t("tour.btn.finish")}
+                Hoàn thành
               </button>
             )}
           </div>

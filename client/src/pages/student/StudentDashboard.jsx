@@ -3,13 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchDashboardStats } from "../../store/slices/studentSlice";
 import { Link } from "react-router-dom";
 import { Bell, MessageCircle, MessageCircleWarning } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const StudentDashboard = () => {
   const dispatch = useDispatch();
   const { authUser } = useSelector((state) => state.auth);
   const { dashboardStats } = useSelector((state) => state.student);
-  const { t } = useTranslation();
 
   useEffect(() => {
     dispatch(fetchDashboardStats());
@@ -54,10 +52,10 @@ const StudentDashboard = () => {
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
           <h1 className="text-2xl font-bold mb-2">
-            {t("student.db.welcome", { name: authUser?.name || "Student" })}
+            Welcome back, {authUser?.name || "Student"}
           </h1>
           <p className="text-blue-100">
-            {t("student.db.overview")}
+            Here's your project overview and recent updates.
           </p>
         </div>
 
@@ -68,10 +66,10 @@ const StudentDashboard = () => {
               <div className="p-3 bg-blue-100 rounded-lg">📘</div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("student.db.projectTitle")}
+                  Project Title
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {project?.title || t("student.db.noProject")}
+                  {project?.title || "No Project"}
                 </p>
               </div>
             </div>
@@ -81,9 +79,9 @@ const StudentDashboard = () => {
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-lg">👨‍🏫</div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-slate-600">{t("student.db.supervisor")}</p>
+                <p className="text-sm font-medium text-slate-600">Supervisor</p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {supervisorName || "N/A"}
+                  {supervisorName || "N?A"}
                 </p>
               </div>
             </div>
@@ -94,7 +92,7 @@ const StudentDashboard = () => {
               <div className="p-3 bg-blue-100 rounded-lg">⏰</div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("student.db.nextDeadline")}
+                  Next Deadline
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {formatDate(nextDeadline)}
@@ -108,12 +106,12 @@ const StudentDashboard = () => {
               <div className="p-3 bg-blue-100 rounded-lg">💬</div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  {t("student.db.recentFeedback")}
+                  Recent Feedback
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {feedbackList?.length
                     ? formatDate(feedbackList[0].createdAt)
-                    : t("student.db.noFeedback")}
+                    : "No Feedback yet"}
                 </p>
               </div>
             </div>
@@ -125,12 +123,12 @@ const StudentDashboard = () => {
           {/* Project Overview */}
           <div className="card">
             <div className="card-header">
-              <h2 className="card-title">{t("student.db.projectOverviewTitle")}</h2>
+              <h2 className="card-title">Project Overview</h2>
             </div>
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-slate-600">
-                  {t("student.db.title")}
+                  Title
                 </label>
                 <p className="font-medium text-slate-800">
                   {project?.title || "N/A"}
@@ -138,15 +136,15 @@ const StudentDashboard = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-600">
-                  {t("student.db.description")}
+                  Description
                 </label>
                 <p className="font-medium text-slate-800">
-                  {project?.description || t("student.db.noDescription")}
+                  {project?.description || "No Description provided"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-slate-600">
-                  {t("student.db.status")}
+                  Status
                 </label>
                 <span
                   className={`inline-flex items-center px-2 py-[2px] rounded-full text-sm capitalize font-medium 
@@ -157,7 +155,7 @@ const StudentDashboard = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-600">
-                  {t("student.db.submissionDeadline")}
+                  Submission Deadline
                 </label>
                 <p className="text-slate-800">
                   {formatDate(nextDeadline)}
@@ -169,12 +167,12 @@ const StudentDashboard = () => {
           {/* Latest feedback */}
           <div className="card">
             <div className="card-header flex items-center justify-between">
-              <h2 className="card-title">{t("student.db.latestFeedbackTitle")}</h2>
+              <h2 className="card-title">Latest Feedback</h2>
               <Link
                 to={"/student/feedback"}
                 className="text-sm bg-blue-500 text-white px-3 py-1 rounded-full font-medium hover:bg-blue-600 transition-all duration-300"
               >
-                {t("student.db.viewAll")}
+                View All
               </Link>
             </div>
             {feedbackList && feedbackList.length > 0 ? (
@@ -213,7 +211,7 @@ const StudentDashboard = () => {
               <div className="text-center py-8">
                 <MessageCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 text-sm">
-                  {t("student.db.noFeedback")}
+                  No Feedback available yet.
                 </p>
               </div>
             )}
@@ -224,7 +222,7 @@ const StudentDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
             <div className="card-header">
-              <h2 className="card-title">{t("student.db.upcomingDeadlinesTitle")}</h2>
+              <h2 className="card-title">Upcoming Deadlines</h2>
             </div>
             {upcomingDeadlines && upcomingDeadlines.length > 0 ? (
               <div className="space-y-3">
@@ -251,7 +249,7 @@ const StudentDashboard = () => {
               <div className="text-center py-8">
                 <MessageCircleWarning className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 text-sm">
-                  {t("student.db.noUpcomingDeadlines")}
+                  No upcoming deadlines yet.
                 </p>
               </div>
             )}
@@ -260,7 +258,7 @@ const StudentDashboard = () => {
           {/* Recent Notifications */}
           <div className="card">
             <div className="card-header">
-              <h2 className="card-title">{t("student.db.recentNotificationsTitle")}</h2>
+              <h2 className="card-title">Recent Notifications</h2>
               {topNotifications && topNotifications.length > 0 ? (
                 <div className="space-y-3">
                   {topNotifications.map((notification, index) => (
@@ -281,7 +279,7 @@ const StudentDashboard = () => {
                 <div className="text-center py-8">
                   <Bell className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-500 text-sm">
-                    {t("student.db.noNotifications")}
+                    No notifications yet.
                   </p>
                 </div>
               )}

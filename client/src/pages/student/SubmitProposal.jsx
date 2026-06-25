@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import {
@@ -18,7 +17,6 @@ import {
 
 const SubmitProposal = () => {
   const { authUser } = useSelector((state) => state.auth);
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [setup, setSetup] = useState(null);
@@ -229,7 +227,7 @@ const SubmitProposal = () => {
   };
 
   if (loading) {
-    return <div className="card">{t("student.proposal.loading")}</div>;
+    return <div className="card">Loading registration setup...</div>;
   }
 
   const settings = setup?.settings;
@@ -252,27 +250,27 @@ const SubmitProposal = () => {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">{t("student.proposal.headerTitle")}</h1>
+        <h1 className="text-2xl font-bold mb-2">Project Registration</h1>
         <p className="text-blue-100">
-          {t("student.proposal.headerDesc")}
+          Group representative creates the proposal and handles all registration procedures for the team.
         </p>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">{t("student.proposal.policyTitle")}</h2>
+          <h2 className="card-title">Current Registration Policy</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">{t("student.proposal.groupMode")}</p>
+            <p className="text-sm text-slate-500">Group Mode</p>
             <p className="font-semibold text-slate-800">
-              {settings?.allowGroupProjects ? t("student.proposal.enabled") : t("student.proposal.disabled")}
+              {settings?.allowGroupProjects ? "Enabled" : "Disabled"}
             </p>
           </div>
           <div className="rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">{t("student.proposal.groupSize")}</p>
+            <p className="text-sm text-slate-500">Group Size</p>
             <p className="font-semibold text-slate-800">
-              {t("student.proposal.groupSizeVal", { min: settings?.minGroupSize, max: settings?.maxGroupSize })}
+              {settings?.minGroupSize} - {settings?.maxGroupSize} students
             </p>
           </div>
         </div>
@@ -287,11 +285,11 @@ const SubmitProposal = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="card-title">{t("student.proposal.currProposalTitle")}</h2>
+              <h2 className="card-title">Current Project Proposal</h2>
               <p className="card-subtitle">
                 {isLeader
-                  ? t("student.proposal.leaderLabel")
-                  : t("student.proposal.memberLabel", { name: project.student?.name })}
+                  ? "You are the group representative (Leader)."
+                  : `Group representative: ${project.student?.name}`}
               </p>
             </div>
 
@@ -303,7 +301,7 @@ const SubmitProposal = () => {
                   onClick={() => setActionsOpen(!actionsOpen)}
                 >
                   <Shield className="w-4 h-4" />
-                  {t("student.proposal.leaderActions")}
+                  Leader Actions
                   <ChevronDown className={`w-4 h-4 transition-transform ${actionsOpen ? "rotate-180" : ""}`} />
                 </button>
 
@@ -317,7 +315,7 @@ const SubmitProposal = () => {
                       }}
                     >
                       <ArrowRightLeft className="w-4 h-4 text-blue-500" />
-                      {t("student.proposal.transferLeadOpt")}
+                      Transfer Leadership
                     </button>
                     {!hasSupervisor && (
                       <>
@@ -329,7 +327,7 @@ const SubmitProposal = () => {
                           }}
                         >
                           <UserMinus className="w-4 h-4 text-orange-500" />
-                          {t("student.proposal.kickMemberOpt")}
+                          Remove a Member
                         </button>
                         <div className="border-t border-slate-100 my-1" />
                         <button
@@ -340,7 +338,7 @@ const SubmitProposal = () => {
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
-                          {t("student.proposal.disbandGroupOpt")}
+                          Disband Group
                         </button>
                       </>
                     )}
@@ -352,38 +350,38 @@ const SubmitProposal = () => {
 
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-slate-500">{t("student.proposal.titleLabel")}</p>
+              <p className="text-sm text-slate-500">Proposal Title</p>
               <p className="font-semibold text-slate-800">{project.title}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t("student.proposal.groupNameLabel")}</p>
+              <p className="text-sm text-slate-500">Group Name</p>
               <p className="font-semibold text-slate-800">
                 {project.groupName || project.title}
               </p>
             </div>
             <div className="flex gap-6">
               <div>
-                <p className="text-sm text-slate-500">{t("student.proposal.modeLabel")}</p>
+                <p className="text-sm text-slate-500">Project Mode</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${project.projectMode === "group" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"}`}>
-                  {project.projectMode === "group" ? t("student.proposal.modeGroup") : t("student.proposal.modeIndiv")}
+                  {project.projectMode === "group" ? "Group" : "Individual"}
                 </span>
               </div>
               <div>
-                <p className="text-sm text-slate-500">{t("student.proposal.statusLabel")}</p>
+                <p className="text-sm text-slate-500">Status</p>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 bg-yellow-100 text-yellow-800 capitalize">
                   {project.status}
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t("student.proposal.repLabel")}</p>
+              <p className="text-sm text-slate-500">Representative (Leader)</p>
               <div className="mt-1 flex items-center gap-2">
                 <Crown className="w-4 h-4 text-amber-500" />
                 <p className="font-semibold text-slate-800">{project.student?.name}</p>
               </div>
             </div>
             <div>
-              <p className="text-sm text-slate-500 mb-2">{t("student.proposal.membersLabel")}</p>
+              <p className="text-sm text-slate-500 mb-2">Members</p>
               <div className="flex flex-wrap gap-2">
                 {(project.members || []).map((member) => {
                   const memberIsLeader = member._id === project.student?._id;
@@ -408,14 +406,14 @@ const SubmitProposal = () => {
       ) : (
         <form id="proposal-form-container" onSubmit={handleSubmit} className="card space-y-6">
           <div className="card-header">
-            <h2 className="card-title">{t("student.proposal.createNewHeader")}</h2>
+            <h2 className="card-title">Create New Project Proposal</h2>
             <p className="card-subtitle">
-              {t("student.proposal.createNewSub")}
+              Step 1: create the project. Step 2: invite members if this is a group project.
             </p>
           </div>
 
           <div>
-            <label className="label">{t("student.proposal.titleLabel")}</label>
+            <label className="label">Proposal Title</label>
             <input
               id="proposal-title-input"
               type="text"
@@ -424,13 +422,13 @@ const SubmitProposal = () => {
               onChange={(event) =>
                 setFormData((current) => ({ ...current, title: event.target.value }))
               }
-              placeholder={t("student.proposal.titlePlaceholder")}
+              placeholder="Example: AI-powered student project management assistant"
               required
             />
           </div>
 
           <div>
-            <label className="label">{t("student.proposal.descLabel")}</label>
+            <label className="label">Proposal Description</label>
             <textarea
               id="proposal-desc-input"
               className="input min-h-[140px]"
@@ -441,13 +439,13 @@ const SubmitProposal = () => {
                   description: event.target.value,
                 }))
               }
-              placeholder={t("student.proposal.descPlaceholder")}
+              placeholder="Describe the project scope, expected output, and core technology."
               required
             />
           </div>
 
           <div>
-            <label className="label">{t("student.proposal.outlineLabel")}</label>
+            <label className="label">Outline Draft (Optional PDF/DOCX/TXT)</label>
             <input
               id="proposal-file-input"
               type="file"
@@ -460,7 +458,7 @@ const SubmitProposal = () => {
           {settings?.allowGroupProjects && (
             <>
               <div>
-                <label className="label">{t("student.proposal.groupNameLabel")}</label>
+                <label className="label">Group Name</label>
                 <input
                   type="text"
                   className="input"
@@ -471,14 +469,14 @@ const SubmitProposal = () => {
                       groupName: event.target.value,
                     }))
                   }
-                  placeholder={t("sidebar.home") === "Trang chủ" ? "Ví dụ: Nhóm Orion" : "Example: Team Orion"}
+                  placeholder="Example: Team Orion"
                 />
               </div>
 
               <div>
-                <label className="label">{t("student.proposal.inviteLabel")}</label>
+                <label className="label">Invite Group Members</label>
                 <p className="text-sm text-slate-500 mb-3">
-                  {t("student.proposal.inviteSub")}
+                  Search for a student by their exact email address to add them to your group selection.
                 </p>
                 
                 <div className="flex gap-2">
@@ -495,7 +493,7 @@ const SubmitProposal = () => {
                           handleAddByEmail();
                         }
                       }}
-                      placeholder={t("student.proposal.invitePlaceholder")}
+                      placeholder="Enter student's exact email address..."
                     />
                   </div>
                   <button
@@ -504,14 +502,14 @@ const SubmitProposal = () => {
                     onClick={handleAddByEmail}
                   >
                     <Plus className="w-4 h-4" />
-                    {t("student.proposal.addBtn")}
+                    Add
                   </button>
                 </div>
 
                 {formData.memberIds.length > 0 && (
                   <div className="space-y-2.5 mt-4">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      {t("student.proposal.selectedMembers", { count: formData.memberIds.length })}
+                      Selected Members ({formData.memberIds.length})
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {formData.memberIds.map((id) => {
@@ -530,7 +528,7 @@ const SubmitProposal = () => {
                               type="button"
                               className="text-slate-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
                               onClick={() => toggleMember(student._id)}
-                              title={t("student.proposal.removeMember")}
+                              title="Remove Member"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -546,7 +544,7 @@ const SubmitProposal = () => {
 
           <div className="flex justify-end">
             <button id="proposal-submit-btn" type="submit" className="btn-primary" disabled={saving}>
-              {saving ? t("student.proposal.submitting") : t("student.proposal.submitBtn")}
+              {saving ? "Submitting..." : "Create Project Proposal"}
             </button>
           </div>
         </form>
@@ -554,7 +552,7 @@ const SubmitProposal = () => {
 
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">{t("student.proposal.incomingInvitations")}</h2>
+          <h2 className="card-title">Incoming Group Invitations</h2>
         </div>
         <div className="space-y-3">
           {incomingInvitations.map((invitation) => (
@@ -567,7 +565,7 @@ const SubmitProposal = () => {
                   {invitation.project?.groupName || invitation.project?.title}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {t("student.proposal.repCol", { name: invitation.inviter?.name })}
+                  Representative: {invitation.inviter?.name}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -575,19 +573,19 @@ const SubmitProposal = () => {
                   className="btn-primary"
                   onClick={() => respondInvitation(invitation._id, "accepted")}
                 >
-                  {t("student.proposal.acceptBtn")}
+                  Accept Invitation
                 </button>
                 <button
                   className="btn-outline"
                   onClick={() => respondInvitation(invitation._id, "rejected")}
                 >
-                  {t("student.proposal.rejectBtn")}
+                  Reject Invitation
                 </button>
               </div>
             </div>
           ))}
           {incomingInvitations.length === 0 && (
-            <p className="text-slate-500">{t("student.proposal.noIncoming")}</p>
+            <p className="text-slate-500">No pending group invitations.</p>
           )}
         </div>
       </div>
@@ -595,7 +593,7 @@ const SubmitProposal = () => {
       {outgoingInvitations.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">{t("student.proposal.outgoingInvitations")}</h2>
+            <h2 className="card-title">Outgoing Group Invitations Sent By Representative</h2>
           </div>
           <div className="space-y-3">
             {outgoingInvitations.map((invitation) => (
@@ -605,7 +603,7 @@ const SubmitProposal = () => {
                 </p>
                 <p className="text-sm text-slate-500">{invitation.invitee?.email}</p>
                 <p className="mt-2 text-sm capitalize text-slate-600">
-                  {t("student.proposal.statusCol", { status: invitation.status })}
+                  Status: {invitation.status}
                 </p>
               </div>
             ))}
@@ -622,14 +620,14 @@ const SubmitProposal = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <ArrowRightLeft className="w-5 h-5 text-blue-500" />
-                {t("student.proposal.transferModalTitle")}
+                Transfer Leadership
               </h2>
               <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowTransferModal(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              {t("student.proposal.transferModalSub")}
+              Select a member to become the new group leader. You will remain as a regular member.
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {otherMembers.map((member) => (
@@ -656,14 +654,14 @@ const SubmitProposal = () => {
             </div>
             <div className="flex gap-3 mt-6">
               <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowTransferModal(false)}>
-                {t("student.proposal.cancelBtn")}
+                Cancel
               </button>
               <button
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 disabled={!selectedMember || actionLoading}
                 onClick={handleTransferLeadership}
               >
-                {actionLoading ? t("student.proposal.transferring") : t("student.proposal.transferConfirmBtn")}
+                {actionLoading ? "Transferring..." : "Confirm Transfer"}
               </button>
             </div>
           </div>
@@ -677,14 +675,14 @@ const SubmitProposal = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <UserMinus className="w-5 h-5 text-orange-500" />
-                {t("student.proposal.kickModalTitle")}
+                Remove Member
               </h2>
               <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowKickModal(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-sm text-slate-600 mb-4">
-              {t("student.proposal.kickModalSub")}
+              Select a member to remove from the group. Project files will be preserved.
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {otherMembers.map((member) => (
@@ -711,14 +709,14 @@ const SubmitProposal = () => {
             </div>
             <div className="flex gap-3 mt-6">
               <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowKickModal(false)}>
-                {t("student.proposal.cancelBtn")}
+                Cancel
               </button>
               <button
                 className="flex-1 px-4 py-2.5 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50"
                 disabled={!selectedMember || actionLoading}
                 onClick={handleKickMember}
               >
-                {actionLoading ? t("student.proposal.kicking") : t("student.proposal.kickConfirmBtn")}
+                {actionLoading ? "Removing..." : "Confirm Remove"}
               </button>
             </div>
           </div>
@@ -732,7 +730,7 @@ const SubmitProposal = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-red-700 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5" />
-                {t("student.proposal.disbandModalTitle")}
+                Disband Group
               </h2>
               <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowDisbandModal(false)}>
                 <X className="w-5 h-5" />
@@ -740,27 +738,27 @@ const SubmitProposal = () => {
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-red-800 font-medium mb-2">
-                {t("student.proposal.disbandModalWarning")}
+                This action is irreversible!
               </p>
               <ul className="text-sm text-red-700 list-disc pl-4 space-y-1">
-                <li>{t("student.proposal.disbandItem1")}</li>
-                <li>{t("student.proposal.disbandItem2")}</li>
-                <li>{t("student.proposal.disbandItem3")}</li>
+                <li>The project and all uploaded files will be permanently deleted</li>
+                <li>All members will be removed from the group</li>
+                <li>All pending invitations will be cancelled</li>
               </ul>
             </div>
             <p className="text-sm text-slate-600 mb-6">
-              {t("student.proposal.titleLabel")}: <strong>{project?.title}</strong>
+              Project: <strong>{project?.title}</strong>
             </p>
             <div className="flex gap-3">
               <button className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200" onClick={() => setShowDisbandModal(false)}>
-                {t("student.proposal.cancelBtn")}
+                Cancel
               </button>
               <button
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
                 disabled={actionLoading}
                 onClick={handleDisbandGroup}
               >
-                {actionLoading ? t("student.proposal.disbanding") : t("student.proposal.disbandConfirmBtn")}
+                {actionLoading ? "Disbanding..." : "Confirm Disband"}
               </button>
             </div>
           </div>

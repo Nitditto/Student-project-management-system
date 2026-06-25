@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { axiosInstance } from "../../lib/axios";
 import {
@@ -28,7 +27,6 @@ const SubmissionAnalysisPage = () => {
   const milestoneFromUrl = searchParams.get("milestone") || "M4";
   
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [pollingStage, setPollingStage] = useState(0);
   const [analysis, setAnalysis] = useState(null);
@@ -42,11 +40,11 @@ const SubmissionAnalysisPage = () => {
   const [showAlgoInfo, setShowAlgoInfo] = useState(false);
 
   const stages = [
-    t("student.analysis.stage1"),
-    t("student.analysis.stage2"),
-    t("student.analysis.stage3"),
-    t("student.analysis.stage4"),
-    t("student.analysis.stage5")
+    "Đang đọc và phân tích cấu trúc tài liệu bài nộp...",
+    "Đang chia đoạn văn và đối chiếu vector kiểm tra trùng lặp...",
+    "Đang tìm kiếm so sánh cơ sở tri thức (RAG) nếu cần...",
+    "Đang áp dụng mẫu Rubric chuẩn đầu ra (CLO) để ước tính điểm...",
+    "Đang tổng hợp nhận xét cá nhân hóa và đề xuất cải tiến học thuật..."
   ];
 
   // Fetch or trigger analysis
@@ -80,7 +78,7 @@ const SubmissionAnalysisPage = () => {
       }
     } catch (error) {
       console.error("Error fetching analysis:", error);
-      toast.error(t("student.analysis.errFetch"));
+      toast.error("Không thể tải thông tin phân tích AI.");
       setLoading(false);
     }
   };
@@ -103,9 +101,9 @@ const SubmissionAnalysisPage = () => {
           setAnalysis(data);
           setLoading(false);
           if (data.status === "error") {
-            toast.error(t("student.analysis.errProcess") + (data.errorMessage || t("student.analysis.errUnknown")));
+            toast.error("Quá trình phân tích gặp lỗi: " + (data.errorMessage || "Không xác định"));
           } else {
-            toast.success(t("student.analysis.success"));
+            toast.success("Phân tích AI hoàn tất!");
             if (data.studentFeedback?.rating) {
               setRating(data.studentFeedback.rating);
               setComment(data.studentFeedback.comment || "");
@@ -135,7 +133,7 @@ const SubmissionAnalysisPage = () => {
 
   const handleSendFeedback = async () => {
     if (rating === 0) {
-      toast.warning(t("student.analysis.warnRating"));
+      toast.warning("Vui lòng chọn số sao đánh giá!");
       return;
     }
     setSubmittingFeedback(true);
@@ -144,11 +142,11 @@ const SubmissionAnalysisPage = () => {
         rating,
         comment
       });
-      toast.success(t("student.analysis.feedbackSaved"));
+      toast.success("Cảm ơn bạn đã phản hồi! Đóng góp này giúp AI chấm điểm thông minh hơn.");
       setFeedbackSaved(true);
     } catch (error) {
       console.error("Error saving feedback:", error);
-      toast.error(t("student.analysis.feedbackErr"));
+      toast.error("Lỗi khi gửi phản hồi.");
     } finally {
       setSubmittingFeedback(false);
     }
@@ -162,7 +160,7 @@ const SubmissionAnalysisPage = () => {
           <FileText className="absolute inset-0 m-auto text-blue-500 w-8 h-8" />
         </div>
         <h2 className="text-xl font-extrabold text-slate-800 text-center max-w-md">
-          {t("student.analysis.loadingTitle")}
+          Đang Phân Tích Bài Nộp
         </h2>
         <p className="text-slate-500 text-sm mt-3 text-center max-w-lg transition-all duration-300">
           {stages[pollingStage]}
@@ -183,16 +181,16 @@ const SubmissionAnalysisPage = () => {
         <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
           <AlertTriangle className="text-red-500 w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">{t("student.analysis.failedTitle")}</h2>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Phân tích tài liệu thất bại</h2>
         <p className="text-slate-600 mb-6">
-          {analysis?.errorMessage || t("student.analysis.failedDesc")}
+          {analysis?.errorMessage || "Không thể khởi tạo hoặc chạy phân tích cho bài nộp này. Hãy thử lại."}
         </p>
         <div className="flex gap-4 justify-center">
           <button onClick={() => navigate(-1)} className="btn-outline flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" /> {t("student.analysis.backBtn")}
+            <ArrowLeft className="w-4 h-4" /> Quay lại
           </button>
           <button onClick={handleRetry} className="btn-primary flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" /> {t("student.analysis.retryBtn")}
+            <RefreshCw className="w-4 h-4" /> Thử lại
           </button>
         </div>
       </div>
@@ -245,14 +243,14 @@ const SubmissionAnalysisPage = () => {
               onClick={() => navigate(-1)} 
               className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 outline-none"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> {t("student.analysis.backToListBtn")}
+              <ArrowLeft className="w-3.5 h-3.5" /> Trở về Danh sách
             </button>
             <h1 className="text-2xl font-black flex items-center gap-2.5 text-slate-800">
               <FileText className="w-7 h-7 text-blue-600" />
-              {t("student.analysis.headerTitle")}
+              Kết Quả Phân Tích Báo Cáo Học Thuật
             </h1>
             <p className="text-sm text-slate-500 font-medium">
-              {t("student.analysis.projectTitle", { title: analysis.project?.title || "N/A" })}
+              Đề tài: {analysis.project?.title || "N/A"}
             </p>
           </div>
 
@@ -261,14 +259,14 @@ const SubmissionAnalysisPage = () => {
               onClick={handleRetry} 
               className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors bg-white px-3.5 py-1.5 rounded-lg font-bold shadow-sm cursor-pointer border border-slate-200 outline-none"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> {t("student.analysis.reAnalyzeBtn")}
+              <RefreshCw className="w-3.5 h-3.5" /> Phân tích lại
             </button>
             <span className="px-3.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">
-              {t("student.analysis.milestone", { milestone: scoreEstimate.milestone })}
+              Milestone: {scoreEstimate.milestone}
             </span>
             {scoreEstimate.usedRag && (
               <span className="px-3.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-                <BookOpen className="w-3.5 h-3.5 text-blue-500" /> {t("student.analysis.ragUsed")}
+                <BookOpen className="w-3.5 h-3.5 text-blue-500" /> Đối chiếu RAG
               </span>
             )}
           </div>
@@ -289,14 +287,14 @@ const SubmissionAnalysisPage = () => {
                 ) : (
                   <ShieldCheck className="text-emerald-500 w-5 h-5" />
                 )}
-                <h3 className="card-title">{t("student.analysis.plagiarismTitle")}</h3>
+                <h3 className="card-title">Kiểm Tra Trùng Lặp</h3>
               </div>
               <span className={`badge font-bold ${
                 isHighPlagiarism ? "bg-red-50 text-red-700 border border-red-200" :
                 isMediumPlagiarism ? "bg-amber-50 text-amber-700 border border-amber-200" :
                 "bg-emerald-50 text-emerald-700 border border-emerald-200"
               }`}>
-                {isHighPlagiarism ? t("student.analysis.riskHigh") : isMediumPlagiarism ? t("student.analysis.riskMedium") : t("student.analysis.riskLow")}
+                {isHighPlagiarism ? "Rủi ro cao" : isMediumPlagiarism ? "Rủi ro trung bình" : "Rủi ro thấp"}
               </span>
             </div>
 
@@ -320,14 +318,14 @@ const SubmissionAnalysisPage = () => {
                 </svg>
                 <div className="absolute flex flex-col items-center">
                   <span className="text-3xl font-black text-slate-800">{simPercent}%</span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t("student.analysis.duplicateLabel")}</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Trùng lặp</span>
                 </div>
               </div>
 
               {plagiarismResult.overallSimilarity > 0.30 && (
                 <p className="text-xs text-amber-600 font-semibold mt-3 text-center flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  {t("student.analysis.duplicateWarning")}
+                  Phát hiện sự trùng hợp nội dung so với các đề tài đã có.
                 </p>
               )}
 
@@ -336,25 +334,25 @@ const SubmissionAnalysisPage = () => {
                 className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 mt-4 transition-colors focus:outline-none"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
-                {showAlgoInfo ? t("student.analysis.algoCollapse") : t("student.analysis.algoExpand")}
+                {showAlgoInfo ? "Thu gọn giải thích thuật toán" : "Giải thích thuật toán Cosine Similarity"}
               </button>
 
               {showAlgoInfo && (
                 <div className="mt-4 p-4 rounded-xl bg-blue-50/40 border border-blue-100/50 space-y-3 animate-fadeIn text-xs leading-relaxed text-slate-700 w-full text-left">
                   <p className="font-bold text-blue-800 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-blue-600" />
-                    {t("student.analysis.algoTitle")}
+                    Nguyên lý đối chiếu Cosine Similarity
                   </p>
                   <p>
-                    {t("student.analysis.algoDesc")}
+                    <strong>Độ tương đồng Cosine (Cosine Similarity)</strong> là phương pháp toán học đo lường mức độ tương đồng ngữ nghĩa giữa hai văn bản bằng cách biểu diễn chúng dưới dạng vector trong không gian đa chiều và tính toán góc giữa chúng.
                   </p>
                   <div className="bg-white border border-blue-100 rounded-xl p-2 text-center font-mono text-slate-800 font-bold my-2">
-                    {t("student.analysis.algoFormula")}
+                    cos(θ) = (A · B) / (||A|| × ||B||)
                   </div>
                   <div className="space-y-1.5 text-slate-600">
-                    <p>{t("student.analysis.algoBullet1")}</p>
-                    <p>{t("student.analysis.algoBullet2")}</p>
-                    <p>{t("student.analysis.algoBullet3")}</p>
+                    <p>• <strong>Không phụ thuộc độ dài:</strong> Khác với so sánh ký tự đơn thuần, thuật toán này đo lường góc của vector nên không bị ảnh hưởng bởi độ dài ngắn hay việc chèn thêm các từ nối.</p>
+                    <p>• <strong>Vector hóa ngữ nghĩa (Embeddings):</strong> Hệ thống chuyển hóa từng đoạn văn bản trong báo cáo của bạn thành các vector số đặc trưng biểu diễn ý nghĩa ngữ nghĩa thực sự (nhờ AI).</p>
+                    <p>• <strong>Ngưỡng cảnh báo (0.85):</strong> Hệ thống đặt mức cảnh báo đối chiếu là <strong>0.85 (85%)</strong>. Các đoạn văn vượt ngưỡng này sẽ được coi là sao chép nguyên ý tưởng từ khóa trước và bị bôi đỏ cảnh báo để bạn tiến hành diễn đạt lại (paraphrase).</p>
                   </div>
                 </div>
               )}
@@ -364,13 +362,13 @@ const SubmissionAnalysisPage = () => {
             {plagiarismResult.suspiciousChunks && plagiarismResult.suspiciousChunks.length > 0 && (
               <div className="mt-4 border-t border-slate-100 pt-4 space-y-2.5">
                 <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-                  {t("student.analysis.suspiciousTitle", { count: plagiarismResult.suspiciousChunks.length })}
+                  Các đoạn đáng ngờ trùng khớp ({plagiarismResult.suspiciousChunks.length})
                 </h4>
                 <div className="max-h-52 overflow-y-auto space-y-2.5 pr-1">
                   {plagiarismResult.suspiciousChunks.map((chunk, cIdx) => (
                     <div key={cIdx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 shadow-sm text-xs space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold">
-                        <span>{t("student.analysis.chunkIndex", { index: chunk.chunkIndex + 1 })}</span>
+                        <span>Đoạn #{chunk.chunkIndex + 1}</span>
                         <span className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
                           Cosine: {Math.round(chunk.similarity * 100)}%
                         </span>
@@ -380,7 +378,7 @@ const SubmissionAnalysisPage = () => {
                       </p>
                       <div className="text-[10px] font-semibold text-slate-600 bg-indigo-50/50 p-1.5 rounded flex items-center gap-1 border border-indigo-100/50">
                         <BookOpen className="w-3 h-3 text-indigo-500" />
-                        <span className="truncate">{chunk.matchedProjectTitle ? t("student.analysis.matchedSource", { title: chunk.matchedProjectTitle }) : t("student.analysis.archiveSource")}</span>
+                        <span className="truncate">Nguồn trùng khớp: {chunk.matchedProjectTitle || "Đề tài lưu trữ"}</span>
                       </div>
                     </div>
                   ))}
@@ -394,10 +392,10 @@ const SubmissionAnalysisPage = () => {
             <div className="card-header flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Award className="text-blue-500 w-5 h-5" />
-                <h3 className="card-title">{t("student.analysis.scoreTitle")}</h3>
+                <h3 className="card-title">Ước Tính Điểm Số</h3>
               </div>
               <div className="text-[10px] font-bold text-slate-400">
-                {t("student.analysis.confidence", { percent: Math.round(scoreEstimate.confidence * 100) })}
+                Độ tự tin đánh giá: {Math.round(scoreEstimate.confidence * 100)}%
               </div>
             </div>
 
@@ -406,7 +404,7 @@ const SubmissionAnalysisPage = () => {
             {/* CLO Breakdown */}
             <div id="analysis-clo-breakdown" className="space-y-4">
               <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-                {t("student.analysis.cloTitle")}
+                Chi tiết đánh giá theo CLO
               </h4>
               <div className="space-y-3.5">
                 {scoreEstimate.cloBreakdown && scoreEstimate.cloBreakdown.map((clo, cIdx) => (
@@ -442,7 +440,7 @@ const SubmissionAnalysisPage = () => {
           <div id="analysis-suggestions-card" className="card hover:shadow-md transition-shadow">
             <div className="card-header flex items-center gap-2">
               <Activity className="text-indigo-500 w-5 h-5" />
-              <h3 className="card-title">{t("student.analysis.feedbackTitle")}</h3>
+              <h3 className="card-title">Nhận Xét Học Thuật & Đề Xuất Cải Thiện</h3>
             </div>
 
             {/* Overall Comment blockquote */}
@@ -459,7 +457,7 @@ const SubmissionAnalysisPage = () => {
               {/* Strengths */}
               <div className="space-y-2">
                 <h4 className="text-xs font-extrabold text-emerald-700 bg-emerald-50/50 px-2.5 py-1 rounded border border-emerald-100 flex items-center gap-1.5 w-max">
-                  <CheckCircle className="w-3.5 h-3.5" /> {t("student.analysis.strengths")}
+                  <CheckCircle className="w-3.5 h-3.5" /> Điểm mạnh phát huy
                 </h4>
                 <ul className="space-y-1.5 pl-1.5">
                   {feedback.strengths && feedback.strengths.map((str, idx) => (
@@ -474,7 +472,7 @@ const SubmissionAnalysisPage = () => {
               {/* Weaknesses */}
               <div className="space-y-2">
                 <h4 className="text-xs font-extrabold text-amber-700 bg-amber-50/50 px-2.5 py-1 rounded border border-amber-100 flex items-center gap-1.5 w-max">
-                  <AlertTriangle className="w-3.5 h-3.5" /> {t("student.analysis.weaknesses")}
+                  <AlertTriangle className="w-3.5 h-3.5" /> Điểm yếu / Thiếu sót cần lưu ý
                 </h4>
                 <ul className="space-y-1.5 pl-1.5">
                   {feedback.weaknesses && feedback.weaknesses.map((weak, idx) => (
@@ -489,7 +487,7 @@ const SubmissionAnalysisPage = () => {
               {/* Suggestions */}
               <div className="space-y-2">
                 <h4 className="text-xs font-extrabold text-blue-700 bg-blue-50/50 px-2.5 py-1 rounded border border-blue-100 flex items-center gap-1.5 w-max">
-                  <Lightbulb className="w-3.5 h-3.5" /> {t("student.analysis.suggestions")}
+                  <Lightbulb className="w-3.5 h-3.5" /> Khuyến nghị học thuật
                 </h4>
                 <ul className="space-y-1.5 pl-1.5">
                   {feedback.suggestions && feedback.suggestions.map((sug, idx) => (
@@ -507,15 +505,15 @@ const SubmissionAnalysisPage = () => {
           <div className="card hover:shadow-md transition-shadow">
             <div className="card-header flex items-center gap-2">
               <ThumbsUp className="text-indigo-600 w-5 h-5" />
-              <h3 className="card-title">{t("student.analysis.ratingTitle")}</h3>
+              <h3 className="card-title">Đánh giá chất lượng phân tích</h3>
             </div>
             
             {feedbackSaved ? (
               <div className="text-center p-6 bg-emerald-50/30 rounded-2xl border border-emerald-100 space-y-3">
                 <CheckCircle className="text-emerald-500 w-12 h-12 mx-auto" />
-                <h4 className="font-extrabold text-slate-800">{t("student.analysis.ratingThanks")}</h4>
+                <h4 className="font-extrabold text-slate-800">Cảm ơn phản hồi của bạn!</h4>
                 <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                  {t("student.analysis.ratingThanksDesc")}
+                  Phản hồi của bạn đã được ghi nhận. Dữ liệu đánh giá sao và ý kiến này sẽ trực tiếp tối ưu hóa và làm ví dụ mẫu cho các lần phân tích sau.
                 </p>
                 <div className="flex justify-center gap-1 mt-2">
                   {[1, 2, 3, 4, 5].map((s) => (
@@ -531,18 +529,18 @@ const SubmissionAnalysisPage = () => {
                   onClick={() => setFeedbackSaved(false)} 
                   className="btn-outline btn-small mt-3 cursor-pointer"
                 >
-                  {t("student.analysis.changeRatingBtn")}
+                  Thay đổi đánh giá
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  {t("student.analysis.ratingDesc")}
+                  Bạn có đồng ý với điểm số ước lượng và các nhận xét học thuật này không? Đánh giá sao của bạn sẽ được lưu để tối ưu hóa độ chính xác đánh giá của hệ thống.
                 </p>
                 
                 {/* Stars container */}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-700">{t("student.analysis.satisfactionLabel")}</span>
+                  <span className="text-xs font-bold text-slate-700">Mức độ hài lòng:</span>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -563,13 +561,13 @@ const SubmissionAnalysisPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="label text-xs">{t("student.analysis.commentLabel")}</label>
+                  <label className="label text-xs">Nhận xét hoặc đính chính điểm (nếu có):</label>
                   <textarea
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows="3"
                     className="input text-xs"
-                    placeholder={t("student.analysis.commentPlaceholder")}
+                    placeholder="Mô tả ý kiến hoặc đính chính về điểm ước tính..."
                   />
                 </div>
 
@@ -579,7 +577,7 @@ const SubmissionAnalysisPage = () => {
                     disabled={submittingFeedback}
                     className="btn-primary btn-small flex items-center gap-1 bg-blue-600 hover:bg-blue-700 shadow-sm text-xs"
                   >
-                    {submittingFeedback ? t("student.analysis.submitting") : t("student.analysis.submitFeedbackBtn")}
+                    {submittingFeedback ? "Đang gửi..." : "Gửi Phản Hồi"}
                   </button>
                 </div>
               </div>

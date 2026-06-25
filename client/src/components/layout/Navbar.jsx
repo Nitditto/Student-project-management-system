@@ -33,70 +33,70 @@ import {
 } from "../../lib/notifications";
 import { AiOutlineScan } from "react-icons/ai";
 
+const stepsData = [
+  {
+    number: "01",
+    title: "Đăng ký Đề tài & Xem Thông tin",
+    description: "Sử dụng mục Đăng ký đề tài trên hệ thống để điền tên đề tài, mô tả và lập đề cương chi tiết, sau đó theo dõi trạng thái phê duyệt trực tuyến từ GVHD và Bộ môn.",
+  },
+  {
+    number: "02",
+    title: "Quản lý Tiến độ & Điểm danh họp",
+    description: "Xem kế hoạch công việc tuần, ghi nhận nhật ký thực hiện và sử dụng nút Quét mã QR (cạnh Avatar) trên thanh điều hướng để điểm danh trong các buổi họp định kỳ với GVHD.",
+  },
+  {
+    number: "03",
+    title: "Nộp Báo cáo Học phần & Cột mốc",
+    description: "Truy cập tính năng 'Nộp bài' (Upload Files) để tải lên các tài liệu báo cáo tiến độ hoặc báo cáo dự thảo dưới dạng file PDF/DOCX (dung lượng tối đa 50MB) theo đúng thời hạn.",
+  },
+  {
+    number: "04",
+    title: "Đối chiếu Tài liệu & Xem Phân tích",
+    description: "Nhấp vào nút 'Phân tích học thuật' sau khi nộp file để hệ thống tự động đối chiếu cơ sở dữ liệu RAG, dự đoán điểm CLO, kiểm tra trùng lặp và gợi ý các khuyến nghị chỉnh sửa.",
+  },
+  {
+    number: "05",
+    title: "Theo dõi Đánh giá từ Giảng viên",
+    description: "Truy cập trang chi tiết bài nộp để xem trực tiếp các nhận xét, góp ý chi tiết cùng bảng điểm đánh giá độc lập từ GVHD và Giảng viên phản biện (GVPB).",
+  },
+  {
+    number: "06",
+    title: "Nhận Lịch Bảo vệ từ Thông báo",
+    description: "Kiểm tra biểu tượng Chuông thông báo (Bell) để nhận thông tin chi tiết về thời gian, phòng bảo vệ, số thứ tự thuyết trình và thành viên Hội đồng đánh giá.",
+  },
+  {
+    number: "07",
+    title: "Nộp Báo cáo Chỉnh sửa Hoàn thiện",
+    description: "Sau khi bảo vệ trước Hội đồng, thực hiện chỉnh sửa báo cáo theo góp ý và nộp bản PDF đồ án hoàn thiện cuối cùng lên hệ thống để lưu trữ và kết thúc học phần.",
+  },
+];
+
+const faqData = [
+  {
+    question: "Điều kiện để được bảo vệ đồ án tốt nghiệp là gì?",
+    answer: "Sinh viên cần hoàn thành đủ số tín chỉ tích lũy theo quy định, không bị kỷ luật, hoàn thành đồ án đúng hạn, được GVHD ký đồng ý cho bảo vệ, và tỷ lệ trùng lặp báo cáo (nếu có kiểm tra) nằm trong giới hạn cho phép của khoa (thường dưới 20%).",
+  },
+  {
+    question: "Tỷ lệ trùng lặp báo cáo đồ án được tính như thế nào?",
+    answer: "Hệ thống sẽ đối chiếu tự động báo cáo của bạn với cơ sở dữ liệu học thuật và internet. Kết quả trả về gồm tỷ lệ trùng lặp tổng quan và chi tiết từng phần. Nếu vượt quá giới hạn, sinh viên cần chỉnh sửa cách diễn đạt (paraphrase) và trích dẫn nguồn đúng quy chuẩn.",
+  },
+  {
+    question: "Thời gian thuyết trình và chất vấn tại Hội đồng là bao lâu?",
+    answer: "Thông thường mỗi sinh viên/nhóm sinh viên có 15-20 phút thuyết trình slide và demo sản phẩm, sau đó là 10-15 phút nghe câu hỏi nhận xét từ GV Phản biện, các thành viên Hội đồng và trả lời trực tiếp.",
+  },
+  {
+    question: "Em cần mang theo những tài liệu gì trong ngày bảo vệ?",
+    answer: "Bạn cần chuẩn bị slide trình chiếu (lưu trên USB và gửi trước cho thư ký), poster đồ án (nếu khoa yêu cầu treo), các bản in báo cáo (đã đóng quyển bìa mềm/cứng theo quy chuẩn), và máy tính cá nhân để chạy demo sản phẩm thực tế.",
+  },
+  {
+    question: "Làm thế nào nếu kết quả bảo vệ không đạt yêu cầu?",
+    answer: "Nếu điểm số từ hội đồng dưới trung bình hoặc đồ án bị bác bỏ, sinh viên sẽ phải thực hiện chỉnh sửa lớn dưới sự hướng dẫn của GVHD và đăng ký bảo vệ lại ở đợt sau (thường là học kỳ kế tiếp).",
+  },
+];
+
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
-
-  const stepsData = useMemo(() => [
-    {
-      number: "01",
-      title: t("help.step1.title"),
-      description: t("help.step1.desc"),
-    },
-    {
-      number: "02",
-      title: t("help.step2.title"),
-      description: t("help.step2.desc"),
-    },
-    {
-      number: "03",
-      title: t("help.step3.title"),
-      description: t("help.step3.desc"),
-    },
-    {
-      number: "04",
-      title: t("help.step4.title"),
-      description: t("help.step4.desc"),
-    },
-    {
-      number: "05",
-      title: t("help.step5.title"),
-      description: t("help.step5.desc"),
-    },
-    {
-      number: "06",
-      title: t("help.step6.title"),
-      description: t("help.step6.desc"),
-    },
-    {
-      number: "07",
-      title: t("help.step7.title"),
-      description: t("help.step7.desc"),
-    },
-  ], [t]);
-
-  const faqData = useMemo(() => [
-    {
-      question: t("help.faq1.question"),
-      answer: t("help.faq1.answer"),
-    },
-    {
-      question: t("help.faq2.question"),
-      answer: t("help.faq2.answer"),
-    },
-    {
-      question: t("help.faq3.question"),
-      answer: t("help.faq3.answer"),
-    },
-    {
-      question: t("help.faq4.question"),
-      answer: t("help.faq4.answer"),
-    },
-    {
-      question: t("help.faq5.question"),
-      answer: t("help.faq5.answer"),
-    },
-  ], [t]);
 
   const toggleLanguage = () => {
     const newLang = currentLanguage === "vi" ? "en" : "vi";
@@ -529,7 +529,9 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                     {t("nav.help")}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    {t("nav.help.subTitle")}
+                    {currentLanguage === "vi"
+                      ? "Thông tin chi tiết từng bước & giải đáp thắc mắc"
+                      : "Detailed step-by-step information & FAQs"}
                   </p>
                 </div>
               </div>
@@ -640,8 +642,8 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
             <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-xs font-medium text-slate-500 text-center sm:text-left">
                 {authUser?.role === "Teacher" 
-                  ? t("nav.help.footerTeacher") 
-                  : t("nav.help.footerStudent")}
+                  ? "🎓 Chúc các thầy cô làm việc hiệu quả và đánh giá chính xác!" 
+                  : "🎓 Chúc các bạn chuẩn bị thật tốt và đạt kết quả cao!"}
               </p>
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
@@ -653,7 +655,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                   className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1 w-full sm:w-auto justify-center flex-shrink-0"
                 >
                   <Play className="h-3 w-3" />
-                  {t("nav.discoverInterface")}
+                  Khám phá giao diện
                 </button>
                 {(authUser?.role === "Student" || authUser?.role === "Teacher") && (
                   <button
@@ -663,7 +665,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                     }}
                     className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 w-full sm:w-auto justify-center flex-shrink-0"
                   >
-                    {t("nav.viewDetailedDocs")}
+                    Xem tài liệu chi tiết
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 )}

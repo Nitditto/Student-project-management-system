@@ -34,10 +34,8 @@ import {
   X,
   Download,
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 const AdminDashboard = () => {
-  const { t } = useTranslation();
   const { isCreateStudentModalOpen, isCreateTeacherModalOpen } = useSelector(
     (state) => state.popup,
   );
@@ -167,7 +165,7 @@ const AdminDashboard = () => {
 
   const dashboardStats = [
     {
-      title: t("admin.db.totalStudents"),
+      title: "Total Students",
       value: stats?.totalStudents ?? 0,
       bg: "bg-blue-100",
       iconBg: "bg-blue-100",
@@ -175,7 +173,7 @@ const AdminDashboard = () => {
       Icon: User,
     },
     {
-      title: t("admin.db.totalTeachers"),
+      title: "Total Teachers",
       value: stats?.totalTeachers ?? 0,
       bg: "bg-green-100",
       iconBg: "bg-green-100",
@@ -183,7 +181,7 @@ const AdminDashboard = () => {
       Icon: Box,
     },
     {
-      title: t("admin.db.pendingRequests"),
+      title: "Pending Requests",
       value: stats?.pendingRequests ?? 0,
       bg: "bg-orange-100",
       iconBg: "bg-orange-100",
@@ -191,7 +189,7 @@ const AdminDashboard = () => {
       Icon: AlertCircle,
     },
     {
-      title: t("admin.db.activeProjects"),
+      title: "Active Projects",
       value: stats?.totalProjects ?? 0,
       bg: "bg-yellow-100",
       iconBg: "bg-yellow-100",
@@ -199,7 +197,7 @@ const AdminDashboard = () => {
       Icon: Folder,
     },
     {
-      title: t("admin.db.nearingDeadlines"),
+      title: "Nearing Deadlines",
       value: nearingDeadlines,
       bg: "bg-red-100",
       iconBg: "bg-red-100",
@@ -210,19 +208,19 @@ const AdminDashboard = () => {
 
   const actionButtons = [
     {
-      label: t("admin.db.addStudent"),
+      label: "Add Student",
       onClick: () => dispatch(toggleStudentModal()),
       btnClass: "btn-primary",
       Icon: PlusIcon,
     },
     {
-      label: t("admin.db.addTeacher"),
+      label: "Add Teacher",
       onClick: () => dispatch(toggleTeacherModal()),
       btnClass: "btn-secondary",
       Icon: PlusIcon,
     },
     {
-      label: t("admin.db.viewReports"),
+      label: "View Reports",
       onClick: () => setIsReportModalOpen(true),
       btnClass: "btn-outline",
       Icon: FileTextIcon,
@@ -233,9 +231,10 @@ const AdminDashboard = () => {
     <>
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">{t("admin.db.title")}</h1>
+          <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
           <p className="text-blue-100">
-            {t("admin.db.subtitle")}
+            Manage the entire project management system and oversee all
+            activities.
           </p>
         </div>
         {/* Stats cards */}
@@ -264,12 +263,12 @@ const AdminDashboard = () => {
           {/* Vertical bar chart */}
           <div className="card lg:col-span-2">
             <div className="card-header">
-              <h3 className="card-title">{t("admin.db.supervisorDist")}</h3>
+              <h3 className="card-title">Project Distribution by Supervisor</h3>
             </div>
             <div className="p-4">
               {supervisorBucket.length === 0 ? (
                 <div className="h-64 flex items-center justify-center bg-slate-50 rounded text-slate-500">
-                  {t("admin.db.noData")}
+                  No data
                 </div>
               ) : (
                 <div className="h-72">
@@ -308,7 +307,7 @@ const AdminDashboard = () => {
                         }}
                         formatter={(value, name) => [
                           value,
-                          name === "count" ? t("admin.db.projectsAssigned") : name,
+                          name === "count" ? "Projects Assigned" : name,
                         ]}
                       />
                       <Bar dataKey="count" radius={[8, 8, 0, 0]}>
@@ -337,7 +336,7 @@ const AdminDashboard = () => {
 
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">{t("admin.db.recentActivity")}</h3>
+              <h3 className="card-title">Recent Activity</h3>
             </div>
             <div className="space-y-3">
               {latestNotifications.map((notification) => (
@@ -366,7 +365,7 @@ const AdminDashboard = () => {
               ))}
               {latestNotifications.length === 0 && (
                 <div className="text-slate-500 text-sm">
-                  {t("admin.db.noRecentNotifications")}
+                  No recent notifications
                 </div>
               )}
             </div>
@@ -376,7 +375,7 @@ const AdminDashboard = () => {
         {/* Quick actions */}
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">{t("admin.db.quickActions")}</h3>
+            <h3 className="card-title">Quick Actions</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {actionButtons.map((action, index) => (
@@ -397,7 +396,7 @@ const AdminDashboard = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {t("admin.db.allFiles")}
+                  All Files
                 </h3>
                 <button
                   onClick={() => setIsReportModalOpen(false)}
@@ -410,13 +409,13 @@ const AdminDashboard = () => {
               <div className="mb-4">
                 <input
                   type="text"
-                  placeholder={t("admin.db.searchFilesPlaceholder")}
+                  placeholder="Search by file name, project tiles, or student name"
                   value={reportSearch}
                   onChange={(e) => setReportSearch(e.target.value)}
                   className="input w-full"
                 />
                 {filteredFiles.length === 0 ? (
-                  <div className="text-slate-500">{t("admin.db.noFilesFound")}</div>
+                  <div className="text-slate-500">No files found.</div>
                 ) : (
                   <div className="space-y-2">
                     {filteredFiles.map((file, index) => (
@@ -442,7 +441,7 @@ const AdminDashboard = () => {
                             )
                           }
                         >
-                          {t("admin.db.download")}
+                          Download
                         </button>
                       </div>
                     ))}
