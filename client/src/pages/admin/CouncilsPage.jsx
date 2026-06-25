@@ -1501,17 +1501,7 @@ const CouncilsPage = () => {
                               GV Phản biện:{" "}
                               {projectItem.reviewer?.name || "Chưa phân công"}
                             </p>
-                            <p className="text-sm text-slate-500">
-                              Định hướng:{" "}
-                              {projectItem.projectTrack === "capstone"
-                                ? "Capstone"
-                                : "Nghiên cứu"}{" "}
-                              | Phiếu đánh giá:{" "}
-                              {projectItem.templateVersion ||
-                                projectItem.assessmentSummary
-                                  ?.templateVersion ||
-                                "default"}
-                            </p>
+                            
                             <p className="text-sm text-slate-500">
                               Điểm tổng hợp:{" "}
                               {projectItem.weightedAverage ?? "Chưa có"} | Trạng

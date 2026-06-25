@@ -455,6 +455,11 @@ export const assignReviewerByChairman = async ({
     throw new ErrorHandler("Reviewer cannot be the project supervisor", 400);
   }
 
+  const isMember = council.members.some((m) => isSameId(m.teacher, reviewerId));
+  if (!isMember) {
+    throw new ErrorHandler("Reviewer must be a member of this council", 400);
+  }
+
   projectItem.reviewer = reviewer._id;
   projectItem.reviewerWeight = Number(reviewerWeight || 1.5);
   await council.save();
