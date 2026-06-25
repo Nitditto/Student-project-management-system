@@ -1627,7 +1627,7 @@ const CouncilsPage = () => {
                                     )}{" "}
                                     |{" "}
                                     {projectItem.assessmentSummary
-                                      .teamPassStatus === "passed"
+                                      .teamPassStatus === "pass"
                                       ? "ĐẠT"
                                       : "CHƯA ĐẠT"}
                                   </p>
