@@ -11,6 +11,20 @@ import {
 import { Plus, Edit, Trash2, Calendar, X, FileText, AlignLeft, Users, FileSpreadsheet, Layers } from "lucide-react";
 import { toast } from "react-toastify";
 
+const QA_OPTIONS = [
+  { value: "proposal-minute", label: "Biên bản đề xuất đề tài" },
+  { value: "topic-approval", label: "Quyết định giao đề tài" },
+  { value: "midterm-report", label: "Báo cáo giữa kỳ" },
+  { value: "pdr-cdr", label: "Báo cáo PDR/CDR" },
+  { value: "logbook", label: "Sổ nhật ký (Logbook)" },
+  { value: "technical-report", label: "Báo cáo kỹ thuật" },
+  { value: "reviewer-form", label: "Phiếu đánh giá phản biện" },
+  { value: "defense-minute", label: "Biên bản bảo vệ" },
+  { value: "defense-video", label: "Video bảo vệ" },
+  { value: "ics", label: "Bản tóm tắt ICS" },
+  { value: "peer-evaluation", label: "Phiếu đánh giá đồng đẳng" }
+];
+
 const DeadlineManagement = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -30,6 +44,7 @@ const DeadlineManagement = () => {
     description: "",
     startDate: "",
     endDate: "",
+    requiredQaKinds: [],
   });
 
   useEffect(() => {
@@ -52,6 +67,7 @@ const DeadlineManagement = () => {
         description: deadline.description,
         startDate: formatLocal(deadline.startDate),
         endDate: formatLocal(deadline.endDate),
+        requiredQaKinds: deadline.requiredQaKinds || [],
       });
 
       if (deadline.assignedGroups && deadline.assignedGroups.length > 0) {
@@ -69,6 +85,7 @@ const DeadlineManagement = () => {
         description: "",
         startDate: "",
         endDate: "",
+        requiredQaKinds: [],
       });
       setTargetType("all");
       setSelectedGroups([]);
@@ -200,9 +217,21 @@ const DeadlineManagement = () => {
                       <div className="text-sm font-medium text-slate-900">
                         {deadline.title}
                       </div>
-                      <div className="text-sm text-slate-500 max-w-md truncate">
+                      <div className="text-sm text-slate-500 max-w-md truncate mb-1">
                         {deadline.description}
                       </div>
+                      {deadline.requiredQaKinds && deadline.requiredQaKinds.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {deadline.requiredQaKinds.map((kind) => {
+                            const opt = QA_OPTIONS.find(o => o.value === kind);
+                            return (
+                              <span key={kind} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                                {opt ? opt.label : kind}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {deadline.assignedGroups && deadline.assignedGroups.length > 0 ? (
@@ -416,6 +445,49 @@ const DeadlineManagement = () => {
                     )}
                   </div>
                 )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                  Yêu cầu minh chứng QA (Required QA Evidence)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 border border-slate-200 rounded-xl p-4 bg-slate-50 max-h-48 overflow-y-auto shadow-inner">
+                  {QA_OPTIONS.map((opt) => {
+                    const isChecked = formData.requiredQaKinds?.includes(opt.value);
+                    return (
+                      <label 
+                        key={opt.value} 
+                        className={`flex items-center space-x-2 text-xs text-slate-700 cursor-pointer hover:bg-white hover:shadow-sm p-2 rounded-lg border transition-all select-none ${
+                          isChecked ? "bg-blue-50/55 border-blue-200/60" : "bg-transparent border-transparent"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            let updatedList = [...(formData.requiredQaKinds || [])];
+                            if (isChecked) {
+                              updatedList = updatedList.filter(k => k !== opt.value);
+                            } else {
+                              updatedList.push(opt.value);
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              requiredQaKinds: updatedList
+                            }));
+                          }}
+                          className="rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                        />
+                        <span className={`font-medium ${isChecked ? "text-blue-900" : "text-slate-600"}`}>
+                          {opt.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                  Chọn các minh chứng QA cần nộp trong hạn chót này. Sinh viên khi nộp bài đầy đủ sẽ được tính hoàn thành các mục QA tương ứng.
+                </p>
               </div>
               
               <div className="pt-4 flex justify-end space-x-3">

@@ -116,3 +116,66 @@ test("computeQaEvidenceSummary calculates 100% completeness and resolves reviewe
   assert.equal(result.missingItems.length, 0);
   assert.equal(result.availableEvidenceKinds.includes("reviewer-form"), true);
 });
+
+test("computeQaEvidenceSummary calculates completeness dynamically from deadlines and submissions", () => {
+  const assessment = {
+    milestones: [],
+    studentAssessments: [],
+  };
+
+  const deadlines = [
+    {
+      _id: "dl1",
+      requiredQaKinds: ["proposal-minute", "topic-approval"],
+    },
+    {
+      _id: "dl2",
+      requiredQaKinds: ["midterm-report"],
+    },
+    {
+      _id: "dl3",
+      requiredQaKinds: ["reviewer-form"],
+    },
+    {
+      _id: "dl4",
+      requiredQaKinds: [],
+    }
+  ];
+
+  const submissions = [
+    {
+      deadlineId: "dl1",
+      status: "SUBMITTED",
+    },
+    {
+      deadlineId: "dl2",
+      status: "PENDING",
+    },
+    {
+      deadlineId: "dl3",
+      status: "PENDING",
+    }
+  ];
+
+  const result1 = computeQaEvidenceSummary({
+    assessment,
+    template: templateFixture,
+    reviewerFormReady: false,
+    deadlines,
+    submissions,
+  });
+
+  assert.equal(result1.completenessPercent, 50);
+  assert.deepEqual(result1.missingItems.sort(), ["midterm-report", "reviewer-form"].sort());
+
+  const result2 = computeQaEvidenceSummary({
+    assessment,
+    template: templateFixture,
+    reviewerFormReady: true,
+    deadlines,
+    submissions,
+  });
+
+  assert.equal(result2.completenessPercent, 75);
+  assert.deepEqual(result2.missingItems.sort(), ["midterm-report"].sort());
+});

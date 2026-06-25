@@ -54,6 +54,18 @@ export const assignProjectToCouncil = asyncHandler(async (req, res) => {
   });
 });
 
+export const unassignProjectFromCouncil = asyncHandler(async (req, res) => {
+  const council = await councilServices.unassignProjectFromCouncil({
+    councilId: req.params.councilId,
+    projectId: req.body.projectId,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Project unassigned from council successfully",
+    data: { council },
+  });
+});
+
 export const assignReviewerByChairman = asyncHandler(async (req, res) => {
   const council = await councilServices.assignReviewerByChairman({
     teacherId: req.user._id,

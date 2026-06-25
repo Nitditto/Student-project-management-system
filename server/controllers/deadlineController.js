@@ -6,6 +6,9 @@ import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
 import * as notificationServices from "../services/notificationServices.js";
 import { uploadToSupabase, buildStoragePath, deleteFileByUrl } from "../services/supabaseService.js";
+import { recomputeAssessment } from "../services/projectAssessmentService.js";
+import { ProjectAssessment } from "../models/projectAssessment.js";
+import { DefenseCouncil } from "../models/defenseCouncil.js";
 
 const findStudentProject = (studentId) =>
   Project.findOne({
@@ -16,10 +19,11 @@ const findStudentProject = (studentId) =>
 const resolveStudentDeadlineContext = async (studentId) => {
   const [project, student] = await Promise.all([
     findStudentProject(studentId),
-    User.findById(studentId).select("supervisor"),
+    User.findById(studentId).select("supervisor createdAt"),
   ]);
 
   return {
+    student,
     project,
     supervisorId: project?.supervisor || student?.supervisor || null,
   };
@@ -27,7 +31,7 @@ const resolveStudentDeadlineContext = async (studentId) => {
 
 // Create a new deadline (Teacher)
 export const createDeadline = asyncHandler(async (req, res, next) => {
-  const { title, description, endDate, startDate, teacherId, assignedGroups } = req.body;
+  const { title, description, endDate, startDate, teacherId, assignedGroups, requiredQaKinds } = req.body;
 
   if (!title || !description || !endDate) {
     return next(new ErrorHandler("Title, description, and end date are required", 400));
@@ -51,6 +55,7 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
     endDate: new Date(endDate),
     teacherId: ownerTeacherId,
     assignedGroups: Array.isArray(assignedGroups) ? assignedGroups : [],
+    requiredQaKinds: Array.isArray(requiredQaKinds) ? requiredQaKinds : [],
   };
 
   if (startDate) {
@@ -103,7 +108,7 @@ export const createDeadline = asyncHandler(async (req, res, next) => {
 export const updateDeadline = asyncHandler(async (req, res, next) => {
   console.log("UPDATE DEADLINE CALLED", req.params, req.body, req.user);
   const { deadlineId } = req.params;
-  const { title, description, endDate, startDate, assignedGroups } = req.body;
+  const { title, description, endDate, startDate, assignedGroups, requiredQaKinds } = req.body;
 
   let deadline = await Deadline.findById(deadlineId);
 
@@ -121,6 +126,7 @@ export const updateDeadline = asyncHandler(async (req, res, next) => {
   if (endDate) updateData.endDate = new Date(endDate);
   if (startDate) updateData.startDate = new Date(startDate);
   if (assignedGroups) updateData.assignedGroups = Array.isArray(assignedGroups) ? assignedGroups : [];
+  if (requiredQaKinds) updateData.requiredQaKinds = Array.isArray(requiredQaKinds) ? requiredQaKinds : [];
 
   try {
     deadline = await Deadline.findByIdAndUpdate(deadlineId, updateData, {
@@ -183,7 +189,7 @@ export const getTeacherDeadlines = asyncHandler(async (req, res, next) => {
 
 // Get deadlines for a student
 export const getStudentDeadlines = asyncHandler(async (req, res, next) => {
-  const { project, supervisorId } = await resolveStudentDeadlineContext(
+  const { student, project, supervisorId } = await resolveStudentDeadlineContext(
     req.user._id,
   );
 
@@ -195,16 +201,32 @@ export const getStudentDeadlines = asyncHandler(async (req, res, next) => {
   }
 
   const query = { teacherId: supervisorId };
+  const studentStart = student?.createdAt || new Date(0);
+
   if (project?._id) {
     query.$or = [
-      { assignedGroups: { $exists: false } },
-      { assignedGroups: { $size: 0 } },
       { assignedGroups: project._id },
+      {
+        $and: [
+          {
+            $or: [
+              { assignedGroups: { $exists: false } },
+              { assignedGroups: { $size: 0 } },
+            ]
+          },
+          { createdAt: { $gte: studentStart } }
+        ]
+      }
     ];
   } else {
-    query.$or = [
-      { assignedGroups: { $exists: false } },
-      { assignedGroups: { $size: 0 } },
+    query.$and = [
+      {
+        $or: [
+          { assignedGroups: { $exists: false } },
+          { assignedGroups: { $size: 0 } },
+        ]
+      },
+      { createdAt: { $gte: studentStart } }
     ];
   }
 
@@ -351,6 +373,24 @@ export const submitDeadline = asyncHandler(async (req, res, next) => {
 
   await project.save();
 
+  try {
+    const assessment = await ProjectAssessment.findOne({ project: project._id }).populate("template");
+    if (assessment) {
+      const council = project.councilId
+        ? await DefenseCouncil.findById(project.councilId)
+        : null;
+      await recomputeAssessment({
+        assessment,
+        template: assessment.template,
+        project,
+        council,
+      });
+      await assessment.save();
+    }
+  } catch (err) {
+    console.error("Error recomputing assessment during submitDeadline:", err);
+  }
+
   res.status(200).json({
     success: true,
     message: "Submitted successfully",
@@ -417,6 +457,24 @@ export const unsubmitDeadline = asyncHandler(async (req, res, next) => {
     (f) => !(f.fileCategory === "Submission" && f.deadlineId?.toString() === deadlineId.toString())
   );
   await project.save();
+
+  try {
+    const assessment = await ProjectAssessment.findOne({ project: project._id }).populate("template");
+    if (assessment) {
+      const council = project.councilId
+        ? await DefenseCouncil.findById(project.councilId)
+        : null;
+      await recomputeAssessment({
+        assessment,
+        template: assessment.template,
+        project,
+        council,
+      });
+      await assessment.save();
+    }
+  } catch (err) {
+    console.error("Error recomputing assessment during unsubmitDeadline:", err);
+  }
 
   res.status(200).json({
     success: true,

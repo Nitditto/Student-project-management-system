@@ -3,6 +3,7 @@ import ErrorHandler from "../middleware/error.js";
 import { DefenseCouncil } from "../models/defenseCouncil.js";
 import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
+import { ProjectAssessment } from "../models/projectAssessment.js";
 import * as notificationServices from "./notificationServices.js";
 import * as projectServices from "./projectServices.js";
 import {
@@ -197,8 +198,8 @@ export const createCouncil = async (payload) => {
   await ensureCouncilMembersValid(members);
 
   const defenseDate = payload.defenseDate ? new Date(payload.defenseDate) : null;
-  let defenseEndDate = null;
-  if (defenseDate) {
+  let defenseEndDate = payload.defenseEndDate ? new Date(payload.defenseEndDate) : null;
+  if (defenseDate && !defenseEndDate) {
     defenseEndDate = new Date(defenseDate.getTime() + 3.5 * 60 * 60 * 1000);
   }
 
@@ -252,7 +253,11 @@ export const updateCouncil = async (councilId, payload) => {
   council.description = payload.description || "";
   council.defenseDate = payload.defenseDate || null;
   if (payload.defenseDate) {
-    council.defenseEndDate = new Date(new Date(payload.defenseDate).getTime() + 3.5 * 60 * 60 * 1000);
+    if (payload.defenseEndDate) {
+      council.defenseEndDate = new Date(payload.defenseEndDate);
+    } else {
+      council.defenseEndDate = new Date(new Date(payload.defenseDate).getTime() + 3.5 * 60 * 60 * 1000);
+    }
   } else {
     council.defenseEndDate = null;
   }
@@ -423,6 +428,97 @@ export const assignProjectToCouncil = async ({
       },
     })
     .populate("projects.reviewer", "name email");
+
+  return (await attachAssessmentSummaries([refreshed]))[0];
+};
+
+export const unassignProjectFromCouncil = async ({ councilId, projectId }) => {
+  const council = await DefenseCouncil.findById(councilId)
+    .populate("members.teacher", "name email");
+  if (!council) {
+    throw new ErrorHandler("Council not found", 404);
+  }
+
+  const project = await Project.findById(projectId);
+  if (!project) {
+    throw new ErrorHandler("Project not found", 404);
+  }
+
+  const projectIdx = council.projects.findIndex((item) => isSameId(item.project, projectId));
+  if (projectIdx === -1) {
+    throw new ErrorHandler("Project is not assigned to this council", 400);
+  }
+
+  const projectItem = council.projects[projectIdx];
+  if (projectItem.status === "done" || council.status === "done") {
+    throw new ErrorHandler(
+      "Cannot unassign a project that has already finalized defense results",
+      400,
+    );
+  }
+
+  council.projects.splice(projectIdx, 1);
+  if (council.projects.length === 0) {
+    council.status = "draft";
+  }
+  await council.save();
+
+  project.councilId = null;
+  project.reviewerId = null;
+  project.defenseStatus = project.selectedSchedule?.slotId ? "scheduled" : "in_progress";
+  await project.save();
+
+  const assessment = await ProjectAssessment.findOne({ project: projectId }).populate("template");
+  if (assessment) {
+    assessment.council = null;
+    
+    const m5 = assessment.milestones.find((milestone) => milestone.code === "M5");
+    if (m5) {
+      m5.assessorSubmissions = [];
+      m5.aggregatedCloScores = [];
+      m5.componentScore5 = null;
+      m5.componentScore10 = null;
+      m5.status = "pending";
+    }
+
+    if (assessment.template) {
+      await projectAssessmentService.recomputeAssessment({
+        assessment,
+        template: assessment.template,
+        project,
+        council: null,
+      });
+      await assessment.save();
+    } else {
+      await assessment.save();
+    }
+  }
+
+  await Promise.all(
+    getProjectMemberIds(project).map((memberId) =>
+      notificationServices.notifyUser(
+        memberId,
+        `De tai "${project.title}" da duoc go khoi hoi dong ${council.name}.`,
+        "defense",
+        "/student/defense",
+        "medium",
+      ),
+    ),
+  );
+
+  const refreshed = await DefenseCouncil.findById(councilId)
+    .populate("members.teacher", "name email department")
+    .populate({
+      path: "projects.project",
+      select: "title status groupName supervisor defenseFinalScore projectTrack assessmentTemplateId",
+      populate: {
+        path: "supervisor",
+        select: "name email",
+      },
+    })
+    .populate("projects.reviewer", "name email");
+
+  if (!refreshed) return null;
 
   return (await attachAssessmentSummaries([refreshed]))[0];
 };

@@ -72,6 +72,42 @@ const getPeriodFromDate = (dateValue) => {
   return hour - 6; // returns 1 for 7, 2 for 8, ..., 15 for 21
 };
 
+const PERIOD_OPTIONS = Array.from({ length: 15 }, (_, i) => {
+  const p = i + 1;
+  const startHour = p + 6;
+  const timeStr = `${startHour < 10 ? "0" + startHour : startHour}:00`;
+  return {
+    value: p,
+    label: `Tiết ${p} (${timeStr})`,
+  };
+});
+
+const START_HOURS = Array.from({ length: 15 }, (_, i) => {
+  const h = i + 7;
+  const hStr = h < 10 ? `0${h}` : `${h}`;
+  return {
+    value: `${hStr}:00`,
+    label: `${hStr}:00 (Tiết ${i + 1})`,
+  };
+});
+
+const END_HOURS = Array.from({ length: 15 }, (_, i) => {
+  const h = i + 8;
+  const hStr = h < 10 ? `0${h}` : `${h}`;
+  return {
+    value: `${hStr}:00`,
+    label: `${hStr}:00 (Hết Tiết ${i + 1})`,
+  };
+});
+
+const getPeriodDuration = (startDate, endDate) => {
+  if (!startDate || !endDate) return 1;
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const diffHours = (end - start) / (3600 * 1000);
+  return Math.max(1, Math.round(diffHours));
+};
+
 const formatDateTimeInput = (value) => {
   if (!value) return "";
 
@@ -99,6 +135,7 @@ const createEmptyCouncilForm = () => ({
   name: "",
   description: "",
   defenseDate: "",
+  defenseEndDate: "",
   room: "",
   members: [createMember("chairman"), createMember("secretary")],
 });
@@ -107,6 +144,7 @@ const mapCouncilToForm = (council) => ({
   name: council.name || "",
   description: council.description || "",
   defenseDate: formatDateTimeInput(council.defenseDate),
+  defenseEndDate: formatDateTimeInput(council.defenseEndDate),
   room: council.room || "",
   members: council.members?.map((member) => ({
     teacher: member.teacher?._id || "",
@@ -118,6 +156,12 @@ const mapCouncilToForm = (council) => ({
 const getCouncilFormValidationMessage = (form) => {
   if (!form.name.trim()) {
     return "Council name is required";
+  }
+
+  if (form.defenseDate && form.defenseEndDate) {
+    if (new Date(form.defenseDate) >= new Date(form.defenseEndDate)) {
+      return "Thời gian kết thúc phải sau thời gian bắt đầu.";
+    }
   }
 
   if (!Array.isArray(form.members) || form.members.length === 0) {
@@ -523,6 +567,34 @@ const CouncilsPage = () => {
     setForm(createEmptyCouncilForm());
     setEditingCouncilId(null);
     setIsFormModalOpen(false);
+  };
+
+  const handleDateChange = (newDateStr) => {
+    const startTimePart = form.defenseDate ? form.defenseDate.split("T")[1] : "07:00";
+    const endTimePart = form.defenseEndDate ? form.defenseEndDate.split("T")[1] : "10:30";
+    setForm((current) => ({
+      ...current,
+      defenseDate: newDateStr ? `${newDateStr}T${startTimePart}` : "",
+      defenseEndDate: newDateStr ? `${newDateStr}T${endTimePart}` : "",
+    }));
+  };
+
+  const handleStartTimeChange = (newTimeStr) => {
+    if (!newTimeStr) return;
+    const currentDateStr = form.defenseDate ? form.defenseDate.split("T")[0] : new Date().toISOString().slice(0, 10);
+    setForm((current) => ({
+      ...current,
+      defenseDate: `${currentDateStr}T${newTimeStr}`,
+    }));
+  };
+
+  const handleEndTimeChange = (newTimeStr) => {
+    if (!newTimeStr) return;
+    const currentDateStr = form.defenseEndDate ? form.defenseEndDate.split("T")[0] : (form.defenseDate ? form.defenseDate.split("T")[0] : new Date().toISOString().slice(0, 10));
+    setForm((current) => ({
+      ...current,
+      defenseEndDate: `${currentDateStr}T${newTimeStr}`,
+    }));
   };
 
   const startEditingCouncil = (council) => {
@@ -931,6 +1003,25 @@ const CouncilsPage = () => {
       await loadData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Không thể gán đề tài");
+    }
+  };
+
+  const handleUnassignProject = async (councilId, projectId) => {
+    if (
+      !window.confirm("Bạn có chắc chắn muốn gỡ đề tài này khỏi hội đồng không?")
+    ) {
+      return;
+    }
+    try {
+      await axiosInstance.post(`/admin/councils/${councilId}/unassign-project`, {
+        projectId,
+      });
+      toast.success("Đã gỡ đề tài khỏi hội đồng thành công.");
+      await loadData();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Không thể gỡ đề tài khỏi hội đồng.",
+      );
     }
   };
 
@@ -1487,12 +1578,27 @@ const CouncilsPage = () => {
                         {(council.projects || []).map((projectItem) => (
                           <div
                             key={projectItem.project?._id}
-                            className="rounded-lg border border-slate-200 p-3"
+                            className="rounded-lg border border-slate-200 p-3 relative group/proj"
                           >
-                            <p className="font-medium text-slate-800">
-                              {projectItem.project?.groupName ||
-                                projectItem.project?.title}
-                            </p>
+                            <div className="flex items-start justify-between gap-3 mb-1">
+                              <p className="font-medium text-slate-800">
+                                {projectItem.project?.groupName ||
+                                  projectItem.project?.title}
+                              </p>
+                              {projectItem.status !== "done" && (
+                                <button
+                                  className="text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded transition-colors"
+                                  onClick={() =>
+                                    handleUnassignProject(
+                                      council._id,
+                                      projectItem.project?._id,
+                                    )
+                                  }
+                                >
+                                  Gỡ đề tài
+                                </button>
+                              )}
+                            </div>
                             <p className="text-sm text-slate-500">
                               GV Hướng dẫn:{" "}
                               {projectItem.project?.supervisor?.name || "N/A"}
@@ -2438,221 +2544,221 @@ const CouncilsPage = () => {
               };
             });
 
+            const HOUR_HEIGHT = 90; // Pixels per period (hour) for nice spacing
+
             return (
-              <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
-                <table className="min-w-full divide-y divide-slate-200 border-collapse table-fixed">
-                  <thead className="bg-slate-50 text-slate-700 text-xs font-semibold uppercase tracking-wider">
-                    <tr>
-                      {/* Left arrow column header */}
-                      <th className="border-r border-b border-slate-200 text-center w-16 shrink-0 bg-slate-50 z-10 sticky left-0 shadow-[1px_0_0_0_rgba(226,232,240,1)]">
-                        <button
-                          onClick={() => {
-                            const newMonday = new Date(currentWeekStart);
-                            newMonday.setDate(newMonday.getDate() - 7);
-                            setCurrentWeekStart(newMonday);
-                          }}
-                          className="w-full py-3 flex items-center justify-center hover:bg-slate-100 transition-colors"
-                          title="Tuần trước"
-                        >
-                          <ChevronLeft className="w-4 h-4 text-slate-600" />
-                        </button>
-                      </th>
-                      {weekDates.map((day, idx) => {
-                        const dateStr = day.toLocaleDateString("vi-VN", {
-                          day: "2-digit",
-                          month: "2-digit",
-                        });
-                        const isToday =
-                          new Date().toDateString() === day.toDateString();
-                        return (
-                          <th
-                            key={idx}
-                            className={`px-4 py-3 border-r border-b border-slate-200 text-center w-52 min-w-[13rem] ${isToday ? "bg-blue-50 text-blue-700 font-bold" : ""}`}
-                          >
-                            <div>{DAY_LABELS[idx]}</div>
-                            <div className="text-[10px] text-slate-500 font-normal mt-0.5">
-                              ({dateStr})
-                            </div>
-                          </th>
-                        );
-                      })}
-                      {/* Right arrow column header */}
-                      <th className="border-b border-slate-200 text-center w-16 bg-slate-50">
-                        <button
-                          onClick={() => {
-                            const newMonday = new Date(currentWeekStart);
-                            newMonday.setDate(newMonday.getDate() + 7);
-                            setCurrentWeekStart(newMonday);
-                          }}
-                          className="w-full py-3 flex items-center justify-center hover:bg-slate-100 transition-colors"
-                          title="Tuần sau"
-                        >
-                          <ChevronRight className="w-4 h-4 text-slate-600" />
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-xs text-slate-700 bg-white">
-                    {PERIODS.map((period) => (
-                      <tr
-                        key={period.id}
-                        className="hover:bg-slate-50/50 transition-colors"
+              <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200 max-h-[650px] overflow-y-auto">
+                <div className="min-w-[1000px] flex flex-col">
+                  {/* Grid Header */}
+                  <div className="flex bg-slate-50 border-b border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider sticky top-0 z-20">
+                    {/* Left arrow header */}
+                    <div className="w-16 shrink-0 border-r border-slate-200 flex items-center justify-center bg-slate-50">
+                      <button
+                        onClick={() => {
+                          const newMonday = new Date(currentWeekStart);
+                          newMonday.setDate(newMonday.getDate() - 7);
+                          setCurrentWeekStart(newMonday);
+                        }}
+                        className="w-full py-3.5 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                        title="Tuần trước"
                       >
-                        {/* Period label column */}
-                        <td className="font-semibold text-center text-slate-800 border-r border-slate-200 bg-slate-50 z-10 sticky left-0 shadow-[1px_0_0_0_rgba(226,232,240,1)] align-middle w-16 py-3">
-                          {period.name}
-                        </td>
-                        {/* Day cells */}
-                        {weekDates.map((day, dayIdx) => {
-                          const dayPeriodCouncils = councils.filter((c) => {
-                            if (!c.defenseDate) return false;
-                            const cDate = new Date(c.defenseDate);
-                            const matchesDay =
-                              cDate.toDateString() === day.toDateString();
-                            const matchesPeriod =
-                              getPeriodFromDate(c.defenseDate) === period.id;
-                            return matchesDay && matchesPeriod;
-                          });
+                        <ChevronLeft className="w-4 h-4 text-slate-600" />
+                      </button>
+                    </div>
 
-                          return (
-                            <td
-                              key={dayIdx}
-                              className="px-3 py-3 border-r border-slate-200 align-top"
+                    {/* Day headers */}
+                    {weekDates.map((day, idx) => {
+                      const dateStr = day.toLocaleDateString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      });
+                      const isToday = new Date().toDateString() === day.toDateString();
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex-1 py-3 border-r border-slate-200 text-center flex flex-col justify-center ${isToday ? "bg-blue-50/70 text-blue-700 font-bold" : ""}`}
+                        >
+                          <div>{DAY_LABELS[idx]}</div>
+                          <div className="text-[9px] text-slate-400 font-normal mt-0.5">({dateStr})</div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Right arrow header */}
+                    <div className="w-16 shrink-0 flex items-center justify-center bg-slate-50">
+                      <button
+                        onClick={() => {
+                          const newMonday = new Date(currentWeekStart);
+                          newMonday.setDate(newMonday.getDate() + 7);
+                          setCurrentWeekStart(newMonday);
+                        }}
+                        className="w-full py-3.5 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                        title="Tuần sau"
+                      >
+                        <ChevronRight className="w-4 h-4 text-slate-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Grid Body */}
+                  <div className="flex relative bg-slate-50/30">
+                    {/* Time Column (Left) */}
+                    <div className="w-16 shrink-0 bg-slate-50 border-r border-slate-200 select-none">
+                      {PERIODS.map((period) => (
+                        <div
+                          key={period.id}
+                          style={{ height: `${HOUR_HEIGHT}px` }}
+                          className="flex flex-col items-center justify-center border-b border-slate-200/60 font-semibold text-slate-600 text-center"
+                        >
+                          <div className="text-[10px]">{period.name}</div>
+                          <div className="text-[8px] text-slate-400 mt-0.5">{period.time}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Day Columns */}
+                    {weekDates.map((day, dayIdx) => {
+                      const dayCouncils = councils.filter((c) => {
+                        if (!c.defenseDate) return false;
+                        const cDate = new Date(c.defenseDate);
+                        return cDate.toDateString() === day.toDateString();
+                      });
+
+                      return (
+                        <div
+                          key={dayIdx}
+                          className="flex-1 relative border-r border-slate-200/60 bg-white"
+                          style={{ height: `${15 * HOUR_HEIGHT}px` }}
+                        >
+                          {/* Background cell dividers */}
+                          {PERIODS.map((period) => (
+                            <div
+                              key={period.id}
+                              style={{ height: `${HOUR_HEIGHT}px` }}
+                              className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer group flex items-center justify-center"
+                              onClick={() => {
+                                setEditingCouncilId(null);
+                                const prefilledDate = new Date(day);
+                                prefilledDate.setHours(period.startHour, 0, 0, 0);
+                                setForm({
+                                  ...createEmptyCouncilForm(),
+                                  defenseDate: formatDateTimeInput(prefilledDate),
+                                  defenseEndDate: formatDateTimeInput(new Date(prefilledDate.getTime() + 2 * 60 * 60 * 1000)), // default to 2 hours
+                                });
+                                setIsFormModalOpen(true);
+                              }}
                             >
-                              {dayPeriodCouncils.length === 0 ? (
-                                <div
-                                  className="group flex flex-col items-center justify-center h-24 border border-dashed border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 cursor-pointer"
-                                  onClick={() => {
-                                    setEditingCouncilId(null);
-                                    const prefilledDate = new Date(day);
-                                    prefilledDate.setHours(
-                                      period.startHour,
-                                      0,
-                                      0,
-                                      0,
-                                    );
-                                    setForm({
-                                      ...createEmptyCouncilForm(),
-                                      defenseDate:
-                                        formatDateTimeInput(prefilledDate),
-                                    });
-                                    setIsFormModalOpen(true);
-                                  }}
-                                >
-                                  <span className="text-slate-400 font-medium group-hover:text-slate-600 transition-colors">
-                                    Trống
-                                  </span>
-                                  <span className="mt-1.5 opacity-0 group-hover:opacity-100 btn-outline py-0.5 px-2 text-[10px] flex items-center gap-1 bg-white border-slate-200 text-slate-600 shadow-sm transition-all duration-200">
-                                    <Plus className="w-3 h-3" />
-                                    Xếp lịch
-                                  </span>
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 flex items-center gap-0.5 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shadow-sm font-medium">
+                                <Plus className="w-2.5 h-2.5" />
+                                Xếp lịch
+                              </span>
+                            </div>
+                          ))}
+
+                          {/* Council Cards */}
+                          {dayCouncils.map((council) => {
+                            const start = new Date(council.defenseDate);
+                            const end = council.defenseEndDate
+                              ? new Date(council.defenseEndDate)
+                              : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+                            const startHour = start.getHours() + start.getMinutes() / 60;
+                            const endHour = end.getHours() + end.getMinutes() / 60;
+
+                            const topPx = (startHour - 7) * HOUR_HEIGHT;
+                            const heightPx = (endHour - startHour) * HOUR_HEIGHT;
+
+                            const conflict = conflictsMap[council._id];
+                            const hasConflict =
+                              conflict &&
+                              (conflict.room ||
+                                conflict.teachers.size > 0 ||
+                                conflict.projects.size > 0 ||
+                                (conflict.supervisors && conflict.supervisors.size > 0));
+
+                            const formattedTime = start.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                            const formattedEndTime = end.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+
+                            return (
+                              <div
+                                key={council._id}
+                                style={{
+                                  position: "absolute",
+                                  top: `${topPx + 3}px`,
+                                  height: `${heightPx - 6}px`,
+                                  left: "6px",
+                                  right: "6px",
+                                  zIndex: 10,
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditingCouncil(council);
+                                }}
+                                className={`p-2.5 rounded-lg border text-left shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden flex flex-col justify-between select-none ${
+                                  hasConflict
+                                    ? "bg-red-50/95 border-red-200 text-red-900 shadow-red-50"
+                                    : council.status === "draft"
+                                      ? "bg-amber-50/95 border-amber-200 text-amber-900 shadow-amber-50"
+                                      : "bg-indigo-50/95 border-indigo-200 text-indigo-900 shadow-indigo-50"
+                                }`}
+                              >
+                                <div className="min-h-0 flex-1 flex flex-col">
+                                  <div className="flex items-start justify-between gap-1.5">
+                                    <span className="font-bold text-[11px] leading-snug line-clamp-2">
+                                      {council.name}
+                                    </span>
+                                    {hasConflict && (
+                                      <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
+                                    )}
+                                  </div>
+
+                                  <div className="text-[9px] opacity-80 space-y-0.5 mt-1">
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="w-2.5 h-2.5 shrink-0" />
+                                      <span>
+                                        {formattedTime} - {formattedEndTime}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">Phòng: {council.room || "Chưa xếp"}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Users className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">
+                                        CT: {council.members?.find((m) => m.role === "chairman")?.teacher?.name || "N/A"}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  {dayPeriodCouncils.map((council) => {
-                                    const conflict = conflictsMap[council._id];
-                                    const hasConflict =
-                                      conflict &&
-                                      (conflict.room ||
-                                        conflict.teachers.size > 0 ||
-                                        conflict.projects.size > 0 ||
-                                        (conflict.supervisors &&
-                                          conflict.supervisors.size > 0));
-                                    const formattedTime = new Date(
-                                      council.defenseDate,
-                                    ).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    });
 
-                                    return (
-                                      <div
-                                        key={council._id}
-                                        onClick={() =>
-                                          startEditingCouncil(council)
-                                        }
-                                        className={`p-2.5 rounded-lg border text-left shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 ${
-                                          hasConflict
-                                            ? "bg-red-50/50 border-red-200 hover:bg-red-50 text-red-900"
-                                            : council.status === "draft"
-                                              ? "bg-amber-50/30 border-amber-200 hover:bg-amber-50/60"
-                                              : "bg-slate-50/50 border-slate-200 hover:bg-slate-50"
-                                        }`}
-                                      >
-                                        <div className="flex items-start justify-between gap-1.5 mb-1.5">
-                                          <span className="font-bold text-slate-800 tracking-tight leading-tight line-clamp-2">
-                                            {council.name}
-                                          </span>
-                                          {hasConflict && (
-                                            <AlertCircle
-                                              className="w-4 h-4 text-red-600 shrink-0"
-                                              title={
-                                                conflict.supervisors &&
-                                                conflict.supervisors.size > 0
-                                                  ? "Vi phạm vai trò: Giảng viên hướng dẫn trong hội đồng!"
-                                                  : "Phát hiện trùng lịch!"
-                                              }
-                                            />
-                                          )}
-                                        </div>
-
-                                        <div className="text-[10px] text-slate-500 space-y-1">
-                                          <div className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span>{formattedTime}</span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span className="truncate">
-                                              Phòng:{" "}
-                                              {council.room || "Chưa xếp"}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <Users className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span className="truncate">
-                                              CT:{" "}
-                                              {council.members?.find(
-                                                (m) => m.role === "chairman",
-                                              )?.teacher?.name || "N/A"}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <BookOpen className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span>
-                                              {council.projects?.length || 0} Đề
-                                              tài
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        {hasConflict && (
-                                          <div className="mt-1.5 text-[9px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-semibold text-center uppercase tracking-wide">
-                                            Trùng lịch/Vai trò
-                                          </div>
-                                        )}
-                                        {council.status === "draft" &&
-                                          !hasConflict && (
-                                            <div className="mt-1.5 text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold text-center uppercase tracking-wide">
-                                              Dự thảo (Nháp)
-                                            </div>
-                                          )}
-                                      </div>
-                                    );
-                                  })}
+                                <div className="flex items-center justify-between border-t border-black/5 pt-1.5 mt-1.5 text-[8px] font-semibold tracking-wider">
+                                  <span>{council.projects?.length || 0} Đề tài</span>
+                                  {hasConflict ? (
+                                    <span className="text-red-700 bg-red-100/80 px-1 py-0.5 rounded font-bold">TRÙNG LỊCH</span>
+                                  ) : council.status === "draft" ? (
+                                    <span className="text-amber-800 bg-amber-100/80 px-1 py-0.5 rounded font-bold">DỰ THẢO</span>
+                                  ) : (
+                                    <span className="text-indigo-800 bg-indigo-100/80 px-1 py-0.5 rounded font-bold">ACTIVE</span>
+                                  )}
                                 </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                        {/* Time label column */}
-                        <td className="font-semibold text-center text-slate-800 bg-slate-50 border-l border-slate-200 align-middle w-16 py-3">
-                          {period.time}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+
+                    {/* Right spacer Column (Left header alignment) */}
+                    <div className="w-16 shrink-0 bg-slate-50 border-l border-slate-200/60" />
+                  </div>
+                </div>
               </div>
             );
           })()}
@@ -2721,40 +2827,76 @@ const CouncilsPage = () => {
                 />
               </FieldBlock>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <FieldBlock
-                  label={`C3. Ngày và Giờ bảo vệ${form.defenseDate ? ` (${getVietnameseDayOfWeek(form.defenseDate)})` : ""}`}
-                  hint="Thời gian chính thức hội đồng bắt đầu làm việc."
-                >
-                  <input
-                    className="input"
-                    type="datetime-local"
-                    value={form.defenseDate}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        defenseDate: event.target.value,
-                      }))
-                    }
-                  />
-                </FieldBlock>
-                <FieldBlock
-                  label="C4. Phòng bảo vệ / Meeting Link"
-                  hint="Nhập tên phòng, tên phòng lab hoặc link họp trực tuyến (Google Meet/Teams)."
-                >
-                  <input
-                    className="input"
-                    placeholder="Ví dụ: Phòng B305 hoặc link Google Meet"
-                    value={form.room}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        room: event.target.value,
-                      }))
-                    }
-                  />
-                </FieldBlock>
-              </div>
+              {(() => {
+                const formDatePart = form.defenseDate ? form.defenseDate.split("T")[0] : "";
+                const formStartTimePart = form.defenseDate ? form.defenseDate.split("T")[1] : "";
+                const formEndTimePart = form.defenseEndDate ? form.defenseEndDate.split("T")[1] : "";
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <FieldBlock
+                      label={`C3. Ngày bảo vệ${form.defenseDate ? ` (${getVietnameseDayOfWeek(form.defenseDate)})` : ""}`}
+                      hint="Ngày hội đồng làm việc."
+                    >
+                      <input
+                        className="input"
+                        type="date"
+                        value={formDatePart}
+                        onChange={(event) => handleDateChange(event.target.value)}
+                      />
+                    </FieldBlock>
+                    <FieldBlock
+                      label="Giờ bắt đầu"
+                      hint="Chọn giờ bắt đầu bảo vệ."
+                    >
+                      <select
+                        className="input"
+                        value={formStartTimePart}
+                        onChange={(event) => handleStartTimeChange(event.target.value)}
+                      >
+                        <option value="">Chọn giờ bắt đầu...</option>
+                        {START_HOURS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldBlock>
+                    <FieldBlock
+                      label="Giờ kết thúc"
+                      hint="Chọn giờ kết thúc bảo vệ."
+                    >
+                      <select
+                        className="input"
+                        value={formEndTimePart}
+                        onChange={(event) => handleEndTimeChange(event.target.value)}
+                      >
+                        <option value="">Chọn giờ kết thúc...</option>
+                        {END_HOURS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldBlock>
+                    <FieldBlock
+                      label="C4. Phòng bảo vệ"
+                      hint="Nhập tên phòng hoặc link họp trực tuyến."
+                    >
+                      <input
+                        className="input"
+                        placeholder="Ví dụ: Phòng B305 hoặc link Google Meet"
+                        value={form.room}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            room: event.target.value,
+                          }))
+                        }
+                      />
+                    </FieldBlock>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-4">
                 <p className="font-semibold text-slate-700">

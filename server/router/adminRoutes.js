@@ -15,6 +15,7 @@ import {
 } from "../controllers/adminController.js";
 import {
   assignProjectToCouncil,
+  unassignProjectFromCouncil,
   createCouncil,
   deleteCouncil,
   getAdminCouncils,
@@ -126,6 +127,12 @@ router.post(
   isAuthenticated,
   isAuthorized("Admin"),
   assignProjectToCouncil,
+);
+router.post(
+  "/councils/:councilId/unassign-project",
+  isAuthenticated,
+  isAuthorized("Admin"),
+  unassignProjectFromCouncil,
 );
 router.get(
   "/assessment-templates",

@@ -227,19 +227,40 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
 
   const now = new Date();
   const supervisorId = project?.supervisor?._id || project?.supervisor || null;
+  const student = await User.findById(studentId).select("createdAt");
+  const studentStart = student?.createdAt || new Date(0);
+
   const upcomingDeadlines = supervisorId
     ? await Deadline.find({
         teacherId: supervisorId,
         endDate: { $gte: now },
         $or: project?._id
           ? [
-              { assignedGroups: { $exists: false } },
-              { assignedGroups: { $size: 0 } },
               { assignedGroups: project._id },
+              {
+                $and: [
+                  {
+                    $or: [
+                      { assignedGroups: { $exists: false } },
+                      { assignedGroups: { $size: 0 } },
+                    ]
+                  },
+                  { createdAt: { $gte: studentStart } }
+                ]
+              }
             ]
           : [
-              { assignedGroups: { $exists: false } },
-              { assignedGroups: { $size: 0 } },
+              {
+                $and: [
+                  {
+                    $or: [
+                      { assignedGroups: { $exists: false } },
+                      { assignedGroups: { $size: 0 } },
+                    ]
+                  },
+                  { createdAt: { $gte: studentStart } }
+                ]
+              }
             ],
       })
         .select("title description startDate endDate")

@@ -39,6 +39,10 @@ const deadlineSchema = new mongoose.Schema(
         ref: "Project",
       },
     ],
+    requiredQaKinds: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

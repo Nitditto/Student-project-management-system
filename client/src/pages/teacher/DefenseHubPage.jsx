@@ -2634,12 +2634,7 @@ const DefenseHubPage = () => {
                   %
                 </p>
               </div>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Template version</p>
-                <p className="font-semibold text-slate-800">
-                  {selectedAssessmentSummary?.templateVersion || "N/A"}
-                </p>
-              </div>
+              
             </div>
 
             <div className="rounded-lg border border-slate-200 p-4">

@@ -2,6 +2,9 @@ import ErrorHandler from "../middleware/error.js";
 import { DefenseCouncil } from "../models/defenseCouncil.js";
 import { Project } from "../models/project.js";
 import { ProjectAssessment } from "../models/projectAssessment.js";
+import { Deadline } from "../models/deadline.js";
+import { Submission } from "../models/submission.js";
+import { User } from "../models/user.js";
 import * as notificationServices from "./notificationServices.js";
 import * as assessmentTemplateService from "./assessmentTemplateService.js";
 import {
@@ -156,7 +159,45 @@ const ensureTeacherCanSubmitMilestone = async ({
   throw new ErrorHandler("Unsupported milestone code", 400);
 };
 
-const recomputeAssessment = async ({
+export const getProjectDeadlinesAndSubmissions = async (project) => {
+  const supervisorId = project.supervisor?._id || project.supervisor;
+  if (!supervisorId) {
+    return { deadlines: [], submissions: [] };
+  }
+
+  let studentStart = new Date(0);
+  if (project.student) {
+    const studentDoc = await User.findById(project.student).select("createdAt");
+    if (studentDoc?.createdAt) {
+      studentStart = studentDoc.createdAt;
+    }
+  }
+
+  const query = {
+    teacherId: supervisorId,
+    $or: [
+      { assignedGroups: project._id },
+      {
+        $and: [
+          {
+            $or: [
+              { assignedGroups: { $exists: false } },
+              { assignedGroups: { $size: 0 } },
+            ],
+          },
+          { createdAt: { $gte: studentStart } },
+        ],
+      },
+    ],
+  };
+
+  const deadlines = await Deadline.find(query);
+  const submissions = await Submission.find({ groupId: project._id });
+
+  return { deadlines, submissions };
+};
+
+export const recomputeAssessment = async ({
   assessment,
   template,
   project,
@@ -225,6 +266,8 @@ const recomputeAssessment = async ({
     });
   }
 
+  const { deadlines, submissions } = await getProjectDeadlinesAndSubmissions(project);
+
   assessment.qaEvidenceSummary = computeQaEvidenceSummary({
     assessment,
     template,
@@ -232,6 +275,8 @@ const recomputeAssessment = async ({
       council?.projects?.find((item) => isSameId(item.project, project._id))
         ?.reviewerForm?.pdfUrl,
     ),
+    deadlines,
+    submissions,
   });
 
   const milestonesReady = (assessment.milestones || []).every(
@@ -437,6 +482,20 @@ export const getProjectAssessmentSummary = async ({ projectId }) => {
         .populate("members.teacher", "name email")
         .populate("projects.reviewer", "name email")
     : null;
+
+  const { deadlines, submissions } = await getProjectDeadlinesAndSubmissions(project);
+
+  assessment.qaEvidenceSummary = computeQaEvidenceSummary({
+    assessment,
+    template: assessment.template,
+    reviewerFormReady: Boolean(
+      council?.projects?.find((item) => isSameId(item.project, project._id))
+        ?.reviewerForm?.pdfUrl,
+    ),
+    deadlines,
+    submissions,
+  });
+  await assessment.save();
 
   return buildAssessmentSummary({ assessment, project, council });
 };
@@ -852,10 +911,14 @@ export const finalizeProjectAssessment = async ({
     );
   }
 
+  const { deadlines, submissions } = await getProjectDeadlinesAndSubmissions(project);
+
   const qaSummary = computeQaEvidenceSummary({
     assessment,
     template: assessment.template,
     reviewerFormReady: true,
+    deadlines,
+    submissions,
   });
   if (qaSummary.missingItems.length > 0) {
     throw new ErrorHandler(
