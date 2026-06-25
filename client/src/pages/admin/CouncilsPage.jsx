@@ -1675,7 +1675,7 @@ const CouncilsPage = () => {
                               thái: {projectItem.status}
                             </p>
                             {projectItem.assessmentSummary && (
-                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg bg-slate-50 p-3">
                                 <div>
                                   <p className="text-xs uppercase text-slate-500">
                                     Điểm nhóm
@@ -1691,6 +1691,17 @@ const CouncilsPage = () => {
                                       .teamPassStatus === "pass"
                                       ? "ĐẠT"
                                       : "CHƯA ĐẠT"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs uppercase text-slate-500">
+                                    Độ hoàn thiện QA
+                                  </p>
+                                  <p className="font-semibold text-slate-800">
+                                    {projectItem.assessmentSummary
+                                      .qaEvidenceSummary?.completenessPercent ||
+                                      0}
+                                    %
                                   </p>
                                 </div>
                                 <div>
