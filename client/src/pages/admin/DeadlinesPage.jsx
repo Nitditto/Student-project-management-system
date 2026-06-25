@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createDeadline } from "../../store/slices/deadlineSlice";
 import { X } from "lucide-react";
+
 const DeadlinesPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,15 +52,15 @@ const DeadlinesPage = () => {
     e.preventDefault();
     if (!selectedProject || !formData.deadlineDate) return;
     if (!selectedProject.supervisor?._id) {
-      console.error("Selected project has no supervisor; cannot create deadline.");
+      console.error("Đề tài được chọn chưa có giảng viên hướng dẫn.");
       return;
     }
 
     const deadlineData = {
-      title: `Deadline for ${selectedProject.title}`,
+      title: `Hạn nộp cho ${selectedProject.title}`,
       description:
         formData.description?.trim() ||
-        `Admin-created deadline for project ${selectedProject.title}.`,
+        `Hạn nộp do quản trị viên thiết lập cho đề tài ${selectedProject.title}.`,
       endDate: formData.deadlineDate,
       teacherId: selectedProject.supervisor._id,
     };
@@ -77,7 +78,7 @@ const DeadlinesPage = () => {
         );
       }
     } catch (err) {
-      console.error("Failed to save deadline: ", err);
+      console.error("Lỗi lưu hạn nộp: ", err);
     } finally {
       setShowModal(false);
       setFormData({
@@ -99,16 +100,16 @@ const DeadlinesPage = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row justify-between items-start md:items-center">
             <div className="">
-              <h1 className="card-title">Manage Deadlines</h1>
+              <h1 className="card-title">Quản lý hạn nộp</h1>
               <p className="card-subtitle">
-                Create and monitor project deadlines
+                Tạo và theo dõi thời hạn nộp báo cáo đồ án
               </p>
             </div>
             <button
               onClick={() => setShowModal(true)}
               className="btn-primary mt-4 md:mt-0"
             >
-              Create Deadline
+              Tạo hạn nộp
             </button>
           </div>
         </div>
@@ -118,14 +119,14 @@ const DeadlinesPage = () => {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Search Deadlines
+                Tìm kiếm hạn nộp
               </label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input-field w-full"
-                placeholder="Search by project or student..."
+                placeholder="Tìm kiếm theo đề tài hoặc sinh viên..."
               />
             </div>
           </div>
@@ -133,26 +134,26 @@ const DeadlinesPage = () => {
 
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Project Deadlines</h2>
+            <h2 className="card-title">Thời hạn đồ án</h2>
           </div>
           <div className="overflow-y-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Student
+                    Sinh viên thực hiện
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Project Title
+                    Tên đề tài
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Supervisor
+                    Giảng viên hướng dẫn
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Deadline
+                    Hạn nộp
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Updated
+                    Ngày cập nhật
                   </th>
                 </tr>
               </thead>
@@ -178,7 +179,7 @@ const DeadlinesPage = () => {
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            No Assigned
+                            Chưa phân công
                           </span>
                         )}
                       </td>
@@ -192,7 +193,7 @@ const DeadlinesPage = () => {
           </div>
           {filteredProjects.length === 0 && (
             <div className="text-center py-8 text-slate-500">
-              No projects found matching your criteria
+              Không tìm thấy đề tài nào phù hợp.
             </div>
           )}
         </div>
@@ -203,7 +204,7 @@ const DeadlinesPage = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  Create Deadline
+                  Tạo hạn nộp
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
@@ -214,11 +215,11 @@ const DeadlinesPage = () => {
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="">
-                  <label className="label">Project Title</label>
+                  <label className="label">Tên đề tài</label>
                   <input
                     type="text"
                     className="input"
-                    placeholder="Start typing to search projects..."
+                    placeholder="Nhập để tìm kiếm đề tài..."
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
@@ -243,7 +244,7 @@ const DeadlinesPage = () => {
                             type="button"
                             key={p._id}
                             className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                    onClick={() => {
+                            onClick={() => {
                               setSelectedProject(p);
                               setQuery(p.title);
                               setFormData({
@@ -263,8 +264,7 @@ const DeadlinesPage = () => {
                               {p.title}
                             </div>
                             <div className="text-xs text-slate-500 truncate">
-                              {p.student?.name || "-"}{" "}
-                              {p.supervisor?.name || "-"}
+                              {p.student?.name || "-"} | {p.supervisor?.name || "-"}
                             </div>
                           </button>
                         ))}
@@ -274,7 +274,7 @@ const DeadlinesPage = () => {
 
                 <div className="">
                   <label htmlFor="" className="label">
-                    Description
+                    Mô tả yêu cầu
                   </label>
                   <textarea
                     className="input-field w-full"
@@ -287,20 +287,19 @@ const DeadlinesPage = () => {
                         description: e.target.value,
                       })
                     }
-                    placeholder="Optional deadline description"
+                    placeholder="Nhập mô tả hoặc yêu cầu chi tiết (nếu có)..."
                   />
                 </div>
 
                 {selectedProject && !selectedProject.supervisor?._id && (
                   <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                    This project does not have a supervisor yet. A deadline can
-                    only be created after a supervisor is assigned.
+                    Đề tài này chưa có giảng viên hướng dẫn. Chỉ có thể tạo hạn nộp sau khi đã phân công GVHD.
                   </div>
                 )}
 
                 <div className="">
                   <label htmlFor="" className="label">
-                    Deadline
+                    Hạn nộp
                   </label>
                   <input
                     type="date"
@@ -320,7 +319,7 @@ const DeadlinesPage = () => {
                   <div className="mt-4 border border-slate-200 rounded-lg bg-slate-50 p-4">
                     <div className="mb-2">
                       <div className="text-sm font-semibold text-slate-900">
-                        Project Details
+                        Chi tiết đề tài
                       </div>
                       <div
                         className="text-sm truncate text-slate-700"
@@ -333,22 +332,21 @@ const DeadlinesPage = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="">
-                        <div className="text-xs text-slate-500">Status</div>
+                        <div className="text-xs text-slate-500">Trạng thái</div>
                         <div className="text-sm font-medium text-slate-800">
-                          {selectedProject.status || "Unknown"}
+                          {selectedProject.status || "Chưa rõ"}
                         </div>
                       </div>
                       <div className="">
-                        <div className="text-xs text-slate-500">Supervisor</div>
-                      <div className="text-sm font-medium text-slate-800">
-                          {selectedProject.supervisor?.name || "No supervisor assigned"}
+                        <div className="text-xs text-slate-500">Giảng viên hướng dẫn</div>
+                        <div className="text-sm font-medium text-slate-800">
+                          {selectedProject.supervisor?.name || "Chưa phân công GVHD"}
                         </div>
                       </div>
                       <div className="md:col-span-2">
-                        <div className="text-xs text-slate-500">Student</div>
+                        <div className="text-xs text-slate-500">Sinh viên thực hiện</div>
                         <div className="text-sm font-medium text-slate-800">
-                          {selectedProject.student?.name || "-"} -{" "}
-                          {selectedProject.student?.email || "-"}
+                          {selectedProject.student?.name || "-"} | {selectedProject.student?.email || "-"}
                         </div>
                       </div>
                     </div>
@@ -357,10 +355,10 @@ const DeadlinesPage = () => {
 
                 <div className="flex justify-end space-x-3 pt-4">
                   <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>
-                    Cancel
+                    Hủy bỏ
                   </button>
                   <button type="submit" className="btn-primary">
-                    Save Deadline
+                    Lưu hạn nộp
                   </button>
                 </div>
               </form>

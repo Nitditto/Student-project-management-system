@@ -48,7 +48,7 @@ const RegistrationSettingsPage = () => {
       }
       setAllUsers(usersRes.data.data?.users || []);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load data");
+      toast.error(error.response?.data?.message || "Không thể tải dữ liệu cấu hình");
     } finally {
       setLoading(false);
     }
@@ -73,10 +73,10 @@ const RegistrationSettingsPage = () => {
         payload.groupEditLockDate = null;
       }
       await axiosInstance.put("/admin/registration-settings", payload);
-      toast.success("Registration settings updated");
+      toast.success("Lưu cấu hình đăng ký thành công");
       await loadData();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update registration settings");
+      toast.error(error.response?.data?.message || "Cập nhật cấu hình đăng ký thất bại");
     } finally {
       setSaving(false);
     }
@@ -94,7 +94,7 @@ const RegistrationSettingsPage = () => {
 
   const handleForceMerge = async () => {
     if (mergeForm.studentIds.length === 0) {
-      return toast.warning("Select at least one student");
+      return toast.warning("Vui lòng chọn ít nhất một sinh viên");
     }
     
     setMergeLoading(true);
@@ -105,19 +105,19 @@ const RegistrationSettingsPage = () => {
         description: mergeForm.description,
         supervisorId: mergeForm.supervisorId || undefined,
       });
-      toast.success("Students successfully merged into a new project");
+      toast.success("Thực hiện ghép nhóm cưỡng bức thành công");
       setShowMergeModal(false);
       setMergeForm({ studentIds: [], title: "", description: "", supervisorId: "" });
       await loadData(); // Reload to remove them from orphans list
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to force merge students");
+      toast.error(error.response?.data?.message || "Thực hiện ghép nhóm cưỡng bức thất bại");
     } finally {
       setMergeLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="card">Loading registration settings...</div>;
+    return <div className="card">Đang tải cấu hình đăng ký đồ án...</div>;
   }
 
   const isLocked = form.groupEditLocked || (form.groupEditLockDate && new Date() >= new Date(form.groupEditLockDate));
@@ -126,9 +126,9 @@ const RegistrationSettingsPage = () => {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-lg p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Project Registration Settings</h1>
+          <h1 className="text-2xl font-bold mb-2">Cấu hình đăng ký đồ án</h1>
           <p className="text-slate-200">
-            Configure group mode, phase toggles, and administrative locks.
+            Quản lý giai đoạn đăng ký, quy định nhóm và ghép nhóm cưỡng bức
           </p>
         </div>
         <button
@@ -136,7 +136,7 @@ const RegistrationSettingsPage = () => {
           className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20"
         >
           <Merge className="w-5 h-5" />
-          Force Merge Students
+          Ghép nhóm cưỡng bức
         </button>
       </div>
 
@@ -146,14 +146,14 @@ const RegistrationSettingsPage = () => {
           <div>
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               {isLocked ? <Lock className="w-5 h-5 text-red-500" /> : <Unlock className="w-5 h-5 text-green-500" />}
-              Global Group Edit Lock
+              Khóa chỉnh sửa nhóm
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              When locked, students and teachers cannot modify group memberships (no kicking, transferring, splitting, or adding members).
+              Khi bị khóa, sinh viên không thể tự thay đổi thành viên nhóm, đổi trưởng nhóm hoặc tự giải tán nhóm.
             </p>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isLocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {isLocked ? 'Currently Locked' : 'Currently Unlocked'}
+            {isLocked ? "Đã khóa" : "Đang mở"}
           </span>
         </div>
 
@@ -166,16 +166,16 @@ const RegistrationSettingsPage = () => {
                 checked={form.groupEditLocked}
                 onChange={(e) => updateField("groupEditLocked", e.target.checked)}
               />
-              <span className="font-semibold text-slate-800">Manual Lock Override</span>
+              <span className="font-semibold text-slate-800">Khóa chỉnh sửa nhóm thủ công</span>
             </label>
             <p className="text-sm text-slate-500 mt-1 pl-8">
-              Immediately freeze all groups across the system, regardless of the date below.
+              Bật tùy chọn này để khóa ngay lập tức các thao tác sửa đổi nhóm của sinh viên.
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-800 mb-1">
-              Auto-Lock Date (Optional)
+              Tự động khóa vào ngày
             </label>
             <input
               type="datetime-local"
@@ -184,7 +184,7 @@ const RegistrationSettingsPage = () => {
               onChange={(e) => updateField("groupEditLockDate", e.target.value)}
             />
             <p className="text-sm text-slate-500 mt-1">
-              Groups will automatically lock after this date and time. Leave blank for manual control only.
+              Hệ thống sẽ tự động khóa các thao tác chỉnh sửa nhóm khi đến thời gian này.
             </p>
           </div>
         </div>
@@ -192,9 +192,9 @@ const RegistrationSettingsPage = () => {
 
       <div className="card space-y-6">
         <div className="card-header">
-          <h2 className="card-title">Registration Policy</h2>
+          <h2 className="card-title">Chính sách đăng ký</h2>
           <p className="card-subtitle">
-            These settings define the end-to-end registration flow for the whole semester.
+            Thiết lập các điều kiện ràng buộc khi đăng ký đề tài
           </p>
         </div>
 
@@ -208,9 +208,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">Allow Group Projects</p>
+              <p className="font-medium text-slate-800">Cho phép đăng ký nhóm</p>
               <p className="text-sm text-slate-500">
-                When off, every project is individual and group invitations are disabled.
+                Cho phép sinh viên ghép nhóm để cùng thực hiện một đề tài.
               </p>
             </div>
           </label>
@@ -224,9 +224,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">Open Proposal Submission</p>
+              <p className="font-medium text-slate-800">Mở cổng nộp đề xuất đề tài</p>
               <p className="text-sm text-slate-500">
-                Students can only create a project proposal when this switch is on.
+                Cho phép sinh viên tạo đề tài mới và gửi yêu cầu hướng dẫn.
               </p>
             </div>
           </label>
@@ -240,9 +240,9 @@ const RegistrationSettingsPage = () => {
               }
             />
             <div>
-              <p className="font-medium text-slate-800">Enable Teacher Preselection</p>
+              <p className="font-medium text-slate-800">Kích hoạt giai đoạn GV chọn trước (Preselect)</p>
               <p className="text-sm text-slate-500">
-                Teachers can invite a student leader first, then the leader accepts or rejects.
+                Cho phép giảng viên chủ động chọn sinh viên hướng dẫn trước khi mở đăng ký tự do.
               </p>
             </div>
           </label>
@@ -254,9 +254,9 @@ const RegistrationSettingsPage = () => {
               onChange={(event) => updateField("freePickOpen", event.target.checked)}
             />
             <div>
-              <p className="font-medium text-slate-800">Open Free-Pick Supervisor Phase</p>
+              <p className="font-medium text-slate-800">Mở giai đoạn đăng ký tự do (FreePick)</p>
               <p className="text-sm text-slate-500">
-                Group representatives can browse all supervisors and send requests directly.
+                Cho phép sinh viên chủ động gửi yêu cầu đăng ký hướng dẫn đến giảng viên.
               </p>
             </div>
           </label>
@@ -264,7 +264,7 @@ const RegistrationSettingsPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="label">Minimum Group Size</label>
+            <label className="label">Số lượng sinh viên tối thiểu mỗi nhóm</label>
             <input
               className="input"
               type="number"
@@ -274,7 +274,7 @@ const RegistrationSettingsPage = () => {
             />
           </div>
           <div>
-            <label className="label">Maximum Group Size</label>
+            <label className="label">Số lượng sinh viên tối đa mỗi nhóm</label>
             <input
               className="input"
               type="number"
@@ -286,23 +286,22 @@ const RegistrationSettingsPage = () => {
         </div>
 
         <div>
-          <label className="label">Policy Notes Shown To Users</label>
+          <label className="label">Ghi chú thông báo</label>
           <textarea
             className="input min-h-24"
             value={form.notes || ""}
             onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Example: Group representative handles proposal, supervisor request, and defense slot selection."
+            placeholder="Nhập hướng dẫn đăng ký dành cho sinh viên..."
           />
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 border border-slate-200">
-          Teacher capacity is still configured per teacher account in `Manage Teachers`.
-          The system checks the whole group size against the selected teacher's remaining capacity.
+          Lưu ý: Các thay đổi cấu hình trên sẽ được áp dụng ngay lập tức cho các đợt đăng ký mới.
         </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">
           <button className="btn-primary" onClick={saveSettings} disabled={saving}>
-            {saving ? "Saving..." : "Save All Settings"}
+            {saving ? "Đang lưu..." : "Lưu cấu hình"}
           </button>
         </div>
       </div>
@@ -314,7 +313,7 @@ const RegistrationSettingsPage = () => {
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 shrink-0">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Merge className="w-6 h-6 text-blue-600" />
-                Force Merge Students
+                Ghép nhóm & Chỉ định hướng dẫn cưỡng bức
               </h2>
               <button className="text-slate-400 hover:text-slate-600" onClick={() => setShowMergeModal(false)}>
                 <X className="w-6 h-6" />
@@ -323,18 +322,18 @@ const RegistrationSettingsPage = () => {
 
             <div className="overflow-y-auto pr-2 pb-4 space-y-6">
               <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100">
-                Select orphan students (students without a project) and forcibly group them together. The first student selected will become the leader.
+                Công cụ này cho phép tự động ghép các sinh viên chưa có đề tài thành một nhóm và chỉ định giảng viên hướng dẫn.
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
-                  <span>1. Select Students ({orphanStudents.length} Available)</span>
-                  <span className="text-blue-600 font-normal">{mergeForm.studentIds.length} Selected</span>
+                  <span>Chọn sinh viên chưa có đề tài (Còn lại {orphanStudents.length})</span>
+                  <span className="text-blue-600 font-normal">Đã chọn: {mergeForm.studentIds.length} sinh viên</span>
                 </label>
                 <div className="border border-slate-200 rounded-lg max-h-48 overflow-y-auto p-2 bg-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {orphanStudents.length === 0 && (
                     <div className="col-span-full text-center py-4 text-slate-500 text-sm">
-                      No unassigned students available.
+                      Không có sinh viên chưa có đề tài nào khả dụng.
                     </div>
                   )}
                   {orphanStudents.map((student) => (
@@ -366,18 +365,18 @@ const RegistrationSettingsPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  2. Project Details
+                  Thông tin đề tài mới
                 </label>
                 <div className="space-y-3">
                   <input
                     type="text"
-                    placeholder="Project / Group Title (e.g. Admin Assigned Project)"
+                    placeholder="Nhập tên đề tài..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={mergeForm.title}
                     onChange={(e) => setMergeForm({ ...mergeForm, title: e.target.value })}
                   />
                   <textarea
-                    placeholder="Brief description..."
+                    placeholder="Nhập mô tả đề tài..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     rows="2"
                     value={mergeForm.description}
@@ -388,14 +387,14 @@ const RegistrationSettingsPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  3. Assign Supervisor (Optional)
+                  Chỉ định giảng viên hướng dẫn
                 </label>
                 <select
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                   value={mergeForm.supervisorId}
                   onChange={(e) => setMergeForm({ ...mergeForm, supervisorId: e.target.value })}
                 >
-                  <option value="">-- No Supervisor (Leave Pending) --</option>
+                  <option value="">-- Không chỉ định (Có thể phân công sau) --</option>
                   {teachers.map(t => (
                     <option key={t._id} value={t._id}>{t.name} ({t.department})</option>
                   ))}
@@ -408,14 +407,14 @@ const RegistrationSettingsPage = () => {
                 className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors"
                 onClick={() => setShowMergeModal(false)}
               >
-                Cancel
+                Hủy bỏ
               </button>
               <button
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 disabled={mergeForm.studentIds.length === 0 || mergeLoading}
                 onClick={handleForceMerge}
               >
-                {mergeLoading ? "Processing..." : `Merge ${mergeForm.studentIds.length} Student(s)`}
+                {mergeLoading ? "Đang xử lý..." : `Xác nhận ghép nhóm (${mergeForm.studentIds.length} SV)`}
               </button>
             </div>
           </div>

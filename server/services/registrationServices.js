@@ -5,6 +5,7 @@ import { Project } from "../models/project.js";
 import { RegistrationSetting } from "../models/registrationSetting.js";
 import { TeacherPreselection } from "../models/teacherPreselection.js";
 import { User } from "../models/user.js";
+import { SupervisorRequest } from "../models/supervisorRequest.js";
 import * as notificationServices from "./notificationServices.js";
 import { syncProjectMembers } from "./workflowProjectServices.js";
 import { getProjectMemberIds, isSameId, toIdString } from "../utils/workflowHelpers.js";
@@ -528,6 +529,55 @@ const assignTeacherToProjectMembers = async ({ project, teacherId }) => {
       status: "cancelled",
       respondedAt: new Date(),
     },
+  );
+
+  // Approve supervisor request to this teacher if exists, cancel others robustly
+  const orConditions = [
+    { project: assignedProject._id }
+  ];
+  if (memberIds && memberIds.length > 0) {
+    orConditions.push({ student: { $in: memberIds } });
+  }
+  if (assignedProject.group) {
+    orConditions.push({ group: assignedProject.group });
+  }
+
+  // 1. Approve supervisor request to this teacher if exists
+  await SupervisorRequest.updateMany(
+    {
+      status: "pending",
+      $and: [
+        { $or: orConditions },
+        {
+          $or: [
+            { supervisor: teacherId },
+            { teacher: teacherId }
+          ]
+        }
+      ]
+    },
+    {
+      $set: { status: "approved" },
+    }
+  );
+
+  // 2. Cancel other pending requests
+  await SupervisorRequest.updateMany(
+    {
+      status: "pending",
+      $and: [
+        { $or: orConditions },
+        {
+          $and: [
+            { supervisor: { $ne: teacherId } },
+            { teacher: { $ne: teacherId } }
+          ]
+        }
+      ]
+    },
+    {
+      $set: { status: "cancelled" },
+    }
   );
 
   await syncProjectMembers(assignedProject);

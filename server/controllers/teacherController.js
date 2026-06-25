@@ -135,6 +135,31 @@ export const acceptRequest = asyncHandler(async (req, res, next) => {
     await studentProject.save();
   }
 
+  // 4. Cancel other pending requests for the same project / student members / group robustly
+  const cleanOrConditions = [];
+  if (studentProject?._id) {
+    cleanOrConditions.push({ project: studentProject._id });
+  }
+  if (memberIds && memberIds.length > 0) {
+    cleanOrConditions.push({ student: { $in: memberIds } });
+  }
+  if (studentProject?.group) {
+    cleanOrConditions.push({ group: studentProject.group });
+  }
+
+  if (cleanOrConditions.length > 0) {
+    await SupervisorRequest.updateMany(
+      {
+        _id: { $ne: request._id },
+        status: "pending",
+        $or: cleanOrConditions
+      },
+      {
+        $set: { status: "cancelled" }
+      }
+    );
+  }
+
   await notificationServices.notifyUser(
     studentId,
     `Your supervisor request has been accepted by ${req.user.name}`,

@@ -132,9 +132,9 @@ const ManageStudents = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row items-start justify-between md:items-center">
             <div className="">
-              <h1 className="card-title">Manage Students</h1>
+              <h1 className="card-title">Quản lý sinh viên</h1>
               <p className="card-subtitle">
-                Add, edit, and manage student accounts
+                Thêm mới, chỉnh sửa và quản lý tài khoản của sinh viên
               </p>
             </div>
             <button
@@ -142,7 +142,7 @@ const ManageStudents = () => {
               onClick={() => dispatch(toggleStudentModal())}
             >
               <Plus className="w-5 h-5" />
-              <span>Add New Student</span>
+              <span>Thêm sinh viên</span>
             </button>
           </div>
         </div>
@@ -156,7 +156,7 @@ const ManageStudents = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  Total Students
+                  Tổng số sinh viên
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {students.length}
@@ -172,7 +172,7 @@ const ManageStudents = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-slate-600">
-                  Completed Projects
+                  Đề tài hoàn thành
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
                   {
@@ -191,7 +191,7 @@ const ManageStudents = () => {
                 <TriangleAlert className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-slate-600">Unassigned</p>
+                <p className="text-sm font-medium text-slate-600">Chưa phân công</p>
                 <p className="text-lg font-semibold text-slate-800">
                   {students.filter((student) => !student.supervisor).length}
                 </p>
@@ -202,17 +202,14 @@ const ManageStudents = () => {
 
         {/* Filter */}
         <div className="card">
-          <div className="flex flex-fol md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <label
-                htmlFor=""
-                className="block text-sm font-medium text-slate-700 mb-2"
-              >
-                Search Students
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Tìm kiếm sinh viên
               </label>
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder="Tìm kiếm theo tên hoặc email..."
                 className="input-field w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -220,14 +217,14 @@ const ManageStudents = () => {
             </div>
             <div className="w-full md:w-48">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Filter Status
+                Lọc theo bộ môn
               </label>
               <select
                 className="input-field w-full"
                 value={filterDepartment}
                 onChange={(e) => setFilterDepartment(e.target.value)}
               >
-                <option value="all">All Departments</option>
+                <option value="all">Tất cả bộ môn</option>
                 {departments.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
@@ -241,7 +238,7 @@ const ManageStudents = () => {
         {/* Students table */}
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-slate-900">Students List</h2>
+            <h2 className="font-semibold text-slate-900">Danh sách sinh viên</h2>
           </div>
           <div className="overflow-x-auto">
             {filteredStudents && filteredStudents.length > 0 ? (
@@ -249,19 +246,19 @@ const ManageStudents = () => {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Student Info
+                      Thông tin sinh viên
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Department & Year
+                      Bộ môn & Khóa
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Supervisor
+                      Giảng viên hướng dẫn
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Project Title
+                      Tên đề tài
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Actions
+                      Thao tác
                     </th>
                   </tr>
                 </thead>
@@ -280,7 +277,7 @@ const ManageStudents = () => {
                             </div>
                             {student.studentId && (
                               <div className="text-sm text-slate-500">
-                                ID: {student.studentId}
+                                MSSV: {student.studentId}
                               </div>
                             )}
                           </div>
@@ -304,18 +301,13 @@ const ManageStudents = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {student.supervisor ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-green-800 bg-green-100 text-xs font-medium">
-                              {/* {
-                                users?.find(
-                                  (user) => user._id === student.supervisor,
-                                )?.name
-                              } */}
                               {student.supervisor.name || student.supervisor}
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-red-800 bg-red-100 text-xs font-medium">
                               {student.projectStatus === "rejected"
-                                ? "Rejected"
-                                : "Not Assigned"}
+                                ? "Bị từ chối"
+                                : "Chưa phân công"}
                             </span>
                           )}
                         </td>
@@ -334,13 +326,13 @@ const ManageStudents = () => {
                               className="text-blue-600 hover:text-blue-900"
                               onClick={() => handleEdit(student)}
                             >
-                              Edit
+                              Chỉnh sửa
                             </button>
                             <button
                               className="text-red-600 hover:text-red-900"
                               onClick={() => handleDelete(student)}
                             >
-                              Delete
+                              Xóa bỏ
                             </button>
                           </div>
                         </td>
@@ -352,7 +344,7 @@ const ManageStudents = () => {
             ) : (
               filteredStudents.length === 0 && (
                 <div className="text-center py-8 text-slate-500">
-                  No students found matching your criteria
+                  Không tìm thấy sinh viên nào phù hợp.
                 </div>
               )
             )}
@@ -364,19 +356,19 @@ const ManageStudents = () => {
               <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-slate-900">
-                    Edit Student
+                    Chỉnh sửa thông tin sinh viên
                   </h3>
                   <button
                     onClick={handleCloseModal}
                     className="text-slate-400 hover:text-slate-600"
                   >
-                    <X className="w-6 h-6 " />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Full Name
+                      Họ và tên
                     </label>
                     <input
                       type="text"
@@ -389,7 +381,7 @@ const ManageStudents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Email
+                      Địa chỉ Email
                     </label>
                     <input
                       type="email"
@@ -402,7 +394,7 @@ const ManageStudents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Department
+                      Bộ môn / Khoa
                     </label>
                     <select
                       required
@@ -412,7 +404,7 @@ const ManageStudents = () => {
                       }
                       className="input-field w-full p-2 border-b border-slate-600 focus:outline-none"
                     >
-                      <option value="">Select Department</option>
+                      <option value="">Chọn bộ môn...</option>
                       <option value="Computer Science">Computer Science</option>
                       <option value="Software Engineering">
                         Software Engineering
@@ -441,10 +433,10 @@ const ManageStudents = () => {
                       onClick={handleCloseModal}
                       className="btn-danger"
                     >
-                      Cancel
+                      Hủy bỏ
                     </button>
                     <button type="submit" className="btn-primary">
-                      Update Student
+                      Cập nhật
                     </button>
                   </div>
                 </form>
@@ -463,21 +455,18 @@ const ManageStudents = () => {
 
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-slate-900 mb-2">
-                    Delete Student
+                    Xác nhận xóa sinh viên
                   </h3>
                   <p className="text-sm text-slate-500 mb-4">
-                    Are you sure you want to delete{" "}
-                    <span className="">
-                      {studentToDelete.name}? This action cannot be undone
-                    </span>
+                    Bạn có chắc chắn muốn xóa sinh viên {studentToDelete.name}? Hành động này sẽ không thể hoàn tác.
                   </p>
 
                   <div className="flex justify-center space-x-3">
                     <button className="btn-secondary" onClick={cancelDelete}>
-                      Cancel
+                      Hủy bỏ
                     </button>
                     <button className="btn-danger" onClick={confirmDelete}>
-                      Delete
+                      Xóa bỏ
                     </button>
                   </div>
                 </div>

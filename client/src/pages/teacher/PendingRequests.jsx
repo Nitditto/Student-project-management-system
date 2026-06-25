@@ -170,7 +170,7 @@ const PendingRequests = () => {
 
                   {/* Actions */}
                   <div className="flex items-center gap-3 mt-4">
-                    {req.status === "pending" && (
+                    {req.status === "pending" && !supervisorAssigned && (
                       <>
                         <button
                           className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
