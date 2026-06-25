@@ -182,7 +182,7 @@ const CouncilsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [trackFilter, setTrackFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("dateDesc");
+  const [sortBy, setSortBy] = useState("createdDesc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isQaExpanded, setIsQaExpanded] = useState(false);
@@ -666,6 +666,8 @@ const CouncilsPage = () => {
       } else {
         await axiosInstance.post("/admin/councils", form);
         toast.success("Hội đồng mới đã được tạo thành công.");
+        setSortBy("createdDesc");
+        setCurrentPage(1);
       }
 
       resetForm();
@@ -1025,11 +1027,18 @@ const CouncilsPage = () => {
 
     // Sorting
     result.sort((a, b) => {
+      if (sortBy === "createdDesc") {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
       if (sortBy === "dateAsc") {
-        return new Date(a.defenseDate || 0) - new Date(b.defenseDate || 0);
+        const diff = new Date(a.defenseDate || 0) - new Date(b.defenseDate || 0);
+        if (diff !== 0) return diff;
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       }
       if (sortBy === "dateDesc") {
-        return new Date(b.defenseDate || 0) - new Date(a.defenseDate || 0);
+        const diff = new Date(b.defenseDate || 0) - new Date(a.defenseDate || 0);
+        if (diff !== 0) return diff;
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       }
       if (sortBy === "nameAsc") {
         return (a.name || "").localeCompare(b.name || "");
@@ -1269,20 +1278,7 @@ const CouncilsPage = () => {
                   </div>
                 </div>
 
-                <div className="relative">
-                  <select
-                    className="input pr-8 appearance-none w-full"
-                    value={trackFilter}
-                    onChange={(e) => handleTrackFilterChange(e.target.value)}
-                  >
-                    <option value="all">Tất cả định hướng</option>
-                    <option value="capstone">Capstone</option>
-                    <option value="research">Nghiên cứu</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                    <Filter className="h-4 w-4" />
-                  </div>
-                </div>
+                
 
                 <div className="relative">
                   <select
@@ -1290,6 +1286,7 @@ const CouncilsPage = () => {
                     value={sortBy}
                     onChange={(e) => handleSortByChange(e.target.value)}
                   >
+                    <option value="createdDesc">Mới tạo (Mới nhất)</option>
                     <option value="dateDesc">Ngày bảo vệ (Mới nhất)</option>
                     <option value="dateAsc">Ngày bảo vệ (Cũ nhất)</option>
                     <option value="nameAsc">Tên hội đồng (A-Z)</option>
@@ -1473,52 +1470,6 @@ const CouncilsPage = () => {
                             </option>
                           ))}
                         </select>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <select
-                            className="input"
-                            value={
-                              assignForms[council._id]?.projectTrack ||
-                              "capstone"
-                            }
-                            onChange={(event) =>
-                              updateAssignForm(
-                                council._id,
-                                "projectTrack",
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <option value="capstone">Capstone</option>
-                            <option value="research">
-                              Nghiên cứu khoa học
-                            </option>
-                          </select>
-                          <select
-                            className="input"
-                            value={assignForms[council._id]?.templateId || ""}
-                            onChange={(event) =>
-                              updateAssignForm(
-                                council._id,
-                                "templateId",
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <option value="">Phiếu đánh giá mặc định</option>
-                            {templates
-                              .filter(
-                                (template) =>
-                                  template.projectTrack ===
-                                  (assignForms[council._id]?.projectTrack ||
-                                    "capstone"),
-                              )
-                              .map((template) => (
-                                <option key={template._id} value={template._id}>
-                                  {template.name} ({template.version})
-                                </option>
-                              ))}
-                          </select>
-                        </div>
                         <button
                           className="btn-primary"
                           onClick={() => assignProject(council._id)}

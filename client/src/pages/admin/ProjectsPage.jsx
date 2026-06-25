@@ -130,36 +130,44 @@ const ProjectsPage = () => {
 
   const handleStatusChange = async (projectId, newStatus) => {
     if (newStatus === "approved") {
-      dispatch(approveProject(projectId));
+      dispatch(approveProject(projectId)).then((res) => {
+        if (approveProject.fulfilled.match(res)) {
+          toast.success("Phê duyệt đề tài thành công");
+        }
+      });
     } else if (newStatus === "rejected") {
-      dispatch(rejectProject(projectId));
+      dispatch(rejectProject(projectId)).then((res) => {
+        if (rejectProject.fulfilled.match(res)) {
+          toast.success("Từ chối đề tài thành công");
+        }
+      });
     }
   };
 
   const projectStats = [
     {
-      title: "Total Projects",
+      title: "Tổng số đề tài",
       value: projects.length,
       bg: "bg-blue-100",
       iconColor: "text-blue-600",
       Icon: Folder,
     },
     {
-      title: "Pending Review",
+      title: "Đề tài chờ duyệt",
       value: projects.filter((p) => p.status === "pending").length,
       bg: "bg-orange-100",
       iconColor: "text-orange-600",
       Icon: AlertTriangle,
     },
     {
-      title: "Completed",
+      title: "Đề tài hoàn thành",
       value: projects.filter((p) => p.status === "completed").length,
       bg: "bg-green-100",
       iconColor: "text-green-600",
       Icon: CheckCircle2,
     },
     {
-      title: "Rejected",
+      title: "Đề tài bị từ chối",
       value: projects.filter((p) => p.status === "rejected").length,
       bg: "bg-red-100",
       iconColor: "text-red-600",
@@ -173,9 +181,9 @@ const ProjectsPage = () => {
         <div className="card">
           <div className="card-header flex flex-col md:flex-row items-start justify-between md:items-center">
             <div className="">
-              <h1 className="card-title">All Projects</h1>
+              <h1 className="card-title">Quản lý đề tài</h1>
               <p className="card-subtitle">
-                View and manage all student projects across the platform
+                Xem, phê duyệt, từ chối đề tài và quản lý báo cáo của sinh viên
               </p>
             </div>
             <button
@@ -183,7 +191,7 @@ const ProjectsPage = () => {
               onClick={() => setIsReportsOpen(true)}
             >
               <FileDown className="w-5 h-5" />
-              <span>Download Reports</span>
+              <span>Tải tất cả báo cáo</span>
             </button>
           </div>
         </div>
@@ -213,53 +221,44 @@ const ProjectsPage = () => {
         <div className="card">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <label
-                className="block text-sm font-medium text-slate-700 mb-2 
-              "
-              >
-                Search Projects
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Tìm kiếm đề tài
               </label>
               <input
                 type="text"
                 className="input w-full"
-                placeholder="Search by title or student name..."
+                placeholder="Tìm kiếm theo tên đề tài hoặc sinh viên..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div>
-              <label
-                className="block text-sm font-medium text-slate-700 mb-2 
-              "
-              >
-                Filter by Status
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Lọc theo trạng thái
               </label>
               <select
                 className="input w-full"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
-                <option value="all">All Projects</option>
-                <option value="pending">Pending Projects</option>
-                <option value="approved">Approved Projects</option>
-                <option value="completed">Completed Projects</option>
-                <option value="rejected">Rejected Projects</option>
+                <option value="all">Tất cả trạng thái</option>
+                <option value="pending">Chờ duyệt</option>
+                <option value="approved">Đã duyệt</option>
+                <option value="completed">Đã hoàn thành</option>
+                <option value="rejected">Đã từ chối</option>
               </select>
             </div>
 
             <div className="">
-              <label
-                className="block text-sm font-medium text-slate-700 mb-2 
-              "
-              >
-                Filter Supervisor
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Lọc theo giảng viên hướng dẫn
               </label>
               <select
                 className="input w-full"
                 value={filterSupervisor}
                 onChange={(e) => setFilterSupervisor(e.target.value)}
               >
-                <option value="all">All Supervisors</option>
+                <option value="all">Tất cả giảng viên</option>
                 {supervisor.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -273,29 +272,29 @@ const ProjectsPage = () => {
         {/* Projects Table */}
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Projects Overview</h2>
+            <h2 className="card-title">Danh sách đề tài tốt nghiệp</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Project Details
+                    Thông tin đề tài
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Student
+                    Sinh viên thực hiện
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Supervisor
+                    Giảng viên hướng dẫn
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Deadline
+                    Hạn nộp đồ án
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Actions
+                    Thao tác
                   </th>
                 </tr>
               </thead>
@@ -311,8 +310,7 @@ const ProjectsPage = () => {
                           {project.description}
                         </div>
                         <div className="text-xs text-slate-400">
-                          Due:{" "}
-                          {project.deadline && project.deadline.split("T")[0]}
+                          Hạn chót: {project.deadline && project.deadline.split("T")[0]}
                         </div>
                       </div>
                     </td>
@@ -321,7 +319,7 @@ const ProjectsPage = () => {
                         {project?.student?.name}
                       </div>
                       <div className="text-sm text-slate-500">
-                        Last Update:{" "}
+                        Cập nhật cuối:{" "}
                         {project?.updatedAt
                           ? new Date(project?.updatedAt).toLocaleDateString()
                           : "N/A"}
@@ -334,7 +332,7 @@ const ProjectsPage = () => {
                             {project.supervisor?.name}
                           </span>
                         ) : (
-                          "Unassigned"
+                          "Chưa phân công"
                         )}
                       </div>
                     </td>
@@ -348,7 +346,7 @@ const ProjectsPage = () => {
                       <span
                         className={`inline-flex capitalize items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}
                       >
-                        {project.status}
+                        {project.status === "pending" ? "Chờ duyệt" : project.status === "approved" ? "Đã duyệt" : project.status === "rejected" ? "Bị từ chối" : project.status}
                       </span>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
@@ -363,7 +361,7 @@ const ProjectsPage = () => {
                           }}
                           className="btn-primary"
                         >
-                          View
+                          Xem chi tiết
                         </button>
                         {project.status === "pending" && (
                           <>
@@ -373,7 +371,7 @@ const ProjectsPage = () => {
                                 handleStatusChange(project._id, "approved")
                               }
                             >
-                              Approve
+                              Duyệt đề tài
                             </button>
                             <button
                               className="btn-danger"
@@ -381,7 +379,7 @@ const ProjectsPage = () => {
                                 handleStatusChange(project._id, "rejected")
                               }
                             >
-                              Reject
+                              Từ chối
                             </button>
                           </>
                         )}
@@ -394,7 +392,7 @@ const ProjectsPage = () => {
           </div>
           {filteredProjects.length === 0 && (
             <div className="text-center py-8 text-slate-500">
-              No projects found matching your criteria
+              Không có đề tài nào phù hợp.
             </div>
           )}
         </div>
@@ -405,7 +403,7 @@ const ProjectsPage = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  Project Details
+                  Chi tiết đề tài tốt nghiệp
                 </h3>
                 <button
                   onClick={() => setShowViewModal(false)}
@@ -417,26 +415,26 @@ const ProjectsPage = () => {
 
               <div className="space-y-4">
                 <div className="">
-                  <label className="label">Title</label>
+                  <label className="label">Tên đề tài</label>
                   <div className="input bg-slate-50">
                     {currentProject?.title || "-"}
                   </div>
                 </div>
                 <div className="">
-                  <label className="label">Description</label>
+                  <label className="label">Mô tả đề tài</label>
                   <div className="input bg-slate-50">
                     {currentProject?.description || "-"}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="">
-                    <label className="label">Student</label>
+                    <label className="label">Sinh viên thực hiện</label>
                     <div className="input bg-slate-50">
                       {currentProject?.student?.name || "-"}
                     </div>
                   </div>
                   <div className="">
-                    <label className="label">Supervisor</label>
+                    <label className="label">Giảng viên hướng dẫn</label>
                     <div className="input bg-slate-50">
                       {currentProject?.supervisor?.name || "-"}
                     </div>
@@ -445,13 +443,13 @@ const ProjectsPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="">
-                    <label className="label">Status</label>
+                    <label className="label">Trạng thái</label>
                     <div className="input bg-slate-50">
                       {currentProject?.status}
                     </div>
                   </div>
                   <div className="">
-                    <label className="label">Deadline</label>
+                    <label className="label">Hạn nộp đồ án</label>
                     <div className="input bg-slate-50">
                       {currentProject?.deadline
                         ? new Date(currentProject.deadline).toLocaleDateString()
@@ -461,10 +459,10 @@ const ProjectsPage = () => {
                 </div>
 
                 <div className="">
-                  <label className="label">Files</label>
+                  <label className="label">Tệp báo cáo đã nộp</label>
                   {(currentProject.files || []).length === 0 ? (
                     <div className="text-slate-500 text-sm">
-                      No files uploaded
+                      Chưa nộp tệp nào
                     </div>
                   ) : (
                     <ul className="list-disc list-inside text-sm text-slate-700">
@@ -481,13 +479,13 @@ const ProjectsPage = () => {
           </div>
         )}
 
-        {/* View modal */}
+        {/* Reports modal */}
         {isReportsOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  All Files
+                  Tất cả tệp báo cáo
                 </h3>
                 <button
                   onClick={() => setIsReportsOpen(false)}
@@ -500,14 +498,14 @@ const ProjectsPage = () => {
                 <input
                   type="text"
                   className="input w-full"
-                  placeholder="Search by file name, project title or student name"
+                  placeholder="Tìm kiếm tệp theo tên hoặc đề tài..."
                   value={reportSearch}
                   onChange={(e) => setReportSearch(e.target.value)}
                 />
               </div>
               {filteredFiles.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
-                  No files found.
+                  Không tìm thấy tệp nào phù hợp.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -528,7 +526,7 @@ const ProjectsPage = () => {
                         onClick={() => handleDownloadFile(file)}
                         className="btn-outline btn-small whitespace-nowrap ml-4"
                       >
-                        Download
+                        Tải xuống
                       </button>
                     </div>
                   ))}
